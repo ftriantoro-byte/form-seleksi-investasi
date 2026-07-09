@@ -64,7 +64,7 @@ form-seleksi-investasi/
 │   └── submissions.ts                 # Server Actions: create/update submission, approval
 ├── types/
 │   └── database.ts                    # tipe hasil generate dari skema Supabase
-├── middleware.ts                      # proteksi route + refresh session Supabase
+├── proxy.ts                           # proteksi route + refresh session Supabase (nama file "middleware.ts" dideprecate di Next.js 16, lihat §5)
 └── supabase/
     └── migrations/                    # SQL migration, sumber kebenaran skema DB
 ```
@@ -203,9 +203,31 @@ Belum ada `types/database.ts` hasil codegen (`supabase gen types typescript`) ka
 
 ## 4. Autentikasi & Role
 
-- Supabase Auth (email/password, bisa ditambah magic link di kemudian hari — belum diputuskan).
-- Role disimpan di `profiles.role`, di-set manual oleh admin (belum ada UI signup publik — akun dibuat/di-invite oleh admin, sesuai konteks aplikasi internal perusahaan).
-- Middleware Next.js (`middleware.ts`) memproteksi semua route kecuali `/login`, mengarahkan ke `/login` jika belum autentikasi.
+### Email/password vs magic link (tahap 0.3)
+
+Dipilih **email/password** sebagai metode login utama. Trade-off yang dipertimbangkan:
+
+| | Email/password | Magic link |
+|---|---|---|
+| Kecepatan login harian | Cepat, tidak perlu buka email tiap kali | Perlu buka email & klik link tiap login — lambat untuk pemakaian rutin (Manajer/VP/Direksi cek dashboard tiap hari) |
+| Ketergantungan availability email | Tidak ada | Login gagal total kalau email perusahaan lambat/delay (umum pada email korporat dengan filter spam ketat) |
+| Keamanan | Perlu kebijakan reset password (ditangani built-in Supabase) | Tidak ada password untuk dicuri/lemah, tapi akun jadi bergantung penuh pada keamanan inbox email |
+| Kesesuaian dengan alur "akun dibuat admin" | Admin buat akun + set password awal, user bisa ganti sendiri | Admin buat akun, user selalu login lewat email — cocok untuk pemakaian jarang, kurang cocok untuk approval harian |
+
+Karena aplikasi ini dipakai rutin (approval bertingkat harian oleh Manajer/VP/Direksi) dan akun disediakan admin (bukan self-signup publik), email/password lebih praktis. Magic link bisa ditambahkan belakangan sebagai opsi tambahan (bukan pengganti) jika dibutuhkan — tidak saling eksklusif secara teknis dengan Supabase Auth.
+
+### Implementasi
+
+- `actions/auth.ts` — Server Action `login(formData)` (memanggil `supabase.auth.signInWithPassword`, redirect ke `/login?error=...` jika gagal) dan `logout()`.
+- `app/login/page.tsx` — halaman login sederhana, menampilkan pesan error dari query param.
+- Role disimpan di tabel `user_roles` (lihat §3), **bukan** tabel `profiles` — dibaca lewat `lib/supabase/role.ts`:
+  - `getCurrentUserRole()` — role user saat ini atau `null` jika belum login/belum ada baris role.
+  - `requireRole(...allowed)` — dipakai di awal Server Action/Server Component yang dibatasi role tertentu, `throw` jika tidak berwenang. Proteksi ini di level server (Server Action & RLS), bukan cuma disembunyikan di UI — sesuai catatan keamanan di PANDUAN.md Prompt 4.3.
+- `proxy.ts` (lewat `lib/supabase/middleware.ts`) — auth-gate global: user belum login yang mengakses route apapun selain `/login` di-redirect ke `/login`; user yang sudah login mengakses `/login` di-redirect ke `/`.
+- **Penambahan user baru** (sementara, sampai ada UI admin khusus): dilakukan manual oleh admin lewat Supabase Dashboard —
+  1. **Authentication → Users → Add user**, isi email + password awal, kirim tahu user secara terpisah (misal chat internal) supaya user bisa login lalu ganti password sendiri (Supabase punya alur "forgot password" bawaan bila diperlukan).
+  2. **Table Editor → `user_roles` → Insert row**, isi `user_id` (disalin dari user yang baru dibuat di langkah 1) dan `role` (evaluator/manajer/vp/direksi/admin).
+  UI admin untuk kedua langkah ini bisa dibangun belakangan sebagai form khusus jika volume user besar — tidak masuk cakupan tahap 0.3.
 
 ---
 
@@ -215,6 +237,7 @@ Belum ada `types/database.ts` hasil codegen (`supabase gen types typescript`) ka
 - Server Actions dipakai untuk semua mutasi (create/update submission, approval), bukan API routes, kecuali endpoint yang perlu dipanggil non-Next.js (mis. `pdf/route.ts`).
 - Validasi input dengan Zod, schema per form disimpan di `lib/forms/<slug>/schema.ts`.
 - Commit per tahap PROGRESS.md, pesan commit menyebut nomor tahap eksplisit.
+- Project di-scaffold dengan Next.js 16: konvensi file `middleware.ts` sudah dideprecate, diganti `proxy.ts` (fungsi diekspor bernama `proxy`, bukan `middleware`). `next.config.ts` set `turbopack.root` eksplisit karena folder ini bertetangga dengan project lain yang punya `package-lock.json` sendiri (menghindari Next.js salah menebak workspace root).
 
 ---
 

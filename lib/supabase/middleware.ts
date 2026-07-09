@@ -26,7 +26,23 @@ export async function updateSession(request: NextRequest) {
   );
 
   // Wajib dipanggil supaya session ter-refresh sebelum sampai ke Server Component.
-  await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isLoginRoute = request.nextUrl.pathname.startsWith("/login");
+
+  if (!user && !isLoginRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  if (user && isLoginRoute) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
+  }
 
   return supabaseResponse;
 }
