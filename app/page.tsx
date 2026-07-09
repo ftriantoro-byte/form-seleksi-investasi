@@ -1,65 +1,103 @@
-import Image from "next/image";
+import Link from "next/link";
+import { logout } from "@/actions/auth";
+import { createClient } from "@/lib/supabase/server";
+import { getCurrentUserRole, type AppRole } from "@/lib/supabase/role";
 
-export default function Home() {
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+async function getSummary(
+  supabase: SupabaseServerClient,
+  userId: string,
+  role: AppRole,
+): Promise<string | null> {
+  if (role === "evaluator") {
+    const { count } = await supabase
+      .from("submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("dibuat_oleh", userId)
+      .in("status", ["draft", "menunggu_skoring"]);
+
+    if (!count) return null;
+    return `Anda punya ${count} proposal yang belum selesai diisi.`;
+  }
+
+  const statusByRole: Partial<Record<AppRole, string>> = {
+    manajer: "menunggu_manajer",
+    vp: "menunggu_vp",
+    direksi: "menunggu_direksi",
+  };
+  const status = statusByRole[role];
+  if (!status) return null;
+
+  const { count } = await supabase
+    .from("submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("status", status);
+
+  if (!count) return null;
+  return `Ada ${count} proposal menunggu keputusan Anda.`;
+}
+
+export default async function HomePage() {
+  const supabase = await createClient();
+
+  const { data: forms } = await supabase
+    .from("forms")
+    .select("id, slug, nama, deskripsi")
+    .eq("aktif", true)
+    .order("created_at", { ascending: true });
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const role = user ? await getCurrentUserRole() : null;
+  const summary = user && role ? await getSummary(supabase, user.id, role) : null;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto max-w-3xl p-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Form Internal Perusahaan</h1>
+          <p className="mt-1 text-sm text-gray-600">
+            Pilih form yang ingin diisi atau ditinjau.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+        {user && (
+          <form action={logout}>
+            <button
+              type="submit"
+              className="whitespace-nowrap text-sm text-gray-500 hover:text-gray-900"
+            >
+              Keluar ({user.email})
+            </button>
+          </form>
+        )}
+      </div>
+
+      {summary && (
+        <p className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {summary}
+        </p>
+      )}
+
+      <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        {(forms ?? []).map((form) => (
+          <Link
+            key={form.id}
+            href={`/forms/${form.slug}`}
+            className="rounded-lg border border-gray-200 p-5 transition-colors hover:border-gray-400"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+            <h2 className="font-medium">{form.nama}</h2>
+            {form.deskripsi && (
+              <p className="mt-1 text-sm text-gray-600">{form.deskripsi}</p>
+            )}
+          </Link>
+        ))}
+        {(!forms || forms.length === 0) && (
+          <p className="text-sm text-gray-500">Belum ada form yang tersedia.</p>
+        )}
+      </div>
+    </main>
   );
 }

@@ -11,7 +11,7 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 - [x] 0.1 Setup project Next.js, Supabase, struktur folder multi-form
 - [x] 0.2 Skema database (forms, submissions, approval_chain, submission_history, user_roles) — SQL ditulis di `supabase/migrations/`, **belum dijalankan** ke project Supabase asli (belum ada project)
 - [x] 0.3 Autentikasi Supabase (login, role: Evaluator/Manajer/VP/Direksi/Admin) — kode lengkap, **alur login belum diuji end-to-end** (butuh project Supabase asli)
-- [ ] 0.4 Landing page dasar (daftar form, saat ini baru 1: Seleksi Investasi)
+- [x] 0.4 Landing page dasar (daftar form, saat ini baru 1: Seleksi Investasi) — kode lengkap, **belum diverifikasi di browser** (halaman di-gate proxy auth, butuh login sungguhan; sudah lolos `tsc --noEmit` & `eslint`)
 
 ## FORM SELEKSI INVESTASI — BAGIAN A (Identitas)
 
