@@ -11,43 +11,55 @@
 -- ini + kebijakan yang memakainya) - migration ini jadi redundant-tapi-aman
 -- (create or replace + drop/create policy, tidak mengubah apapun kalau
 -- dijalankan setelah versi 0002/0003 yang sudah benar).
+--
+-- Revisi kedua: percobaan pertama (fungsi "language sql") TERNYATA masih
+-- kena recursion yang sama - fungsi SQL satu-statement stable seperti itu
+-- rawan di-inline oleh query planner Postgres kembali jadi subquery biasa,
+-- menghapus efek pemutus-siklus dari SECURITY DEFINER. Diganti "language
+-- plpgsql" (tidak di-inline) supaya benar-benar jadi panggilan fungsi
+-- terpisah yang memutus siklusnya.
 
 create or replace function public.is_approver_of(p_submission_id uuid, p_tingkat approval_tingkat)
 returns boolean
-language sql
+language plpgsql
 security definer
 stable
 set search_path = public
 as $$
-  select exists (
+begin
+  return exists (
     select 1 from approval_chain
     where submission_id = p_submission_id
       and tingkat = p_tingkat
       and approver_user_id = auth.uid()
   );
+end;
 $$;
 
 create or replace function public.is_submission_owner(p_submission_id uuid)
 returns boolean
-language sql
+language plpgsql
 security definer
 stable
 set search_path = public
 as $$
-  select exists (
+begin
+  return exists (
     select 1 from submissions
     where id = p_submission_id and dibuat_oleh = auth.uid()
   );
+end;
 $$;
 
 create or replace function public.can_access_submission(p_submission_id uuid)
 returns boolean
-language sql
+language plpgsql
 security definer
 stable
 set search_path = public
 as $$
-  select exists (
+begin
+  return exists (
     select 1 from submissions s
     where s.id = p_submission_id
       and (
@@ -58,6 +70,7 @@ as $$
         or (current_user_role() = 'direksi' and (s.status = 'menunggu_direksi' or is_approver_of(s.id, 'direksi')))
       )
   );
+end;
 $$;
 
 drop policy if exists manajer_lihat_submission_relevan on submissions;

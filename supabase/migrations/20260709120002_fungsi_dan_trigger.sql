@@ -75,43 +75,56 @@ create trigger trg_buat_approval_chain_awal
 -- detected in policy" - terlepas dari data/user yang sedang query. Helper
 -- SECURITY DEFINER berikut memutus siklusnya (query internal di dalam fungsi
 -- bypass RLS, jadi tidak ada pengecekan RLS berulang lintas tabel).
+--
+-- PENTING: harus "language plpgsql", BUKAN "language sql". Fungsi SQL
+-- (language sql) satu-statement yang stable berpotensi di-inline oleh query
+-- planner Postgres langsung ke query pemanggil sebagai optimisasi - kalau itu
+-- terjadi, isi fungsi jadi subquery biasa lagi di query yang sama, dan
+-- perlindungan SECURITY DEFINER-nya hilang (siklusnya balik lagi persis
+-- seperti sebelum dibungkus fungsi). plpgsql tidak di-inline seperti itu,
+-- jadi benar-benar jadi pemanggilan fungsi terpisah yang memutus siklusnya.
 
 create or replace function public.is_approver_of(p_submission_id uuid, p_tingkat approval_tingkat)
 returns boolean
-language sql
+language plpgsql
 security definer
 stable
 set search_path = public
 as $$
-  select exists (
+begin
+  return exists (
     select 1 from approval_chain
     where submission_id = p_submission_id
       and tingkat = p_tingkat
       and approver_user_id = auth.uid()
   );
+end;
 $$;
 
 create or replace function public.is_submission_owner(p_submission_id uuid)
 returns boolean
-language sql
+language plpgsql
 security definer
 stable
 set search_path = public
 as $$
-  select exists (
+begin
+  return exists (
     select 1 from submissions
     where id = p_submission_id and dibuat_oleh = auth.uid()
   );
+end;
 $$;
 
 create or replace function public.can_access_submission(p_submission_id uuid)
 returns boolean
-language sql
+language plpgsql
 security definer
 stable
 set search_path = public
 as $$
-  select exists (
+begin
+  return exists (
     select 1 from submissions s
     where s.id = p_submission_id
       and (
@@ -122,4 +135,5 @@ as $$
         or (current_user_role() = 'direksi' and (s.status = 'menunggu_direksi' or is_approver_of(s.id, 'direksi')))
       )
   );
+end;
 $$;
