@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { SCORING_CRITERIA, type ScoringKode } from "./schema";
 
 /** Saran nomor registrasi "PRP-{tahun}-{urutan}", tetap bisa diedit user di form. */
 export async function suggestNomorRegistrasi(
@@ -35,4 +36,20 @@ export function tambahHariKerja(tanggalIso: string, jumlahHari: number): string 
   }
 
   return tanggal.toISOString().slice(0, 10);
+}
+
+/** Nilai tertimbang (bobot x skor) untuk satu kriteria, dibulatkan 4 desimal untuk hindari floating point noise. */
+export function nilaiTertimbang(kode: ScoringKode, skor: number): number {
+  const kriteria = SCORING_CRITERIA.find((k) => k.kode === kode);
+  if (!kriteria) return 0;
+  return Math.round(kriteria.bobot * skor * 10000) / 10000;
+}
+
+/** Total skor tertimbang (maksimal 5.00 jika semua skor 5), dibulatkan 2 desimal. */
+export function hitungTotalSkor(skorPerKriteria: Partial<Record<ScoringKode, number>>): number {
+  const total = SCORING_CRITERIA.reduce((jumlah, { kode }) => {
+    const skor = skorPerKriteria[kode];
+    return jumlah + (skor ? nilaiTertimbang(kode, skor) : 0);
+  }, 0);
+  return Math.round(total * 100) / 100;
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { BagianBForm } from "@/components/forms/seleksi-investasi/BagianBForm";
 import { GATE_CRITERIA, type GateKode } from "@/lib/forms/seleksi-investasi/schema";
@@ -79,9 +80,14 @@ export default async function BagianBPage({
       <main className="mx-auto max-w-2xl p-8">
         <h1 className="text-2xl font-semibold">Seleksi Awal Proposal Investasi</h1>
         <p className="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
-          Proposal ini sudah lulus gate dan lanjut ke tahap skoring (Bagian C &mdash;
-          sedang dibangun, lihat PROGRESS.md tahap 3.1).
+          Proposal ini sudah lulus gate dan lanjut ke tahap skoring.
         </p>
+        <Link
+          href={`/forms/seleksi-investasi/${submission.id}/bagian-c`}
+          className="mt-4 inline-block rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        >
+          Lanjut ke Bagian C
+        </Link>
       </main>
     );
   }

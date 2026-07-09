@@ -24,9 +24,9 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 ## FORM SELEKSI INVESTASI — BAGIAN C (Skoring)
 
-- [ ] 3.1 Form input Bagian C: 8 kriteria skoring (skor 1-5 + justifikasi), muncul HANYA jika lulus gate
-- [ ] 3.2 Tampilkan rubrik skoring (skor 1/3/5) sebagai referensi/tooltip saat isi tiap kriteria
-- [ ] 3.3 Kalkulasi otomatis: nilai tertimbang per kriteria (bobot x skor) dan total skor
+- [x] 3.1 Form input Bagian C: 8 kriteria skoring (skor 1-5 + justifikasi), muncul HANYA jika lulus gate
+- [x] 3.2 Tampilkan rubrik skoring (skor 1/3/5) sebagai referensi/tooltip saat isi tiap kriteria — data di tabel `scoring_rubrics` (migration 0005/0006), bukan hardcode UI
+- [x] 3.3 Kalkulasi otomatis: nilai tertimbang per kriteria (bobot x skor) dan total skor — matematika diverifikasi manual (bobot total = 1.00, semua skor 5 → total 5.00)
 
 ## FORM SELEKSI INVESTASI — BAGIAN D (Hasil & Approval Bertingkat)
 
@@ -53,3 +53,5 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 - Pilihan library PDF export (react-pdf vs puppeteer) akan diputuskan pada tahap 5.1, dicatat di ARCHITECTURE.md.
 - Redirect setelah submit Bagian A menuju `/forms/seleksi-investasi/[submissionId]/bagian-b`, saat ini masih halaman stub (placeholder) — akan diisi sungguhan di tahap 2.1.
 - "Target selesai seleksi awal" default H+5 hari kerja dihitung sekali di server saat halaman dimuat (dari tanggal hari ini), **tidak recompute otomatis** kalau user mengubah tanggal diterima di form (butuh Client Component + JS kalau mau live-update — belum dibangun, dianggap di luar cakupan minimal tahap 1.1). User tetap bisa edit manual field targetSelesai.
+- Migration `20260709120005_scoring_rubrics.sql` & `...0006_seed_scoring_rubrics.sql` (tahap 3.2) juga belum dijalankan ke Supabase asli — sama seperti migration lain, menunggu project Supabase dibuat.
+- Setelah Bagian C disubmit, `status` submission **tetap** `menunggu_skoring` (tidak berubah ke `menunggu_manajer`) — transisi ke approval bertingkat baru terjadi setelah Bagian D lengkap (termasuk pernyataan bebas benturan kepentingan), sesuai tahap 4.3.
