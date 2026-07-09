@@ -283,14 +283,27 @@ Untuk tiap kriteria C1-C8 di form Bagian C, tambahkan tombol/ikon info (?) yang 
 
 Simpan rubrik ini sebagai data terstruktur (tabel database "scoring_rubrics"), JANGAN hardcode teks panjang di komponen UI, supaya bisa diedit admin nanti tanpa ubah kode.
 
-Isi rubrik lengkap untuk tiap kriteria: [TEMPEL DI SINI ISI LENGKAP SHEET "RUBRIK SKORING" DARI EXCEL ASLIMU]
+Isi rubrik lengkap untuk tiap kriteria (persis dari sheet "Rubrik Skoring", `Rubik.xlsx`):
+
+> RUBRIK SKORING & VALIDASI MINIMUM PER KRITERIA (skor 2 dan 4 = kondisi di antara)
+
+| No | Kriteria | Skor 1 (buruk) | Skor 3 (cukup) | Skor 5 (sangat baik) | Validasi minimum / sumber data yang diperiksa |
+|---|---|---|---|---|---|
+| C1 | Kesesuaian strategis | Di luar core business & tidak ada di RJPP/RKAP; tidak ada sinergi dengan portofolio | Terkait core business namun belum eksplisit di RJPP; sinergi terbatas | Sejalan penuh dengan RJPP/RKAP & strategi portofolio; memperkuat lini bisnis inti | Bandingkan dengan dokumen RJPP & RKAP berjalan; konfirmasi arah portofolio ke manajemen strategi |
+| C2 | Potensi pasar & permintaan | Pasar jenuh/oversupply, tidak ada captive market, okupansi/TPK area rendah & menurun | Permintaan ada namun kompetisi ketat; okupansi area moderat (mis. TPK 50-60%); captive market terbatas | Captive market kuat & demand driver jelas; okupansi/TPK area tinggi & tren naik; pasokan baru terbatas | Data TPK/okupansi BPS atau STR minimal 3 tahun; jumlah akomodasi & pipeline pesaing; kalender event/demand driver; uji silang asumsi okupansi-ADR pengusul vs data pasar aktual |
+| C3 | Indikasi kelayakan finansial | IRR indikatif < WACC/hurdle rate; payback melebihi umur ekonomis/kerjasama; asumsi tidak wajar | IRR indikatif sekitar hurdle rate (selisih tipis); payback mendekati batas kebijakan; asumsi sebagian perlu validasi | IRR indikatif jelas di atas hurdle rate + buffer; payback nyaman di bawah batas; asumsi capex & revenue wajar vs benchmark | Hitung ulang cepat (quick model) NPV/IRR/payback dengan asumsi konservatif; benchmark capex per m2/per kunci; bandingkan proyeksi revenue dgn data pasar; jangan hanya memakai angka pengusul |
+| C4 | Kredibilitas & kapasitas mitra | Tidak ada rekam jejak relevan; laporan keuangan tidak tersedia/lemah; reputasi bermasalah | Rekam jejak terbatas namun ada; keuangan cukup dgn catatan; reputasi netral | Rekam jejak proyek sejenis terbukti; keuangan sehat (audited); reputasi baik & struktur kepemilikan jelas | Profil perusahaan & akta; laporan keuangan audited 2-3 tahun; cek media & putusan pengadilan (SIPP/direktori MA); cek daftar hitam LKPP; telusuri beneficial owner |
+| C5 | Kesiapan lahan & perizinan | Lahan belum dikuasai/sengketa; peruntukan tidak sesuai; jalur izin panjang & tidak pasti | Lahan dikuasai namun perizinan belum dimulai; peruntukan sesuai dgn syarat | Lahan clear & clean (sertifikat), KKPR sesuai, sebagian izin telah/hampir terbit | Salinan sertifikat & cek ke ATR/BPN; KKPR/RTRW via OSS; identifikasi kebutuhan AMDAL/UKL-UPL & PBG serta estimasi waktunya |
+| C6 | Profil risiko awal & mitigasi | Risiko tinggi di beberapa aspek tanpa mitigasi jelas; berpotensi melampaui risk appetite | Risiko moderat, sebagian mitigasi teridentifikasi | Risiko terkendali, mitigasi jelas, sesuai risk appetite perusahaan | Susun risk register awal (pasar, konstruksi, hukum, likuiditas, reputasi, force majeure); bandingkan dgn risk appetite statement; tandai risiko yang wajib didalami saat due diligence |
+| C7 | Kebutuhan resource & kompleksitas | Menyerap dana/SDM sangat besar relatif kapasitas; kompleksitas tinggi; mengganggu proyek berjalan | Kebutuhan resource signifikan namun terkelola | Kebutuhan resource ringan; skema pendanaan jelas; eksekusi sederhana | Bandingkan nilai investasi dgn kapasitas belanja modal/RKAP; cek ketersediaan tim; identifikasi kebutuhan pendanaan eksternal & dampak DSCR |
+| C8 | Nilai strategis non-finansial | Tidak ada sinergi/nilai tambah non-finansial; potensi isu ESG/sosial | Ada sinergi atau manfaat sosial namun terbatas | Sinergi grup/BUMN kuat, dampak ESG-sosial positif, atau mendukung penugasan resmi | Identifikasi sinergi dgn entitas grup; cek aspek ESG (lingkungan, sosial, tata kelola); jika ada unsur penugasan, minta dasar penugasan tertulis |
+
+> Catatan (dari sheet asli): Skor 2 = kondisi antara skor 1 dan 3; skor 4 = kondisi antara skor 3 dan 5. Setiap skor WAJIB disertai justifikasi tertulis dan sumber data pada kolom F form. Skor tanpa bukti dianggap tidak sah oleh pejabat pemutus.
 
 Setelah selesai, update PROGRESS.md dan commit.
 ```
 
-**⚠️ PENTING:** sebelum menjalankan prompt di atas, ganti bagian `[TEMPEL DI SINI...]` dengan copy-paste isi lengkap sheet "Rubrik Skoring" dari file Excel-mu, supaya teksnya persis sama dan tidak ditulis ulang oleh Claude Code dengan bahasanya sendiri.
-
-**Status: BELUM TERSEDIA** — isi sheet "Rubrik Skoring" belum ditempel oleh user. Tahap 3.2 tidak bisa dikerjakan sampai teks ini diberikan.
+**Status: TERSEDIA** — isi sheet "Rubrik Skoring" sudah ditempel di atas (sumber: `Rubik.xlsx`, diberikan user). Tahap 3.2 siap dikerjakan.
 
 ---
 

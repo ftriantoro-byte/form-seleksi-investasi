@@ -49,7 +49,7 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 - **Project Supabase asli belum dibuat.** File migration di `supabase/migrations/` (tahap 0.2) sudah lengkap tapi belum pernah dijalankan/divalidasi terhadap database sungguhan. Begitu project Supabase tersedia: jalankan ke-4 file migration berurutan lewat SQL Editor (atau `supabase db push`), lalu generate `types/database.ts` (`supabase gen types typescript`), lalu ganti `.env.local` dengan kredensial asli.
 
 - Detail lengkap tiap tahap (nama field Bagian A, teks 6 kriteria gate Bagian B, 8 kriteria skoring+bobot Bagian C, 4 ambang batas rekomendasi Bagian D, alur approval bertingkat) ada di [PANDUAN.md](PANDUAN.md) — sumber kebenaran, jangan diparafrase ulang saat implementasi.
-- **Tahap 3.2 diblokir**: isi sheet "Rubrik Skoring" (deskripsi skor 1/3/5 per kriteria C1-C8) dari Excel asli belum ditempel user. Tidak bisa dikerjakan sampai teks ini diberikan.
+- ~~Tahap 3.2 diblokir~~ — isi rubrik skoring sudah diberikan user (`Rubik.xlsx`) dan dicatat lengkap di PANDUAN.md, tidak lagi jadi blocker.
 - Pilihan library PDF export (react-pdf vs puppeteer) akan diputuskan pada tahap 5.1, dicatat di ARCHITECTURE.md.
 - Redirect setelah submit Bagian A menuju `/forms/seleksi-investasi/[submissionId]/bagian-b`, saat ini masih halaman stub (placeholder) — akan diisi sungguhan di tahap 2.1.
 - "Target selesai seleksi awal" default H+5 hari kerja dihitung sekali di server saat halaman dimuat (dari tanggal hari ini), **tidak recompute otomatis** kalau user mengubah tanggal diterima di form (butuh Client Component + JS kalau mau live-update — belum dibangun, dianggap di luar cakupan minimal tahap 1.1). User tetap bisa edit manual field targetSelesai.

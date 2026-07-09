@@ -244,7 +244,6 @@ Karena aplikasi ini dipakai rutin (approval bertingkat harian oleh Manajer/VP/Di
 ## 6. Keputusan Tertunda
 
 - **PDF export (tahap 5.1)**: perbandingan `react-pdf` vs `puppeteer` akan dilakukan saat tahap tersebut dikerjakan, kriteria utama: kemudahan meniru layout Excel asli + area tanda tangan 4 pihak, dan kompatibilitas dengan Vercel (serverless — `puppeteer` butuh perhatian ekstra karena ukuran Chromium di lingkungan serverless).
-- **Isi rubrik skoring (tahap 3.2)**: teks deskripsi skor 1/3/5 per kriteria C1-C8 dari sheet "Rubrik Skoring" Excel asli **belum ditempel user** — lihat status di [PANDUAN.md](PANDUAN.md#prompt-32--rubrik-skoring-sebagai-referensi). Tahap 3.2 tidak bisa dikerjakan sampai teks ini diberikan; jangan diparafrase/dikarang ulang.
-- **Struktur kolom tabel `scoring_rubrics`**: ditentukan final saat tahap 3.2, setelah tahu bentuk data rubrik yang sebenarnya.
+- ~~Isi rubrik skoring (tahap 3.2) belum ditempel user~~ — sudah diberikan (`Rubik.xlsx`), dicatat lengkap di [PANDUAN.md](PANDUAN.md#prompt-32--rubrik-skoring-sebagai-referensi).
 
 Detail field Bagian A-D, teks 6 kriteria gate, 8 kriteria skoring+bobot, dan 4 ambang batas rekomendasi **sudah lengkap** di [PANDUAN.md](PANDUAN.md) — tidak perlu digali ulang ke user saat mengerjakan tahap 1.1/2.1/3.1/4.1, cukup ikuti isi dokumen tersebut persis.
