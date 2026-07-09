@@ -37,7 +37,7 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 ## EXPORT & FINALISASI
 
-- [ ] 5.1 Export PDF hasil evaluasi (layout sesuai form Excel, area tanda tangan 4 pihak)
+- [x] 5.1 Export PDF hasil evaluasi (layout sesuai form Excel, area tanda tangan 4 pihak) — `@react-pdf/renderer` dipilih (lebih ringan dari puppeteer di Vercel), diuji langsung dengan `renderToBuffer` + data mock (2 skenario: lengkap & gagal gate), hasil PDF valid
 - [ ] 5.2 Testing end-to-end alur lengkap
 - [ ] 5.3 Deploy ke Vercel
 
@@ -50,7 +50,7 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 - Detail lengkap tiap tahap (nama field Bagian A, teks 6 kriteria gate Bagian B, 8 kriteria skoring+bobot Bagian C, 4 ambang batas rekomendasi Bagian D, alur approval bertingkat) ada di [PANDUAN.md](PANDUAN.md) — sumber kebenaran, jangan diparafrase ulang saat implementasi.
 - ~~Tahap 3.2 diblokir~~ — isi rubrik skoring sudah diberikan user (`Rubik.xlsx`) dan dicatat lengkap di PANDUAN.md, tidak lagi jadi blocker.
-- Pilihan library PDF export (react-pdf vs puppeteer) akan diputuskan pada tahap 5.1, dicatat di ARCHITECTURE.md.
+- ~~Pilihan library PDF export akan diputuskan pada tahap 5.1~~ — sudah diputuskan: `@react-pdf/renderer`, dicatat di ARCHITECTURE.md §7.
 - Redirect setelah submit Bagian A menuju `/forms/seleksi-investasi/[submissionId]/bagian-b`, saat ini masih halaman stub (placeholder) — akan diisi sungguhan di tahap 2.1.
 - "Target selesai seleksi awal" default H+5 hari kerja dihitung sekali di server saat halaman dimuat (dari tanggal hari ini), **tidak recompute otomatis** kalau user mengubah tanggal diterima di form (butuh Client Component + JS kalau mau live-update — belum dibangun, dianggap di luar cakupan minimal tahap 1.1). User tetap bisa edit manual field targetSelesai.
 - Migration `20260709120005_scoring_rubrics.sql` & `...0006_seed_scoring_rubrics.sql` (tahap 3.2) juga belum dijalankan ke Supabase asli — sama seperti migration lain, menunggu project Supabase dibuat.

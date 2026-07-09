@@ -14,7 +14,7 @@ Dokumen ini mencatat keputusan teknis: tech stack, struktur folder, skema databa
 | Database | Supabase (Postgres) | Managed Postgres + Row Level Security, cocok untuk role-based access (Evaluator/Manajer/VP/Direksi/Admin) tanpa perlu backend auth terpisah |
 | Auth | Supabase Auth | Terintegrasi langsung dengan Postgres RLS; role disimpan di tabel `profiles` |
 | Styling | Tailwind CSS | Cepat untuk form kompleks dengan banyak state (gate, skoring, approval) |
-| PDF export | **Belum diputuskan** — akan dibandingkan di tahap 5.1 (lihat §6) | Perlu layout mengikuti form Excel asli + area tanda tangan 4 pihak |
+| PDF export | `@react-pdf/renderer` (lihat §7) | Ringan untuk Vercel serverless (tidak butuh Chromium seperti puppeteer), layout tabel + area tanda tangan cukup dengan primitif View/Text |
 | Deploy | Vercel | Native untuk Next.js |
 
 ### Kenapa desain generik (forms + submissions), bukan tabel per form
@@ -253,9 +253,25 @@ PANDUAN.md Prompt 4.1 menyebut "update status submission sesuai hasil [rekomenda
 - ~~Nama approver tidak ditampilkan~~ — **selesai**: kolom `full_name` ditambahkan ke `user_roles` (migration `20260709120001`, diisi manual oleh admin lewat Table Editor saat menambah user, §4). RLS `user_roles` diperluas jadi "siapapun yang login boleh baca nama+role siapapun" (migration `20260709120003`) — perlu, karena evaluator/approver lain harus bisa lihat siapa yang memutuskan; internal app, nama+role dianggap bukan data sensitif antar pegawai. Halaman detail submission (`app/forms/seleksi-investasi/[submissionId]/page.tsx`) sudah menampilkan nama approver dari tabel ini.
 - RLS `approval_chain` awalnya hanya mengizinkan approver meng-update baris tingkatnya sendiri; ditambah policy baru supaya **evaluator** juga bisa update baris berstatus `ditolak` milik submission-nya sendiri (untuk set `diteruskan_meski_ditolak=true` saat memilih "teruskan") — lihat migration `20260709120003_rls_policies.sql`.
 
-## 7. Keputusan Tertunda
+## 7. PDF Export (tahap 5.1)
 
-- **PDF export (tahap 5.1)**: perbandingan `react-pdf` vs `puppeteer` akan dilakukan saat tahap tersebut dikerjakan, kriteria utama: kemudahan meniru layout Excel asli + area tanda tangan 4 pihak, dan kompatibilitas dengan Vercel (serverless — `puppeteer` butuh perhatian ekstra karena ukuran Chromium di lingkungan serverless). **Juga perlu menyelesaikan masalah nama approver (lihat §6) sebelum PDF bisa mencantumkan nama pihak yang approve.**
+**Pilihan: `@react-pdf/renderer`** (bukan `puppeteer`).
+
+| | `@react-pdf/renderer` | `puppeteer` |
+|---|---|---|
+| Kompatibilitas Vercel serverless | Pure JS, tidak butuh binary tambahan, ringan | Butuh Chromium penuh; perlu paket khusus (`@sparticuz/chromium` dkk) agar muat di batas ukuran function serverless, lebih rentan cold-start lambat/timeout |
+| Cara layout | API sendiri (`View`/`Text`/`StyleSheet`, flexbox via Yoga) — bukan HTML/CSS asli | HTML+CSS biasa (bisa reuse styling web), tapi butuh render halaman nyata dulu |
+| Cocok untuk kebutuhan ini | Layout form terstruktur (tabel, area tanda tangan) — cukup dengan primitif View/Text, tidak butuh HTML kompleks | Berlebihan untuk kebutuhan ini, menambah risiko deployment |
+
+Kriteria penentu utama (sesuai PANDUAN.md): "pilih yang lebih ringan untuk di-deploy di Vercel". `@react-pdf/renderer` menang karena tidak ada risiko ukuran/cold-start Chromium di serverless, dan layout yang dibutuhkan (tabel skoring, blok identitas, 4 kotak tanda tangan) sepenuhnya bisa dibangun dengan primitif `View`/`Text`-nya tanpa perlu HTML/CSS penuh.
+
+**Implementasi:** `lib/forms/seleksi-investasi/pdf/SubmissionPdf.tsx` (template, komponen React memakai primitif `@react-pdf/renderer` — BUKAN JSX/HTML biasa) dirender lewat `app/forms/seleksi-investasi/[submissionId]/pdf/route.ts` (Route Handler, `renderToBuffer`, `Content-Type: application/pdf`). Tombol "Download PDF" di halaman detail submission (`[submissionId]/page.tsx`) membuka route ini di tab baru.
+
+**Verifikasi tanpa Supabase asli:** route ini butuh data submission sungguhan sehingga tidak bisa dites lewat browser (di-gate auth + butuh DB). Sebagai gantinya, `SubmissionPdf` diuji langsung dengan `renderToBuffer` + data mock lewat `tsx` (dijalankan lalu dihapus, bukan bagian dari kode aplikasi) untuk dua skenario: (1) proposal lengkap Bagian A-D dengan approval_chain berisi kasus "ditolak lalu diteruskan" — hasil valid PDF 7.696 bytes; (2) proposal gagal gate (hanya Bagian A-B, tanpa C/D) — hasil valid PDF 4.945 bytes, membuktikan rendering kondisional per bagian tidak crash saat data sebagian kosong. Kedua kali menghasilkan file dengan magic bytes `%PDF-1.3` yang valid.
+
+## 8. Keputusan Tertunda
+
 - ~~Isi rubrik skoring (tahap 3.2) belum ditempel user~~ — sudah diberikan (`Rubik.xlsx`), dicatat lengkap di [PANDUAN.md](PANDUAN.md#prompt-32--rubrik-skoring-sebagai-referensi).
+- Tidak ada lagi keputusan tertunda untuk fitur inti form seleksi investasi — sisa tahap adalah testing end-to-end (5.2) dan deploy (5.3), keduanya butuh project Supabase asli untuk benar-benar dijalankan.
 
 Detail field Bagian A-D, teks 6 kriteria gate, 8 kriteria skoring+bobot, dan 4 ambang batas rekomendasi **sudah lengkap** di [PANDUAN.md](PANDUAN.md) — tidak perlu digali ulang ke user saat mengerjakan tahap 1.1/2.1/3.1/4.1, cukup ikuti isi dokumen tersebut persis.
