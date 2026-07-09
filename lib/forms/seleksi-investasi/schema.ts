@@ -120,3 +120,14 @@ export const bagianCSchema = z.object({
 });
 
 export type BagianCInput = z.infer<typeof bagianCSchema>;
+
+// ── Bagian D: catatan evaluator & pernyataan benturan kepentingan ──────────
+
+export const bagianDSchema = z.object({
+  catatanEvaluator: z.string().min(1, "Catatan evaluator wajib diisi"),
+  pernyataanBebasBenturan: z.enum(["ya", "tidak"], {
+    message: "Pernyataan bebas benturan kepentingan wajib dipilih",
+  }),
+});
+
+export type BagianDInput = z.infer<typeof bagianDSchema>;

@@ -30,10 +30,10 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 ## FORM SELEKSI INVESTASI — BAGIAN D (Hasil & Approval Bertingkat)
 
-- [ ] 4.1 Logika rekomendasi otomatis berdasarkan total skor (4 ambang batas)
-- [ ] 4.2 Field catatan evaluator, pernyataan bebas benturan kepentingan
-- [ ] 4.3 Alur approval bertingkat: Manajer -> VP -> Direksi, dengan opsi hentikan/teruskan jika ditolak
-- [ ] 4.4 Dashboard/riwayat submission (list semua proposal, beda tampilan per role)
+- [x] 4.1 Logika rekomendasi otomatis berdasarkan total skor (4 ambang batas) — fungsi murni `getRekomendasi()`, ambang batas diverifikasi manual di semua titik batas
+- [x] 4.2 Field catatan evaluator, pernyataan bebas benturan kepentingan — nama evaluator (paraf digital) auto-capture dari session, bukan input manual
+- [x] 4.3 Alur approval bertingkat: Manajer -> VP -> Direksi, dengan opsi hentikan/teruskan jika ditolak — proteksi akses via requireRole + RLS (bukan cuma UI)
+- [x] 4.4 Dashboard/riwayat submission (list semua proposal, beda tampilan per role) — tab "Menunggu Keputusan Saya"/"Riwayat" untuk manajer/vp/direksi, indikator "perlu keputusan Anda" untuk evaluator
 
 ## EXPORT & FINALISASI
 
@@ -55,3 +55,5 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 - "Target selesai seleksi awal" default H+5 hari kerja dihitung sekali di server saat halaman dimuat (dari tanggal hari ini), **tidak recompute otomatis** kalau user mengubah tanggal diterima di form (butuh Client Component + JS kalau mau live-update — belum dibangun, dianggap di luar cakupan minimal tahap 1.1). User tetap bisa edit manual field targetSelesai.
 - Migration `20260709120005_scoring_rubrics.sql` & `...0006_seed_scoring_rubrics.sql` (tahap 3.2) juga belum dijalankan ke Supabase asli — sama seperti migration lain, menunggu project Supabase dibuat.
 - Setelah Bagian C disubmit, `status` submission **tetap** `menunggu_skoring` (tidak berubah ke `menunggu_manajer`) — transisi ke approval bertingkat baru terjadi setelah Bagian D lengkap (termasuk pernyataan bebas benturan kepentingan), sesuai tahap 4.3.
+- Beberapa keputusan desain penting untuk resolusi ambiguitas di tahap 4.1-4.3 (rekomendasi bukan status tersendiri, approval tetap jalan penuh berapa pun skornya, "PARKIR - evaluasi ulang maks 1x" belum ada mekanismenya, nama approver belum ditampilkan) dicatat lengkap di ARCHITECTURE.md §6 — **wajib dibaca sebelum lanjut ke 5.1** (PDF butuh nama approver, masalah ini harus diselesaikan dulu).
+- Sanity-check manual (di luar aplikasi, tanpa DB): ambang batas rekomendasi 4.1 dicoba di titik batas (4.00, 3.99, 3.00, 2.99, 2.00, 1.99) — hasil sesuai spesifikasi.

@@ -7,10 +7,11 @@ import {
   bagianASchema,
   bagianBSchema,
   bagianCSchema,
+  bagianDSchema,
   GATE_CRITERIA,
   SCORING_CRITERIA,
 } from "@/lib/forms/seleksi-investasi/schema";
-import { hitungTotalSkor } from "@/lib/forms/seleksi-investasi/utils";
+import { hitungTotalSkor, getRekomendasi } from "@/lib/forms/seleksi-investasi/utils";
 
 export async function buatSubmissionBagianA(formData: FormData) {
   await requireRole("evaluator");
@@ -244,4 +245,92 @@ export async function submitBagianC(formData: FormData) {
   });
 
   redirect(`/forms/seleksi-investasi/${submissionId}/bagian-d`);
+}
+
+export async function submitBagianD(formData: FormData) {
+  await requireRole("evaluator");
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/login");
+  }
+
+  const submissionId = formData.get("submissionId") as string;
+
+  const { data: submission } = await supabase
+    .from("submissions")
+    .select("id, status, data, total_skor")
+    .eq("id", submissionId)
+    .single();
+
+  if (!submission) {
+    return redirect(
+      `/forms/seleksi-investasi/${submissionId}/bagian-d?error=${encodeURIComponent(
+        "Proposal tidak ditemukan.",
+      )}`,
+    );
+  }
+
+  if (submission.status !== "menunggu_skoring" || submission.total_skor == null) {
+    return redirect(
+      `/forms/seleksi-investasi/${submissionId}/bagian-d?error=${encodeURIComponent(
+        "Proposal ini belum siap difinalisasi (skoring Bagian C belum lengkap).",
+      )}`,
+    );
+  }
+
+  const parsed = bagianDSchema.safeParse({
+    catatanEvaluator: formData.get("catatanEvaluator"),
+    pernyataanBebasBenturan: formData.get("pernyataanBebasBenturan"),
+  });
+
+  if (!parsed.success) {
+    const pesan = parsed.error.issues.map((issue) => issue.message).join(", ");
+    return redirect(
+      `/forms/seleksi-investasi/${submissionId}/bagian-d?error=${encodeURIComponent(pesan)}`,
+    );
+  }
+
+  const rekomendasi = getRekomendasi(submission.total_skor);
+
+  const dataBaru = {
+    ...(submission.data as Record<string, unknown>),
+    bagianD: {
+      ...parsed.data,
+      rekomendasi: rekomendasi.label,
+      namaEvaluator: user.user_metadata?.full_name ?? user.email,
+      difinalisasiPada: new Date().toISOString(),
+    },
+  };
+
+  const { error: updateError } = await supabase
+    .from("submissions")
+    .update({
+      data: dataBaru,
+      status: "menunggu_manajer",
+      tingkat_approval_saat_ini: "manajer",
+    })
+    .eq("id", submissionId);
+
+  if (updateError) {
+    return redirect(
+      `/forms/seleksi-investasi/${submissionId}/bagian-d?error=${encodeURIComponent(
+        updateError.message,
+      )}`,
+    );
+  }
+
+  await supabase.from("submission_history").insert({
+    submission_id: submissionId,
+    status_lama: submission.status,
+    status_baru: "menunggu_manajer",
+    diubah_oleh: user.id,
+    catatan: `Bagian D lengkap (rekomendasi: ${rekomendasi.label}). Diajukan untuk approval Manajer.`,
+  });
+
+  redirect(`/forms/seleksi-investasi/${submissionId}`);
 }

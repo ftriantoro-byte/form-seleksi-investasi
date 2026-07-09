@@ -241,9 +241,20 @@ Karena aplikasi ini dipakai rutin (approval bertingkat harian oleh Manajer/VP/Di
 
 ---
 
-## 6. Keputusan Tertunda
+## 6. Keputusan Desain — Bagian D & Approval Bertingkat (tahap 4.1-4.3)
 
-- **PDF export (tahap 5.1)**: perbandingan `react-pdf` vs `puppeteer` akan dilakukan saat tahap tersebut dikerjakan, kriteria utama: kemudahan meniru layout Excel asli + area tanda tangan 4 pihak, dan kompatibilitas dengan Vercel (serverless — `puppeteer` butuh perhatian ekstra karena ukuran Chromium di lingkungan serverless).
+PANDUAN.md Prompt 4.1 menyebut "update status submission sesuai hasil [rekomendasi]", tapi enum `submission_status` (ditetapkan di tahap 0.2) tidak punya nilai untuk PRIORITAS A/B/PARKIR/TIDAK DILANJUTKAN — hanya status alur approval. Ambiguitas ini diselesaikan sebagai berikut, supaya sesi mendatang tidak mengubah `status` enum tanpa sadar akan konsekuensinya:
+
+- **Rekomendasi bukan status tersendiri.** `getRekomendasi(totalSkor)` (`lib/forms/seleksi-investasi/utils.ts`) adalah fungsi murni dari `total_skor` — dihitung ulang kapan saja dibutuhkan (halaman Bagian D, detail submission, nanti PDF), tidak disimpan sebagai kolom terpisah. Snapshot teks rekomendasi tetap disimpan di `data.bagianD.rekomendasi` saat finalisasi (audit trail), tapi bukan sumber kebenaran untuk logika.
+- **Approval bertingkat tetap berjalan penuh (manajer→VP→direksi) berapa pun skornya**, termasuk PARKIR/TIDAK DILANJUTKAN. Hanya Bagian B (gate) yang punya kuasa auto-stop sungguhan. Rekomendasi bersifat informatif untuk approver, bukan pemutus otomatis — sejalan dengan alur `4.3` yang tidak menyebut percabangan berdasar rekomendasi sama sekali.
+- **"PARKIR - evaluasi ulang maksimal 1 kali"** disebut di teks rekomendasi (persis dari PANDUAN.md) tapi mekanisme *counter* evaluasi ulang **tidak diimplementasikan** — tidak ada field/skema untuk itu di tahap 0.2, dan PANDUAN tidak merinci alur revisinya. Dianggap di luar cakupan sampai ada spesifikasi lebih lanjut.
+- **Status "menunggu keputusan evaluator" (hentikan/teruskan) bukan nilai enum baru.** Diturunkan dari kombinasi `submission.status = 'menunggu_<tingkat>'` DAN `approval_chain[<tingkat>].status = 'ditolak'`. Begitu evaluator memutuskan, salah satu nilai berubah (status maju ke tingkat berikutnya, atau jadi `ditolak` final) sehingga kombinasi ini otomatis tidak berlaku lagi. Logika ini ada di dua tempat yang harus tetap konsisten: `components/forms/seleksi-investasi/ApprovalActions.tsx` (tampilan) dan `app/dashboard/page.tsx` (indikator "perlu keputusan Anda").
+- **Nama approver tidak ditampilkan** di halaman detail/approval, hanya nama tingkat ("Manajer", "VP", "Direksi") — skema `user_roles` (tahap 0.2, sesuai PANDUAN.md persis) tidak punya kolom nama, dan `auth.users` tidak bisa di-query langsung lewat client biasa. **Perlu diselesaikan sebelum tahap 5.1** (PDF wajib mencantumkan nama tiap pihak) — opsi: tambah kolom nama ke `user_roles`, atau resolve via Admin API pakai service role khusus saat generate PDF di server.
+- RLS `approval_chain` awalnya hanya mengizinkan approver meng-update baris tingkatnya sendiri; ditambah policy baru supaya **evaluator** juga bisa update baris berstatus `ditolak` milik submission-nya sendiri (untuk set `diteruskan_meski_ditolak=true` saat memilih "teruskan") — lihat migration `20260709120003_rls_policies.sql`.
+
+## 7. Keputusan Tertunda
+
+- **PDF export (tahap 5.1)**: perbandingan `react-pdf` vs `puppeteer` akan dilakukan saat tahap tersebut dikerjakan, kriteria utama: kemudahan meniru layout Excel asli + area tanda tangan 4 pihak, dan kompatibilitas dengan Vercel (serverless — `puppeteer` butuh perhatian ekstra karena ukuran Chromium di lingkungan serverless). **Juga perlu menyelesaikan masalah nama approver (lihat §6) sebelum PDF bisa mencantumkan nama pihak yang approve.**
 - ~~Isi rubrik skoring (tahap 3.2) belum ditempel user~~ — sudah diberikan (`Rubik.xlsx`), dicatat lengkap di [PANDUAN.md](PANDUAN.md#prompt-32--rubrik-skoring-sebagai-referensi).
 
 Detail field Bagian A-D, teks 6 kriteria gate, 8 kriteria skoring+bobot, dan 4 ambang batas rekomendasi **sudah lengkap** di [PANDUAN.md](PANDUAN.md) — tidak perlu digali ulang ke user saat mengerjakan tahap 1.1/2.1/3.1/4.1, cukup ikuti isi dokumen tersebut persis.

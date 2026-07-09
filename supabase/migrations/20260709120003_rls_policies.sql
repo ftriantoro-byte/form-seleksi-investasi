@@ -135,6 +135,21 @@ create policy "approver update baris tingkatnya sendiri"
   )
   with check (true);
 
+-- Evaluator butuh update baris yang sudah "ditolak" untuk set
+-- diteruskan_meski_ditolak=true saat memilih "tetap teruskan" (lihat
+-- actions/approval.ts putuskanLanjutan). Server Action yang membatasi kolom
+-- mana yang benar-benar diubah; RLS di sini hanya membatasi baris & submission.
+create policy "evaluator teruskan baris ditolak milik submission sendiri"
+  on approval_chain for update
+  using (
+    status = 'ditolak'
+    and exists (
+      select 1 from submissions s
+      where s.id = approval_chain.submission_id and s.dibuat_oleh = auth.uid()
+    )
+  )
+  with check (true);
+
 -- Insert baris approval_chain normalnya dilakukan otomatis oleh trigger
 -- buat_approval_chain_awal (SECURITY DEFINER, bypass RLS). Policy ini hanya
 -- jaga-jaga untuk jalur insert langsung oleh evaluator pemilik submission.

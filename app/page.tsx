@@ -64,14 +64,19 @@ export default async function HomePage() {
           </p>
         </div>
         {user && (
-          <form action={logout}>
-            <button
-              type="submit"
-              className="whitespace-nowrap text-sm text-gray-500 hover:text-gray-900"
-            >
-              Keluar ({user.email})
-            </button>
-          </form>
+          <div className="flex shrink-0 items-center gap-4">
+            <Link href="/dashboard" className="text-sm text-gray-700 hover:text-gray-900">
+              Dashboard
+            </Link>
+            <form action={logout}>
+              <button
+                type="submit"
+                className="whitespace-nowrap text-sm text-gray-500 hover:text-gray-900"
+              >
+                Keluar ({user.email})
+              </button>
+            </form>
+          </div>
         )}
       </div>
 
