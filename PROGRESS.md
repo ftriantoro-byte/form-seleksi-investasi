@@ -38,22 +38,22 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 ## EXPORT & FINALISASI
 
 - [x] 5.1 Export PDF hasil evaluasi (layout sesuai form Excel, area tanda tangan 4 pihak) — `@react-pdf/renderer` dipilih (lebih ringan dari puppeteer di Vercel), diuji langsung dengan `renderToBuffer` + data mock (2 skenario: lengkap & gagal gate), hasil PDF valid
-- [ ] 5.2 Testing end-to-end alur lengkap
-- [ ] 5.3 Deploy ke Vercel
+- [ ] 5.2 Testing end-to-end alur lengkap — **butuh project Supabase asli**, belum bisa dijalankan; checklist skenario ada di DEPLOYMENT.md Bagian 4
+- [~] 5.3 Deploy ke Vercel — persiapan selesai (env var sudah eksternal sejak 0.1, `.env.local.example` ada, `DEPLOYMENT.md` ditulis lengkap langkah demi langkah); **eksekusi deploy sungguhan menunggu aksi user** (buat project Supabase, push ke GitHub, deploy di Vercel)
 
 ---
 
+## Status Kritis: Belum Ada Project Supabase Asli
+
+**Semua kode (tahap 0.1-5.1) ditulis dan lolos `tsc --noEmit`/`eslint`/`next build`, tapi HAMPIR TIDAK ADA yang pernah dites terhadap database/auth sungguhan.** `.env.local` masih berisi kredensial **placeholder/dummy** (`https://placeholder.supabase.co`), hanya supaya dev server tidak crash. Verifikasi sejauh ini terbatas pada: type-check, lint, production build, sanity-check matematika manual (kalkulasi skor, ambang batas rekomendasi), dan uji generate PDF dengan data mock langsung lewat `renderToBuffer` (tanpa lewat browser/route).
+
+**Langkah selanjutnya ada di [DEPLOYMENT.md](DEPLOYMENT.md)**: buat project Supabase, jalankan 6 file migration di `supabase/migrations/` berurutan, tambah user test per role, baru testing end-to-end (5.2) benar-benar bisa dijalankan. Sampai itu terjadi, anggap seluruh alur data (RLS, trigger auto-approval-chain, Server Actions) sebagai **belum terverifikasi**, bukan "sudah selesai".
+
 ## Catatan Terbuka / Keputusan Tertunda
 
-- `.env.local` saat ini berisi nilai **placeholder/dummy** (`https://placeholder.supabase.co`), hanya supaya dev server tidak crash sebelum project Supabase asli dibuat. Ganti dengan kredensial asli begitu project Supabase dibuat (lihat `.env.local.example`).
-- **Project Supabase asli belum dibuat.** File migration di `supabase/migrations/` (tahap 0.2) sudah lengkap tapi belum pernah dijalankan/divalidasi terhadap database sungguhan. Begitu project Supabase tersedia: jalankan ke-4 file migration berurutan lewat SQL Editor (atau `supabase db push`), lalu generate `types/database.ts` (`supabase gen types typescript`), lalu ganti `.env.local` dengan kredensial asli.
-
 - Detail lengkap tiap tahap (nama field Bagian A, teks 6 kriteria gate Bagian B, 8 kriteria skoring+bobot Bagian C, 4 ambang batas rekomendasi Bagian D, alur approval bertingkat) ada di [PANDUAN.md](PANDUAN.md) — sumber kebenaran, jangan diparafrase ulang saat implementasi.
-- ~~Tahap 3.2 diblokir~~ — isi rubrik skoring sudah diberikan user (`Rubik.xlsx`) dan dicatat lengkap di PANDUAN.md, tidak lagi jadi blocker.
-- ~~Pilihan library PDF export akan diputuskan pada tahap 5.1~~ — sudah diputuskan: `@react-pdf/renderer`, dicatat di ARCHITECTURE.md §7.
-- Redirect setelah submit Bagian A menuju `/forms/seleksi-investasi/[submissionId]/bagian-b`, saat ini masih halaman stub (placeholder) — akan diisi sungguhan di tahap 2.1.
 - "Target selesai seleksi awal" default H+5 hari kerja dihitung sekali di server saat halaman dimuat (dari tanggal hari ini), **tidak recompute otomatis** kalau user mengubah tanggal diterima di form (butuh Client Component + JS kalau mau live-update — belum dibangun, dianggap di luar cakupan minimal tahap 1.1). User tetap bisa edit manual field targetSelesai.
-- Migration `20260709120005_scoring_rubrics.sql` & `...0006_seed_scoring_rubrics.sql` (tahap 3.2) juga belum dijalankan ke Supabase asli — sama seperti migration lain, menunggu project Supabase dibuat.
 - Setelah Bagian C disubmit, `status` submission **tetap** `menunggu_skoring` (tidak berubah ke `menunggu_manajer`) — transisi ke approval bertingkat baru terjadi setelah Bagian D lengkap (termasuk pernyataan bebas benturan kepentingan), sesuai tahap 4.3.
-- Beberapa keputusan desain penting untuk resolusi ambiguitas di tahap 4.1-4.3 (rekomendasi bukan status tersendiri, approval tetap jalan penuh berapa pun skornya, "PARKIR - evaluasi ulang maks 1x" belum ada mekanismenya, nama approver belum ditampilkan) dicatat lengkap di ARCHITECTURE.md §6 — **wajib dibaca sebelum lanjut ke 5.1** (PDF butuh nama approver, masalah ini harus diselesaikan dulu).
+- Beberapa keputusan desain untuk resolusi ambiguitas PANDUAN.md di tahap 4.1-4.3 (rekomendasi bukan status tersendiri, approval tetap jalan penuh berapa pun skornya, "PARKIR - evaluasi ulang maks 1x" belum ada mekanismenya) dicatat lengkap di ARCHITECTURE.md §6.
+- "PARKIR - minta perbaikan proposal, evaluasi ulang maksimal 1 kali": teks rekomendasi ini persis dari PANDUAN.md, tapi **mekanisme evaluasi ulang/revisi proposal belum ada** (tidak ada counter, tidak ada alur resubmit). Jika dibutuhkan, ini scope tambahan di luar checklist asli — tanyakan ke user dulu sebelum membangunnya.
 - Sanity-check manual (di luar aplikasi, tanpa DB): ambang batas rekomendasi 4.1 dicoba di titik batas (4.00, 3.99, 3.00, 2.99, 2.00, 1.99) — hasil sesuai spesifikasi.
