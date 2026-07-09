@@ -19,8 +19,8 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 ## FORM SELEKSI INVESTASI — BAGIAN B (Gate)
 
-- [ ] 2.1 Form input Bagian B: 6 kriteria gugur (Ya/Tidak + bukti/catatan)
-- [ ] 2.2 Logika auto-stop: jika ada 1 "Tidak", submission otomatis TIDAK DILANJUTKAN, skip Bagian C
+- [x] 2.1 Form input Bagian B: 6 kriteria gugur (Ya/Tidak + bukti/catatan) — digabung dengan 2.2 dalam 1 commit (form tanpa logika submit tidak berguna sebagai unit terpisah)
+- [x] 2.2 Logika auto-stop: jika ada 1 "Tidak", submission otomatis TIDAK DILANJUTKAN, skip Bagian C — kode lengkap, **belum diverifikasi di browser** (lolos `tsc`, `eslint`, `next build`)
 
 ## FORM SELEKSI INVESTASI — BAGIAN C (Skoring)
 

@@ -3,7 +3,11 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireRole } from "@/lib/supabase/role";
-import { bagianASchema } from "@/lib/forms/seleksi-investasi/schema";
+import {
+  bagianASchema,
+  bagianBSchema,
+  GATE_CRITERIA,
+} from "@/lib/forms/seleksi-investasi/schema";
 
 export async function buatSubmissionBagianA(formData: FormData) {
   await requireRole("evaluator");
@@ -69,4 +73,85 @@ export async function buatSubmissionBagianA(formData: FormData) {
   }
 
   redirect(`/forms/seleksi-investasi/${submission.id}/bagian-b`);
+}
+
+export async function submitBagianB(formData: FormData) {
+  await requireRole("evaluator");
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return redirect("/login");
+  }
+
+  const submissionId = formData.get("submissionId") as string;
+
+  const { data: submission } = await supabase
+    .from("submissions")
+    .select("id, status, data")
+    .eq("id", submissionId)
+    .single();
+
+  if (!submission) {
+    return redirect(
+      `/forms/seleksi-investasi/${submissionId}/bagian-b?error=${encodeURIComponent(
+        "Proposal tidak ditemukan.",
+      )}`,
+    );
+  }
+
+  const mentah: Record<string, unknown> = {};
+  for (const { kode } of GATE_CRITERIA) {
+    mentah[kode] = {
+      jawaban: formData.get(`${kode}_jawaban`),
+      catatan: formData.get(`${kode}_catatan`),
+    };
+  }
+
+  const parsed = bagianBSchema.safeParse(mentah);
+
+  if (!parsed.success) {
+    const pesan = parsed.error.issues.map((issue) => issue.message).join(", ");
+    return redirect(
+      `/forms/seleksi-investasi/${submissionId}/bagian-b?error=${encodeURIComponent(pesan)}`,
+    );
+  }
+
+  const lulusGate = GATE_CRITERIA.every(
+    ({ kode }) => parsed.data[kode].jawaban === "ya",
+  );
+  const statusBaru = lulusGate ? "menunggu_skoring" : "tidak_lulus_gate";
+
+  const dataBaru = {
+    ...(submission.data as Record<string, unknown>),
+    bagianB: parsed.data,
+  };
+
+  const { error: updateError } = await supabase
+    .from("submissions")
+    .update({ data: dataBaru, status: statusBaru })
+    .eq("id", submissionId);
+
+  if (updateError) {
+    return redirect(
+      `/forms/seleksi-investasi/${submissionId}/bagian-b?error=${encodeURIComponent(
+        updateError.message,
+      )}`,
+    );
+  }
+
+  await supabase.from("submission_history").insert({
+    submission_id: submissionId,
+    status_lama: submission.status,
+    status_baru: statusBaru,
+    diubah_oleh: user.id,
+    catatan: lulusGate
+      ? "Lulus seluruh kriteria gugur (gate), lanjut ke skoring."
+      : "Tidak lulus kriteria gugur (gate), proses dihentikan.",
+  });
+
+  redirect(`/forms/seleksi-investasi/${submissionId}/bagian-b`);
 }
