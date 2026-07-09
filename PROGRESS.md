@@ -15,7 +15,7 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 ## FORM SELEKSI INVESTASI — BAGIAN A (Identitas)
 
-- [ ] 1.1 Form input Bagian A: identitas proposal (10 field)
+- [x] 1.1 Form input Bagian A: identitas proposal (10 field) — kode lengkap, **belum diverifikasi di browser** (di-gate auth; lolos `tsc --noEmit`, `eslint`, dan `next build`)
 
 ## FORM SELEKSI INVESTASI — BAGIAN B (Gate)
 
@@ -51,3 +51,5 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 - Detail lengkap tiap tahap (nama field Bagian A, teks 6 kriteria gate Bagian B, 8 kriteria skoring+bobot Bagian C, 4 ambang batas rekomendasi Bagian D, alur approval bertingkat) ada di [PANDUAN.md](PANDUAN.md) — sumber kebenaran, jangan diparafrase ulang saat implementasi.
 - **Tahap 3.2 diblokir**: isi sheet "Rubrik Skoring" (deskripsi skor 1/3/5 per kriteria C1-C8) dari Excel asli belum ditempel user. Tidak bisa dikerjakan sampai teks ini diberikan.
 - Pilihan library PDF export (react-pdf vs puppeteer) akan diputuskan pada tahap 5.1, dicatat di ARCHITECTURE.md.
+- Redirect setelah submit Bagian A menuju `/forms/seleksi-investasi/[submissionId]/bagian-b`, saat ini masih halaman stub (placeholder) — akan diisi sungguhan di tahap 2.1.
+- "Target selesai seleksi awal" default H+5 hari kerja dihitung sekali di server saat halaman dimuat (dari tanggal hari ini), **tidak recompute otomatis** kalau user mengubah tanggal diterima di form (butuh Client Component + JS kalau mau live-update — belum dibangun, dianggap di luar cakupan minimal tahap 1.1). User tetap bisa edit manual field targetSelesai.
