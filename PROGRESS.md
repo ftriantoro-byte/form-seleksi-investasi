@@ -9,7 +9,7 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 ## FASE SETUP
 
 - [x] 0.1 Setup project Next.js, Supabase, struktur folder multi-form
-- [ ] 0.2 Skema database (forms, submissions, approval_chain, submission_history, user_roles)
+- [x] 0.2 Skema database (forms, submissions, approval_chain, submission_history, user_roles) — SQL ditulis di `supabase/migrations/`, **belum dijalankan** ke project Supabase asli (belum ada project)
 - [ ] 0.3 Autentikasi Supabase (login, role: Evaluator/Manajer/VP/Direksi/Admin)
 - [ ] 0.4 Landing page dasar (daftar form, saat ini baru 1: Seleksi Investasi)
 
@@ -45,7 +45,8 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 ## Catatan Terbuka / Keputusan Tertunda
 
-- `.env.local` saat ini berisi nilai **placeholder/dummy** (`https://placeholder.supabase.co`), hanya supaya dev server tidak crash sebelum project Supabase asli dibuat. Ganti dengan kredensial asli di tahap 0.2/0.3 (lihat `.env.local.example`).
+- `.env.local` saat ini berisi nilai **placeholder/dummy** (`https://placeholder.supabase.co`), hanya supaya dev server tidak crash sebelum project Supabase asli dibuat. Ganti dengan kredensial asli begitu project Supabase dibuat (lihat `.env.local.example`).
+- **Project Supabase asli belum dibuat.** File migration di `supabase/migrations/` (tahap 0.2) sudah lengkap tapi belum pernah dijalankan/divalidasi terhadap database sungguhan. Begitu project Supabase tersedia: jalankan ke-4 file migration berurutan lewat SQL Editor (atau `supabase db push`), lalu generate `types/database.ts` (`supabase gen types typescript`), lalu ganti `.env.local` dengan kredensial asli.
 
 - Detail lengkap tiap tahap (nama field Bagian A, teks 6 kriteria gate Bagian B, 8 kriteria skoring+bobot Bagian C, 4 ambang batas rekomendasi Bagian D, alur approval bertingkat) ada di [PANDUAN.md](PANDUAN.md) — sumber kebenaran, jangan diparafrase ulang saat implementasi.
 - **Tahap 3.2 diblokir**: isi sheet "Rubrik Skoring" (deskripsi skor 1/3/5 per kriteria C1-C8) dari Excel asli belum ditempel user. Tidak bisa dikerjakan sampai teks ini diberikan.

@@ -186,7 +186,18 @@ Rubrik skoring 1/3/5 per kriteria C1-C8, disimpan sebagai data terstruktur (buka
   - Admin: lihat semua.
 - `approval_chain`, `submission_history`: baca mengikuti akses ke `submissions` terkait (policy join). Tulis hanya lewat Server Action yang memverifikasi role via `user_roles`, bukan hanya disembunyikan di UI. `submission_history` tanpa policy UPDATE/DELETE sama sekali (append-only, termasuk untuk admin).
 
-Detail policy SQL akan ditulis di `supabase/migrations/` pada tahap 0.2, bukan di sini.
+### Implementasi (tahap 0.2)
+
+SQL lengkap (enum, tabel, index, RLS, seed) ada di `supabase/migrations/`, dijalankan berurutan sesuai nama file:
+
+1. `20260709120001_enums_dan_tabel.sql` — enum, 5 tabel inti, index.
+2. `20260709120002_fungsi_dan_trigger.sql` — `current_user_role()` (helper `SECURITY DEFINER` dipakai berulang di RLS, supaya lookup role tidak terhalang RLS `user_roles` itu sendiri), trigger auto-update `diupdate_pada`, trigger `buat_approval_chain_awal` (begitu `status` submission jadi `menunggu_manajer`, otomatis insert 3 baris `approval_chain` — manajer/vp/direksi, semua `menunggu`).
+3. `20260709120003_rls_policies.sql` — seluruh policy sesuai aturan visibilitas per role di atas. `submission_history` sengaja tanpa policy UPDATE/DELETE sama sekali (append-only, termasuk untuk admin).
+4. `20260709120004_seed_forms.sql` — insert baris `forms` untuk `seleksi-investasi` (dipakai landing page tahap 0.4).
+
+Migration ini belum dijalankan ke project Supabase manapun — menunggu project Supabase asli dibuat (lihat catatan `.env.local` di PROGRESS.md). Setelah project ada, jalankan lewat Supabase SQL Editor (copy-paste tiap file berurutan) atau `supabase db push` jika Supabase CLI sudah di-setup.
+
+Belum ada `types/database.ts` hasil codegen (`supabase gen types typescript`) karena butuh project Supabase live — akan digenerate begitu koneksi tersedia.
 
 ---
 
