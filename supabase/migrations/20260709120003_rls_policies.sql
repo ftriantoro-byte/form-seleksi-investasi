@@ -8,13 +8,13 @@ alter table submission_history enable row level security;
 
 -- ── user_roles ───────────────────────────────────────────────────────────
 
-create policy "user baca role sendiri"
+-- Nama & role perlu terlihat oleh siapapun yang login untuk menampilkan
+-- "disetujui oleh: <nama> (<tingkat>)" di halaman detail, dashboard, dan PDF
+-- (tahap 5.1). Ini menggantikan kebutuhan policy "baca role sendiri" yang
+-- lebih sempit - internal app, nama+role bukan data sensitif antar pegawai.
+create policy "user login baca semua nama & role"
   on user_roles for select
-  using (user_id = auth.uid());
-
-create policy "admin baca semua role"
-  on user_roles for select
-  using (current_user_role() = 'admin');
+  using (auth.role() = 'authenticated');
 
 create policy "admin kelola role"
   on user_roles for all

@@ -78,13 +78,14 @@ Prinsip: setiap form baru di masa depan cukup menambah folder di `app/forms/<slu
 Skema di bawah persis mengikuti spesifikasi di [PANDUAN.md](PANDUAN.md) Prompt 0.2 — nama kolom sengaja dalam Bahasa Indonesia agar konsisten dengan istilah form Excel asli (status, nama field) yang dipakai user & approver.
 
 ### `user_roles`
-Role aplikasi per user, terpisah dari `auth.users` bawaan Supabase (tidak ada tabel `profiles` — nama tampilan diambil dari `auth.users.raw_user_meta_data`/email, bukan disimpan ulang).
+Role aplikasi per user, terpisah dari `auth.users` bawaan Supabase (tidak ada tabel `profiles` terpisah). Menyimpan `full_name` sendiri (bukan dari `auth.users.raw_user_meta_data`) karena `auth.users` tidak bisa di-query langsung lewat client biasa — dibutuhkan untuk menampilkan nama approver di halaman detail/dashboard/PDF (lihat §6).
 
 | Kolom | Tipe | Keterangan |
 |---|---|---|
 | id | uuid, PK | |
 | user_id | uuid, FK → auth.users(id), unique | satu role per user |
 | role | enum: `evaluator`, `manajer`, `vp`, `direksi`, `admin` | |
+| full_name | text | diisi manual oleh admin saat menambah user (§4) |
 | created_at | timestamptz | default now() |
 
 ### `forms`
@@ -226,7 +227,7 @@ Karena aplikasi ini dipakai rutin (approval bertingkat harian oleh Manajer/VP/Di
 - `proxy.ts` (lewat `lib/supabase/middleware.ts`) — auth-gate global: user belum login yang mengakses route apapun selain `/login` di-redirect ke `/login`; user yang sudah login mengakses `/login` di-redirect ke `/`.
 - **Penambahan user baru** (sementara, sampai ada UI admin khusus): dilakukan manual oleh admin lewat Supabase Dashboard —
   1. **Authentication → Users → Add user**, isi email + password awal, kirim tahu user secara terpisah (misal chat internal) supaya user bisa login lalu ganti password sendiri (Supabase punya alur "forgot password" bawaan bila diperlukan).
-  2. **Table Editor → `user_roles` → Insert row**, isi `user_id` (disalin dari user yang baru dibuat di langkah 1) dan `role` (evaluator/manajer/vp/direksi/admin).
+  2. **Table Editor → `user_roles` → Insert row**, isi `user_id` (disalin dari user yang baru dibuat di langkah 1), `role` (evaluator/manajer/vp/direksi/admin), dan `full_name` (nama lengkap — dipakai untuk menampilkan "disetujui oleh: ..." dan tanda tangan PDF, lihat §6).
   UI admin untuk kedua langkah ini bisa dibangun belakangan sebagai form khusus jika volume user besar — tidak masuk cakupan tahap 0.3.
 
 ---
@@ -249,7 +250,7 @@ PANDUAN.md Prompt 4.1 menyebut "update status submission sesuai hasil [rekomenda
 - **Approval bertingkat tetap berjalan penuh (manajer→VP→direksi) berapa pun skornya**, termasuk PARKIR/TIDAK DILANJUTKAN. Hanya Bagian B (gate) yang punya kuasa auto-stop sungguhan. Rekomendasi bersifat informatif untuk approver, bukan pemutus otomatis — sejalan dengan alur `4.3` yang tidak menyebut percabangan berdasar rekomendasi sama sekali.
 - **"PARKIR - evaluasi ulang maksimal 1 kali"** disebut di teks rekomendasi (persis dari PANDUAN.md) tapi mekanisme *counter* evaluasi ulang **tidak diimplementasikan** — tidak ada field/skema untuk itu di tahap 0.2, dan PANDUAN tidak merinci alur revisinya. Dianggap di luar cakupan sampai ada spesifikasi lebih lanjut.
 - **Status "menunggu keputusan evaluator" (hentikan/teruskan) bukan nilai enum baru.** Diturunkan dari kombinasi `submission.status = 'menunggu_<tingkat>'` DAN `approval_chain[<tingkat>].status = 'ditolak'`. Begitu evaluator memutuskan, salah satu nilai berubah (status maju ke tingkat berikutnya, atau jadi `ditolak` final) sehingga kombinasi ini otomatis tidak berlaku lagi. Logika ini ada di dua tempat yang harus tetap konsisten: `components/forms/seleksi-investasi/ApprovalActions.tsx` (tampilan) dan `app/dashboard/page.tsx` (indikator "perlu keputusan Anda").
-- **Nama approver tidak ditampilkan** di halaman detail/approval, hanya nama tingkat ("Manajer", "VP", "Direksi") — skema `user_roles` (tahap 0.2, sesuai PANDUAN.md persis) tidak punya kolom nama, dan `auth.users` tidak bisa di-query langsung lewat client biasa. **Perlu diselesaikan sebelum tahap 5.1** (PDF wajib mencantumkan nama tiap pihak) — opsi: tambah kolom nama ke `user_roles`, atau resolve via Admin API pakai service role khusus saat generate PDF di server.
+- ~~Nama approver tidak ditampilkan~~ — **selesai**: kolom `full_name` ditambahkan ke `user_roles` (migration `20260709120001`, diisi manual oleh admin lewat Table Editor saat menambah user, §4). RLS `user_roles` diperluas jadi "siapapun yang login boleh baca nama+role siapapun" (migration `20260709120003`) — perlu, karena evaluator/approver lain harus bisa lihat siapa yang memutuskan; internal app, nama+role dianggap bukan data sensitif antar pegawai. Halaman detail submission (`app/forms/seleksi-investasi/[submissionId]/page.tsx`) sudah menampilkan nama approver dari tabel ini.
 - RLS `approval_chain` awalnya hanya mengizinkan approver meng-update baris tingkatnya sendiri; ditambah policy baru supaya **evaluator** juga bisa update baris berstatus `ditolak` milik submission-nya sendiri (untuk set `diteruskan_meski_ditolak=true` saat memilih "teruskan") — lihat migration `20260709120003_rls_policies.sql`.
 
 ## 7. Keputusan Tertunda

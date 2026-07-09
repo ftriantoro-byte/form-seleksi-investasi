@@ -50,6 +50,7 @@ type SubmissionRow = {
 type ApprovalRow = {
   tingkat: "manajer" | "vp" | "direksi";
   status: "menunggu" | "disetujui" | "ditolak";
+  approver_user_id: string | null;
   catatan: string | null;
   diteruskan_meski_ditolak: boolean;
   diputuskan_pada: string | null;
@@ -91,9 +92,26 @@ export default async function SubmissionDetailPage({
 
   const { data: approvalChainRaw } = await supabase
     .from("approval_chain")
-    .select("tingkat, status, catatan, diteruskan_meski_ditolak, diputuskan_pada")
+    .select(
+      "tingkat, status, approver_user_id, catatan, diteruskan_meski_ditolak, diputuskan_pada",
+    )
     .eq("submission_id", submissionId)
     .returns<ApprovalRow[]>();
+
+  const approverIds = (approvalChainRaw ?? [])
+    .map((a) => a.approver_user_id)
+    .filter((id): id is string => id != null);
+
+  const namaApprover = new Map<string, string>();
+  if (approverIds.length > 0) {
+    const { data: approverRows } = await supabase
+      .from("user_roles")
+      .select("user_id, full_name")
+      .in("user_id", approverIds);
+    for (const row of approverRows ?? []) {
+      namaApprover.set(row.user_id, row.full_name);
+    }
+  }
 
   const approvalChain = URUTAN_TINGKAT.map(
     (tingkat) => approvalChainRaw?.find((a) => a.tingkat === tingkat) ?? null,
@@ -230,10 +248,14 @@ export default async function SubmissionDetailPage({
                   </li>
                 );
               }
+              const nama = baris.approver_user_id
+                ? (namaApprover.get(baris.approver_user_id) ?? "-")
+                : null;
               return (
                 <li key={tingkat} className="rounded-lg border border-gray-200 p-3 text-sm">
                   <p className="font-medium">
                     {LABEL_TINGKAT[tingkat]}: {LABEL_STATUS_APPROVAL[baris.status]}
+                    {nama && ` — ${nama}`}
                   </p>
                   {baris.catatan && <p className="mt-1 text-gray-600">{baris.catatan}</p>}
                   {baris.diteruskan_meski_ditolak && (

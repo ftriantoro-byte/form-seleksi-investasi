@@ -28,6 +28,10 @@ create table user_roles (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users (id) on delete cascade,
   role app_role not null,
+  -- Nama tampilan untuk approver (PDF tahap 5.1 wajib mencantumkan nama tiap
+  -- pihak yang tanda tangan; auth.users tidak bisa di-query langsung dari
+  -- client biasa). Diisi manual oleh admin saat menambahkan user (tahap 0.3).
+  full_name text not null,
   created_at timestamptz not null default now()
 );
 
