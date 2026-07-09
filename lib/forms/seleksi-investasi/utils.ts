@@ -22,20 +22,38 @@ export async function suggestNomorRegistrasi(
   }
 }
 
-/** Tambah N hari kerja (Senin-Jumat) ke tanggal (format YYYY-MM-DD), untuk default target selesai. */
+/**
+ * Tambah N hari kerja (Senin-Jumat) ke tanggal (format YYYY-MM-DD), untuk default target selesai.
+ * Pakai method UTC secara konsisten (bukan campur local Date methods dengan toISOString()) -
+ * kalau dicampur, di server dengan timezone UTC+ (mis. WIB), tanggal.toISOString() bisa mundur
+ * satu hari dari yang seharusnya karena representasi UTC dari tengah malam lokal jatuh di hari
+ * sebelumnya. Dengan menganggap tanggalIso sebagai tanggal kalender UTC dari awal sampai akhir,
+ * arithmetic-nya jadi konsisten tanpa ambiguitas timezone.
+ */
 export function tambahHariKerja(tanggalIso: string, jumlahHari: number): string {
-  const tanggal = new Date(`${tanggalIso}T00:00:00`);
+  const tanggal = new Date(`${tanggalIso}T00:00:00Z`);
   let ditambahkan = 0;
 
   while (ditambahkan < jumlahHari) {
-    tanggal.setDate(tanggal.getDate() + 1);
-    const hari = tanggal.getDay();
+    tanggal.setUTCDate(tanggal.getUTCDate() + 1);
+    const hari = tanggal.getUTCDay();
     if (hari !== 0 && hari !== 6) {
       ditambahkan += 1;
     }
   }
 
   return tanggal.toISOString().slice(0, 10);
+}
+
+/**
+ * Tanggal "hari ini" menurut zona waktu Indonesia Barat (WIB, UTC+7, tanpa DST),
+ * dipakai sebagai default tanggal di form. Tidak bergantung pada timezone server
+ * (Vercel default UTC, beda dari local dev yang biasanya WIB) - digeser manual
+ * 7 jam sebelum diambil tanggal UTC-nya, supaya konsisten di semua environment.
+ */
+export function hariIniWib(): string {
+  const tujuhJamMs = 7 * 60 * 60 * 1000;
+  return new Date(Date.now() + tujuhJamMs).toISOString().slice(0, 10);
 }
 
 /** Nilai tertimbang (bobot x skor) untuk satu kriteria, dibulatkan 4 desimal untuk hindari floating point noise. */

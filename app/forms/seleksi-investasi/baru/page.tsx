@@ -3,6 +3,7 @@ import { getCurrentUserRole } from "@/lib/supabase/role";
 import {
   suggestNomorRegistrasi,
   tambahHariKerja,
+  hariIniWib,
 } from "@/lib/forms/seleksi-investasi/utils";
 import { BagianAForm } from "@/components/forms/seleksi-investasi/BagianAForm";
 
@@ -39,7 +40,7 @@ export default async function FormBaruPage({
     ? await suggestNomorRegistrasi(supabase, form.id)
     : `PRP-${new Date().getFullYear()}-001`;
 
-  const hariIni = new Date().toISOString().slice(0, 10);
+  const hariIni = hariIniWib();
 
   return (
     <main className="mx-auto max-w-2xl p-8">
