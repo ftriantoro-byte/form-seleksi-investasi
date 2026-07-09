@@ -12,42 +12,42 @@ alter table submission_history enable row level security;
 -- "disetujui oleh: <nama> (<tingkat>)" di halaman detail, dashboard, dan PDF
 -- (tahap 5.1). Ini menggantikan kebutuhan policy "baca role sendiri" yang
 -- lebih sempit - internal app, nama+role bukan data sensitif antar pegawai.
-create policy "user login baca semua nama & role"
+create policy user_login_baca_semua_nama_dan_role
   on user_roles for select
   using (auth.role() = 'authenticated');
 
-create policy "admin kelola role"
+create policy admin_kelola_role
   on user_roles for all
   using (current_user_role() = 'admin')
   with check (current_user_role() = 'admin');
 
 -- ── forms ────────────────────────────────────────────────────────────────
 
-create policy "user login baca forms"
+create policy user_login_baca_forms
   on forms for select
   using (auth.role() = 'authenticated');
 
-create policy "admin kelola forms"
+create policy admin_kelola_forms
   on forms for all
   using (current_user_role() = 'admin')
   with check (current_user_role() = 'admin');
 
 -- ── submissions ──────────────────────────────────────────────────────────
 
-create policy "evaluator lihat submission sendiri"
+create policy evaluator_lihat_submission_sendiri
   on submissions for select
   using (dibuat_oleh = auth.uid());
 
-create policy "evaluator buat submission sendiri"
+create policy evaluator_buat_submission_sendiri
   on submissions for insert
   with check (dibuat_oleh = auth.uid());
 
-create policy "evaluator update submission sendiri"
+create policy evaluator_update_submission_sendiri
   on submissions for update
   using (dibuat_oleh = auth.uid())
   with check (dibuat_oleh = auth.uid());
 
-create policy "manajer lihat submission relevan"
+create policy manajer_lihat_submission_relevan
   on submissions for select
   using (
     current_user_role() = 'manajer'
@@ -62,12 +62,12 @@ create policy "manajer lihat submission relevan"
     )
   );
 
-create policy "manajer putuskan submission menunggu_manajer"
+create policy manajer_putuskan_submission_menunggu_manajer
   on submissions for update
   using (current_user_role() = 'manajer' and status = 'menunggu_manajer')
   with check (true);
 
-create policy "vp lihat submission relevan"
+create policy vp_lihat_submission_relevan
   on submissions for select
   using (
     current_user_role() = 'vp'
@@ -82,12 +82,12 @@ create policy "vp lihat submission relevan"
     )
   );
 
-create policy "vp putuskan submission menunggu_vp"
+create policy vp_putuskan_submission_menunggu_vp
   on submissions for update
   using (current_user_role() = 'vp' and status = 'menunggu_vp')
   with check (true);
 
-create policy "direksi lihat submission relevan"
+create policy direksi_lihat_submission_relevan
   on submissions for select
   using (
     current_user_role() = 'direksi'
@@ -102,16 +102,16 @@ create policy "direksi lihat submission relevan"
     )
   );
 
-create policy "direksi putuskan submission menunggu_direksi"
+create policy direksi_putuskan_submission_menunggu_direksi
   on submissions for update
   using (current_user_role() = 'direksi' and status = 'menunggu_direksi')
   with check (true);
 
-create policy "admin lihat semua submission"
+create policy admin_lihat_semua_submission
   on submissions for select
   using (current_user_role() = 'admin');
 
-create policy "admin update semua submission"
+create policy admin_update_semua_submission
   on submissions for update
   using (current_user_role() = 'admin')
   with check (true);
@@ -120,13 +120,13 @@ create policy "admin update semua submission"
 -- Baca mengikuti akses ke submissions terkait: subquery ke tabel submissions
 -- otomatis tunduk pada RLS submissions milik pemanggil yang sama.
 
-create policy "baca approval_chain ikut akses submission"
+create policy baca_approval_chain_ikut_akses_submission
   on approval_chain for select
   using (
     exists (select 1 from submissions s where s.id = approval_chain.submission_id)
   );
 
-create policy "approver update baris tingkatnya sendiri"
+create policy approver_update_baris_tingkatnya_sendiri
   on approval_chain for update
   using (
     (tingkat = 'manajer' and current_user_role() = 'manajer' and status = 'menunggu')
@@ -139,7 +139,7 @@ create policy "approver update baris tingkatnya sendiri"
 -- diteruskan_meski_ditolak=true saat memilih "tetap teruskan" (lihat
 -- actions/approval.ts putuskanLanjutan). Server Action yang membatasi kolom
 -- mana yang benar-benar diubah; RLS di sini hanya membatasi baris & submission.
-create policy "evaluator teruskan baris ditolak milik submission sendiri"
+create policy evaluator_teruskan_baris_ditolak_milik_submission_sendiri
   on approval_chain for update
   using (
     status = 'ditolak'
@@ -153,7 +153,7 @@ create policy "evaluator teruskan baris ditolak milik submission sendiri"
 -- Insert baris approval_chain normalnya dilakukan otomatis oleh trigger
 -- buat_approval_chain_awal (SECURITY DEFINER, bypass RLS). Policy ini hanya
 -- jaga-jaga untuk jalur insert langsung oleh evaluator pemilik submission.
-create policy "evaluator insert approval_chain submission sendiri"
+create policy evaluator_insert_approval_chain_submission_sendiri
   on approval_chain for insert
   with check (
     exists (
@@ -168,12 +168,12 @@ create policy "evaluator insert approval_chain submission sendiri"
 -- (lihat CATATAN PENTING di PANDUAN.md). Tanpa policy, RLS default menolak
 -- perintah tersebut untuk semua role.
 
-create policy "baca history ikut akses submission"
+create policy baca_history_ikut_akses_submission
   on submission_history for select
   using (
     exists (select 1 from submissions s where s.id = submission_history.submission_id)
   );
 
-create policy "insert history oleh pelaku aksi"
+create policy insert_history_oleh_pelaku_aksi
   on submission_history for insert
   with check (diubah_oleh = auth.uid());

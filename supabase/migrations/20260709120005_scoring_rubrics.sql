@@ -13,11 +13,11 @@ create table scoring_rubrics (
 
 alter table scoring_rubrics enable row level security;
 
-create policy "user login baca scoring_rubrics"
+create policy user_login_baca_scoring_rubrics
   on scoring_rubrics for select
   using (auth.role() = 'authenticated');
 
-create policy "admin kelola scoring_rubrics"
+create policy admin_kelola_scoring_rubrics
   on scoring_rubrics for all
   using (current_user_role() = 'admin')
   with check (current_user_role() = 'admin');
