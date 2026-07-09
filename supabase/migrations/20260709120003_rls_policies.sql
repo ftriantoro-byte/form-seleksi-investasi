@@ -51,15 +51,7 @@ create policy manajer_lihat_submission_relevan
   on submissions for select
   using (
     current_user_role() = 'manajer'
-    and (
-      status = 'menunggu_manajer'
-      or exists (
-        select 1 from approval_chain ac
-        where ac.submission_id = submissions.id
-          and ac.tingkat = 'manajer'
-          and ac.approver_user_id = auth.uid()
-      )
-    )
+    and (status = 'menunggu_manajer' or is_approver_of(id, 'manajer'))
   );
 
 create policy manajer_putuskan_submission_menunggu_manajer
@@ -71,15 +63,7 @@ create policy vp_lihat_submission_relevan
   on submissions for select
   using (
     current_user_role() = 'vp'
-    and (
-      status = 'menunggu_vp'
-      or exists (
-        select 1 from approval_chain ac
-        where ac.submission_id = submissions.id
-          and ac.tingkat = 'vp'
-          and ac.approver_user_id = auth.uid()
-      )
-    )
+    and (status = 'menunggu_vp' or is_approver_of(id, 'vp'))
   );
 
 create policy vp_putuskan_submission_menunggu_vp
@@ -91,15 +75,7 @@ create policy direksi_lihat_submission_relevan
   on submissions for select
   using (
     current_user_role() = 'direksi'
-    and (
-      status = 'menunggu_direksi'
-      or exists (
-        select 1 from approval_chain ac
-        where ac.submission_id = submissions.id
-          and ac.tingkat = 'direksi'
-          and ac.approver_user_id = auth.uid()
-      )
-    )
+    and (status = 'menunggu_direksi' or is_approver_of(id, 'direksi'))
   );
 
 create policy direksi_putuskan_submission_menunggu_direksi
@@ -117,14 +93,15 @@ create policy admin_update_semua_submission
   with check (true);
 
 -- ── approval_chain ───────────────────────────────────────────────────────
--- Baca mengikuti akses ke submissions terkait: subquery ke tabel submissions
--- otomatis tunduk pada RLS submissions milik pemanggil yang sama.
+-- Baca mengikuti akses ke submissions terkait, lewat helper can_access_submission()
+-- (BUKAN subquery langsung ke submissions) - submissions punya kebijakan yang
+-- subquery balik ke approval_chain (manajer/vp/direksi_lihat_submission_relevan),
+-- jadi subquery langsung dua arah di sini bikin Postgres menolak dengan
+-- "infinite recursion detected in policy". Helper SECURITY DEFINER memutus siklusnya.
 
 create policy baca_approval_chain_ikut_akses_submission
   on approval_chain for select
-  using (
-    exists (select 1 from submissions s where s.id = approval_chain.submission_id)
-  );
+  using (can_access_submission(submission_id));
 
 create policy approver_update_baris_tingkatnya_sendiri
   on approval_chain for update
@@ -141,13 +118,7 @@ create policy approver_update_baris_tingkatnya_sendiri
 -- mana yang benar-benar diubah; RLS di sini hanya membatasi baris & submission.
 create policy evaluator_teruskan_baris_ditolak_milik_submission_sendiri
   on approval_chain for update
-  using (
-    status = 'ditolak'
-    and exists (
-      select 1 from submissions s
-      where s.id = approval_chain.submission_id and s.dibuat_oleh = auth.uid()
-    )
-  )
+  using (status = 'ditolak' and is_submission_owner(submission_id))
   with check (true);
 
 -- Insert baris approval_chain normalnya dilakukan otomatis oleh trigger
@@ -155,12 +126,7 @@ create policy evaluator_teruskan_baris_ditolak_milik_submission_sendiri
 -- jaga-jaga untuk jalur insert langsung oleh evaluator pemilik submission.
 create policy evaluator_insert_approval_chain_submission_sendiri
   on approval_chain for insert
-  with check (
-    exists (
-      select 1 from submissions s
-      where s.id = submission_id and s.dibuat_oleh = auth.uid()
-    )
-  );
+  with check (is_submission_owner(submission_id));
 
 -- ── submission_history ───────────────────────────────────────────────────
 -- Append-only: sengaja TIDAK ada policy update/delete sama sekali (termasuk

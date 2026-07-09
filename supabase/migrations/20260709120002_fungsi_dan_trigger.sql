@@ -67,3 +67,59 @@ create trigger trg_buat_approval_chain_awal
   after insert or update on submissions
   for each row
   execute function public.buat_approval_chain_awal();
+
+-- ── Helper untuk RLS lintas-tabel (submissions <-> approval_chain) ─────────
+-- Kalau kebijakan RLS di submissions subquery approval_chain SECARA LANGSUNG,
+-- dan kebijakan RLS di approval_chain subquery submissions SECARA LANGSUNG,
+-- Postgres mendeteksi siklus itu dan menolak dengan "infinite recursion
+-- detected in policy" - terlepas dari data/user yang sedang query. Helper
+-- SECURITY DEFINER berikut memutus siklusnya (query internal di dalam fungsi
+-- bypass RLS, jadi tidak ada pengecekan RLS berulang lintas tabel).
+
+create or replace function public.is_approver_of(p_submission_id uuid, p_tingkat approval_tingkat)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from approval_chain
+    where submission_id = p_submission_id
+      and tingkat = p_tingkat
+      and approver_user_id = auth.uid()
+  );
+$$;
+
+create or replace function public.is_submission_owner(p_submission_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from submissions
+    where id = p_submission_id and dibuat_oleh = auth.uid()
+  );
+$$;
+
+create or replace function public.can_access_submission(p_submission_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from submissions s
+    where s.id = p_submission_id
+      and (
+        s.dibuat_oleh = auth.uid()
+        or current_user_role() = 'admin'
+        or (current_user_role() = 'manajer' and (s.status = 'menunggu_manajer' or is_approver_of(s.id, 'manajer')))
+        or (current_user_role() = 'vp' and (s.status = 'menunggu_vp' or is_approver_of(s.id, 'vp')))
+        or (current_user_role() = 'direksi' and (s.status = 'menunggu_direksi' or is_approver_of(s.id, 'direksi')))
+      )
+  );
+$$;
