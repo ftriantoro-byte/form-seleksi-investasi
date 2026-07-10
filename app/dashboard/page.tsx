@@ -14,11 +14,15 @@ type SubmissionRingkas = {
   data: {
     bagianA?: {
       nomorRegistrasi?: string;
+      noDokumen?: string;
       namaProyek?: string;
       tanggalDiterima?: string;
+      tanggalInfoDiterima?: string;
       evaluatorPic?: string;
+      pemilikPemberiInformasi?: string;
     };
   };
+  forms: { slug: string; nama: string } | null;
 };
 
 const STATUS_PER_TINGKAT: Record<string, string> = {
@@ -51,7 +55,7 @@ export default async function DashboardPage({
   let query = supabase
     .from("submissions")
     .select(
-      "id, status, tingkat_approval_saat_ini, total_skor, dibuat_oleh, dibuat_pada, data",
+      "id, status, tingkat_approval_saat_ini, total_skor, dibuat_oleh, dibuat_pada, data, forms(slug, nama)",
     )
     .order("dibuat_pada", { ascending: false });
 
@@ -121,10 +125,11 @@ export default async function DashboardPage({
           <table className="w-full min-w-[820px] text-left text-[13px]">
             <thead>
               <tr className="border-b border-zinc-100 text-zinc-400">
-                <th className="px-6 py-3.5 font-medium">No. Registrasi</th>
+                <th className="px-6 py-3.5 font-medium">No.</th>
                 <th className="px-3 py-3.5 font-medium">Nama Proyek</th>
-                <th className="px-3 py-3.5 font-medium">Tanggal Diterima</th>
-                <th className="px-3 py-3.5 font-medium">Evaluator</th>
+                <th className="px-3 py-3.5 font-medium">Form</th>
+                <th className="px-3 py-3.5 font-medium">Tanggal</th>
+                <th className="px-3 py-3.5 font-medium">PIC</th>
                 <th className="px-3 py-3.5 font-medium">Status</th>
                 <th className="px-3 py-3.5 font-medium">Tingkat</th>
                 <th className="px-3 py-3.5 font-medium">Skor</th>
@@ -138,16 +143,21 @@ export default async function DashboardPage({
                   className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
                 >
                   <td className="px-6 py-3.5 font-medium text-zinc-800">
-                    {s.data.bagianA?.nomorRegistrasi ?? "-"}
+                    {s.data.bagianA?.nomorRegistrasi ?? s.data.bagianA?.noDokumen ?? "-"}
                   </td>
                   <td className="px-3 py-3.5 text-zinc-600">
                     {s.data.bagianA?.namaProyek ?? "-"}
                   </td>
                   <td className="px-3 py-3.5 text-zinc-500">
-                    {s.data.bagianA?.tanggalDiterima ?? "-"}
+                    <span className="inline-flex items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600">
+                      {s.forms?.nama ?? "-"}
+                    </span>
                   </td>
                   <td className="px-3 py-3.5 text-zinc-500">
-                    {s.data.bagianA?.evaluatorPic ?? "-"}
+                    {s.data.bagianA?.tanggalDiterima ?? s.data.bagianA?.tanggalInfoDiterima ?? "-"}
+                  </td>
+                  <td className="px-3 py-3.5 text-zinc-500">
+                    {s.data.bagianA?.evaluatorPic ?? s.data.bagianA?.pemilikPemberiInformasi ?? "-"}
                   </td>
                   <td className="px-3 py-3.5">
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -173,7 +183,7 @@ export default async function DashboardPage({
                   </td>
                   <td className="px-6 py-3.5">
                     <Link
-                      href={`/forms/seleksi-investasi/${s.id}`}
+                      href={`/forms/${s.forms?.slug ?? "seleksi-investasi"}/${s.id}`}
                       className="font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-2 transition-colors hover:decoration-zinc-900"
                     >
                       Lihat
@@ -183,7 +193,7 @@ export default async function DashboardPage({
               ))}
               {(!submissions || submissions.length === 0) && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-10 text-center text-zinc-400">
+                  <td colSpan={9} className="px-6 py-10 text-center text-zinc-400">
                     Tidak ada data.
                   </td>
                 </tr>
