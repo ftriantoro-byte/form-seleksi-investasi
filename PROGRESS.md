@@ -9,45 +9,62 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 ## FASE SETUP
 
 - [x] 0.1 Setup project Next.js, Supabase, struktur folder multi-form
-- [x] 0.2 Skema database (forms, submissions, approval_chain, submission_history, user_roles) — SQL ditulis di `supabase/migrations/`, **belum dijalankan** ke project Supabase asli (belum ada project)
-- [x] 0.3 Autentikasi Supabase (login, role: Evaluator/Manajer/VP/Direksi/Admin) — kode lengkap, **alur login belum diuji end-to-end** (butuh project Supabase asli)
-- [x] 0.4 Landing page dasar (daftar form, saat ini baru 1: Seleksi Investasi) — kode lengkap, **belum diverifikasi di browser** (halaman di-gate proxy auth, butuh login sungguhan; sudah lolos `tsc --noEmit` & `eslint`)
+- [x] 0.2 Skema database (forms, submissions, approval_chain, submission_history, user_roles) — **dijalankan & diverifikasi** di project Supabase asli
+- [x] 0.3 Autentikasi Supabase (login, role: Evaluator/Manajer/VP/Direksi/Admin) — **diuji end-to-end**: login/logout 5 role (evaluator/manajer/vp/direksi/admin) semua berhasil
+- [x] 0.4 Landing page dasar (daftar form, saat ini baru 1: Seleksi Investasi) — **diverifikasi di browser**: daftar form tampil, ringkasan per role benar ("Ada N proposal menunggu keputusan Anda", dst)
 
 ## FORM SELEKSI INVESTASI — BAGIAN A (Identitas)
 
-- [x] 1.1 Form input Bagian A: identitas proposal (10 field) — kode lengkap, **belum diverifikasi di browser** (di-gate auth; lolos `tsc --noEmit`, `eslint`, dan `next build`)
+- [x] 1.1 Form input Bagian A: identitas proposal (10 field) — **diuji end-to-end** 2x (submission lengkap & submission gagal gate): auto-suggest nomor registrasi (increment benar), default tanggal & target selesai (H+5 hari kerja) benar, CurrencyField format ribuan benar
 
 ## FORM SELEKSI INVESTASI — BAGIAN B (Gate)
 
-- [x] 2.1 Form input Bagian B: 6 kriteria gugur (Ya/Tidak + bukti/catatan) — digabung dengan 2.2 dalam 1 commit (form tanpa logika submit tidak berguna sebagai unit terpisah)
-- [x] 2.2 Logika auto-stop: jika ada 1 "Tidak", submission otomatis TIDAK DILANJUTKAN, skip Bagian C — kode lengkap, **belum diverifikasi di browser** (lolos `tsc`, `eslint`, `next build`)
+- [x] 2.1 Form input Bagian B: 6 kriteria gugur (Ya/Tidak + bukti/catatan) — **diuji end-to-end**: badge real-time "Belum lengkap"→"Lulus Gate"/"Tidak Lulus" berubah persis saat radio diklik
+- [x] 2.2 Logika auto-stop: jika ada 1 "Tidak", submission otomatis TIDAK DILANJUTKAN, skip Bagian C — **diuji end-to-end** kedua jalur: semua "Ya" → lanjut Bagian C; satu "Tidak" (G3) → "TIDAK DILANJUTKAN" dengan rincian kriteria gagal, Bagian C dikonfirmasi terblokir (fetch langsung ke route-nya)
 
 ## FORM SELEKSI INVESTASI — BAGIAN C (Skoring)
 
-- [x] 3.1 Form input Bagian C: 8 kriteria skoring (skor 1-5 + justifikasi), muncul HANYA jika lulus gate
-- [x] 3.2 Tampilkan rubrik skoring (skor 1/3/5) sebagai referensi/tooltip saat isi tiap kriteria — data di tabel `scoring_rubrics` (migration 0005/0006), bukan hardcode UI
-- [x] 3.3 Kalkulasi otomatis: nilai tertimbang per kriteria (bobot x skor) dan total skor — matematika diverifikasi manual (bobot total = 1.00, semua skor 5 → total 5.00)
+- [x] 3.1 Form input Bagian C: 8 kriteria skoring (skor 1-5 + justifikasi), muncul HANYA jika lulus gate — **diuji end-to-end**
+- [x] 3.2 Tampilkan rubrik skoring (skor 1/3/5) sebagai referensi/tooltip saat isi tiap kriteria — **diuji end-to-end**: klik tombol "?" C1, teks rubrik yang tampil persis sama dengan isi `Rubik.xlsx`
+- [x] 3.3 Kalkulasi otomatis: nilai tertimbang per kriteria (bobot x skor) dan total skor — **diuji end-to-end**: 8 nilai tertimbang + total (3.55) di browser cocok 100% dengan hitungan manual
 
 ## FORM SELEKSI INVESTASI — BAGIAN D (Hasil & Approval Bertingkat)
 
-- [x] 4.1 Logika rekomendasi otomatis berdasarkan total skor (4 ambang batas) — fungsi murni `getRekomendasi()`, ambang batas diverifikasi manual di semua titik batas
-- [x] 4.2 Field catatan evaluator, pernyataan bebas benturan kepentingan — nama evaluator (paraf digital) auto-capture dari session, bukan input manual
-- [x] 4.3 Alur approval bertingkat: Manajer -> VP -> Direksi, dengan opsi hentikan/teruskan jika ditolak — proteksi akses via requireRole + RLS (bukan cuma UI)
-- [x] 4.4 Dashboard/riwayat submission (list semua proposal, beda tampilan per role) — tab "Menunggu Keputusan Saya"/"Riwayat" untuk manajer/vp/direksi, indikator "perlu keputusan Anda" untuk evaluator
+- [x] 4.1 Logika rekomendasi otomatis berdasarkan total skor (4 ambang batas) — **diuji end-to-end**: skor 3.55 → "PRIORITAS B" tampil benar
+- [x] 4.2 Field catatan evaluator, pernyataan bebas benturan kepentingan — **diuji end-to-end**
+- [x] 4.3 Alur approval bertingkat: Manajer -> VP -> Direksi, dengan opsi hentikan/teruskan jika ditolak — **diuji end-to-end penuh**: Manajer tolak → Evaluator pilih "teruskan" (label audit "diteruskan atas permintaan Evaluator" tampil) → VP setuju → Direksi setuju (final) → status akhir "Disetujui". Jalur "Hentikan proses" **belum dicoba langsung** (hanya code review) — cukup yakin karena polanya simetris dengan "teruskan", tapi tandai sebagai gap kecil kalau mau extra teliti.
+- [x] 4.4 Dashboard/riwayat submission (list semua proposal, beda tampilan per role) — **diuji end-to-end**: tab Manajer/VP "Menunggu Keputusan Saya", indikator "perlu keputusan Anda" untuk evaluator saat ada penolakan pending
 
 ## EXPORT & FINALISASI
 
-- [x] 5.1 Export PDF hasil evaluasi (layout sesuai form Excel, area tanda tangan 4 pihak) — `@react-pdf/renderer` dipilih (lebih ringan dari puppeteer di Vercel), diuji langsung dengan `renderToBuffer` + data mock (2 skenario: lengkap & gagal gate), hasil PDF valid
-- [ ] 5.2 Testing end-to-end alur lengkap — **butuh project Supabase asli**, belum bisa dijalankan; checklist skenario ada di DEPLOYMENT.md Bagian 4
-- [~] 5.3 Deploy ke Vercel — persiapan selesai (env var sudah eksternal sejak 0.1, `.env.local.example` ada, `DEPLOYMENT.md` ditulis lengkap langkah demi langkah); **eksekusi deploy sungguhan menunggu aksi user** (buat project Supabase, push ke GitHub, deploy di Vercel)
+- [x] 5.1 Export PDF hasil evaluasi (layout sesuai form Excel, area tanda tangan 4 pihak) — **diuji end-to-end** dengan submission asli yang sudah disetujui penuh: fetch ke route PDF, status 200, `%PDF-1.3` valid, 7784 bytes
+- [x] 5.2 Testing end-to-end alur lengkap — **selesai**, lihat ringkasan di bawah
+- [~] 5.3 Deploy ke Vercel — persiapan selesai (`DEPLOYMENT.md` Bagian 1-4 sudah dijalankan user: Supabase + migration + user test + testing lokal). **Push ke GitHub & deploy Vercel (Bagian 5-7) belum dilakukan.**
 
 ---
 
-## Status Kritis: Belum Ada Project Supabase Asli
+## Ringkasan Testing End-to-End (tahap 5.2) — 2026-07-09/10
 
-**Semua kode (tahap 0.1-5.1) ditulis dan lolos `tsc --noEmit`/`eslint`/`next build`, tapi HAMPIR TIDAK ADA yang pernah dites terhadap database/auth sungguhan.** `.env.local` masih berisi kredensial **placeholder/dummy** (`https://placeholder.supabase.co`), hanya supaya dev server tidak crash. Verifikasi sejauh ini terbatas pada: type-check, lint, production build, sanity-check matematika manual (kalkulasi skor, ambang batas rekomendasi), dan uji generate PDF dengan data mock langsung lewat `renderToBuffer` (tanpa lewat browser/route).
+Dijalankan langsung di browser (Claude Preview) terhadap project Supabase asli milik user, bukan simulasi. Skenario yang lolos:
 
-**Langkah selanjutnya ada di [DEPLOYMENT.md](DEPLOYMENT.md)**: buat project Supabase, jalankan 6 file migration di `supabase/migrations/` berurutan, tambah user test per role, baru testing end-to-end (5.2) benar-benar bisa dijalankan. Sampai itu terjadi, anggap seluruh alur data (RLS, trigger auto-approval-chain, Server Actions) sebagai **belum terverifikasi**, bukan "sudah selesai".
+1. Evaluator (`budi@gmail.com`) buat submission, isi Bagian A → semua default & auto-suggest benar.
+2. Bagian B semua "Ya" → lulus gate → lanjut Bagian C.
+3. Bagian C 8 skor campuran → kalkulasi & rekomendasi (PRIORITAS B, skor 3.55) benar.
+4. Bagian D → submit → status `menunggu_manajer`, 3 baris `approval_chain` otomatis dibuat (trigger).
+5. Manajer tolak (dengan catatan) → status TETAP `menunggu_manajer` (menunggu keputusan evaluator, sesuai desain).
+6. Evaluator pilih "Tetap teruskan" → status maju ke `menunggu_vp`, label transparansi audit tampil.
+7. VP setuju → status `menunggu_direksi`.
+8. Direksi setuju (final, tanpa opsi teruskan) → status `disetujui`.
+9. Download PDF submission yang sudah lengkap → valid.
+10. Submission kedua: Bagian B dengan 1 kriteria "Tidak" (G3) → "TIDAK DILANJUTKAN", Bagian C dikonfirmasi terblokir.
+11. Role guard: Direksi mencoba akses `/forms/seleksi-investasi/baru` → ditolak dengan pesan yang benar.
+
+**3 bug nyata ditemukan & diperbaiki selama testing ini** (lihat riwayat commit untuk detail lengkap):
+- Nama policy RLS mengandung spasi rawan rusak saat copy-paste ke SQL Editor (`4565d6b`).
+- Bug timezone di `tambahHariKerja()` dan default tanggal — hasil mundur 1 hari di server berzona WIB (`c0054ef`).
+- **Infinite recursion RLS** antara `submissions` dan `approval_chain` (dua percobaan fix: `a018258` lalu `7f596a3` yang benar-benar menyelesaikannya — pelajaran: fungsi helper RLS harus `plpgsql`, bukan `sql`, supaya tidak di-inline planner).
+
+Belum diuji eksplisit (gap kecil, bukan blocker): jalur "Hentikan proses" (evaluator menghentikan setelah penolakan), tampilan dashboard sebagai admin dengan banyak data, submission_history secara langsung (hanya diverifikasi tidak sengaja lewat log server, bukan lewat UI - belum ada halaman yang menampilkannya).
 
 ## Catatan Terbuka / Keputusan Tertunda
 
