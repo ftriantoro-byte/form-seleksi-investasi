@@ -1,0 +1,323 @@
+import { createClient } from "@/lib/supabase/server";
+import { updateTask, deleteTask } from "@/actions/pm/tasks";
+import { createComment, deleteComment } from "@/actions/pm/comments";
+import {
+  createChecklistItem,
+  toggleChecklistItem,
+  deleteChecklistItem,
+} from "@/actions/pm/checklist";
+import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
+import { TASK_STATUS_LABEL, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
+import { FormField } from "@/components/ui/FormField";
+
+type PmWorkspaceMemberProfile = { user_id: string; email: string };
+
+type PmTaskDetail = {
+  id: string;
+  list_id: string;
+  judul: string;
+  deskripsi: string | null;
+  status: string;
+  priority: string | null;
+  assignee_id: string | null;
+  due_date: string | null;
+};
+
+type PmChecklistItemRow = {
+  id: string;
+  konten: string;
+  selesai: boolean;
+};
+
+type PmCommentRow = {
+  id: string;
+  konten: string;
+  created_by: string;
+  created_at: string;
+};
+
+// Dipakai dari dua tempat: halaman penuh [taskId]/page.tsx (navigasi
+// langsung/refresh/link) dan modal @modal/(.)[taskId]/page.tsx (dibuka dari
+// List/Board lewat navigasi klien - lihat catatan intercepting routes di
+// PROGRESS.md tahap A.6). Komponen ini sendiri yang fetch data & handle
+// "tidak ditemukan" supaya kedua pemanggil tidak perlu duplikasi logika,
+// cuma beda bungkus (FormPageShell vs Modal overlay).
+export async function PmTaskDetailContent({
+  workspaceId,
+  spaceId,
+  listId,
+  taskId,
+  error,
+}: {
+  workspaceId: string;
+  spaceId: string;
+  listId: string;
+  taskId: string;
+  error?: string;
+}) {
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: taskRaw } = await supabase
+    .from("pm_tasks")
+    .select("id, list_id, judul, deskripsi, status, priority, assignee_id, due_date")
+    .eq("id", taskId)
+    .single();
+
+  const task = taskRaw as PmTaskDetail | null;
+
+  if (!task || task.list_id !== listId) {
+    return (
+      <p className="text-[15px] text-zinc-500">
+        Task tidak ditemukan (atau Anda tidak berwenang melihatnya).
+      </p>
+    );
+  }
+
+  const [{ data: anggotaRaw }, { data: checklistRaw }, { data: commentsRaw }] = await Promise.all(
+    [
+      supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
+      supabase
+        .from("pm_checklist_items")
+        .select("id, konten, selesai")
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("pm_comments")
+        .select("id, konten, created_by, created_at")
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: true }),
+    ],
+  );
+
+  const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
+  const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
+  const checklist = (checklistRaw ?? []) as PmChecklistItemRow[];
+  const comments = (commentsRaw ?? []) as PmCommentRow[];
+
+  const hiddenFields = (
+    <>
+      <input type="hidden" name="workspaceId" value={workspaceId} />
+      <input type="hidden" name="spaceId" value={spaceId} />
+      <input type="hidden" name="listId" value={listId} />
+      <input type="hidden" name="taskId" value={taskId} />
+    </>
+  );
+
+  return (
+    <>
+      {error && (
+        <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">
+          {error}
+        </p>
+      )}
+
+      <div className="rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Detail Task</h3>
+        <form action={updateTask} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {hiddenFields}
+
+          <div className="sm:col-span-2">
+            <FormField label="Judul Task" name="judul" defaultValue={task.judul} />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-[13px] font-medium text-zinc-500">
+              Deskripsi (opsional)
+            </label>
+            <textarea
+              name="deskripsi"
+              rows={3}
+              defaultValue={task.deskripsi ?? ""}
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none transition-all duration-150 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">Assignee</label>
+            <select
+              name="assigneeId"
+              defaultValue={task.assignee_id ?? ""}
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              <option value="">- Belum ditentukan -</option>
+              {anggota.map((a) => (
+                <option key={a.user_id} value={a.user_id}>
+                  {a.email}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <FormField
+            label="Due Date"
+            name="dueDate"
+            type="date"
+            defaultValue={task.due_date ?? ""}
+            required={false}
+          />
+
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">Status</label>
+            <select
+              name="status"
+              defaultValue={task.status}
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              {TASK_STATUS_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {TASK_STATUS_LABEL[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">Priority</label>
+            <select
+              name="priority"
+              defaultValue={task.priority ?? ""}
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              <option value="">- Tidak ada -</option>
+              {TASK_PRIORITY_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {TASK_PRIORITY_LABEL[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
+            >
+              Simpan Perubahan
+            </button>
+          </div>
+        </form>
+
+        <form action={deleteTask} className="mt-4">
+          {hiddenFields}
+          <button
+            type="submit"
+            className="text-[13px] font-medium text-red-500 transition-colors hover:text-red-700"
+          >
+            Hapus Task ini
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Checklist</h3>
+        <ul className="mt-4 space-y-1.5">
+          {checklist.map((item) => (
+            <li key={item.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50">
+              <form action={toggleChecklistItem}>
+                {hiddenFields}
+                <input type="hidden" name="itemId" value={item.id} />
+                <button
+                  type="submit"
+                  aria-label={item.selesai ? "Tandai belum selesai" : "Tandai selesai"}
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] transition-colors ${
+                    item.selesai
+                      ? "border-zinc-900 bg-zinc-900 text-white"
+                      : "border-zinc-300 text-transparent hover:border-zinc-400"
+                  }`}
+                >
+                  ✓
+                </button>
+              </form>
+              <span
+                className={`flex-1 text-[14px] ${
+                  item.selesai ? "text-zinc-400 line-through" : "text-zinc-700"
+                }`}
+              >
+                {item.konten}
+              </span>
+              <form action={deleteChecklistItem}>
+                {hiddenFields}
+                <input type="hidden" name="itemId" value={item.id} />
+                <button
+                  type="submit"
+                  className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
+                >
+                  Hapus
+                </button>
+              </form>
+            </li>
+          ))}
+          {checklist.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Belum ada item checklist.</li>
+          )}
+        </ul>
+
+        <form action={createChecklistItem} className="mt-4 flex items-center gap-3">
+          {hiddenFields}
+          <input
+            name="konten"
+            placeholder="Tambah item checklist..."
+            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          >
+            Tambah
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Komentar</h3>
+        <ul className="mt-4 space-y-3">
+          {comments.map((comment) => (
+            <li key={comment.id} className="rounded-xl bg-zinc-50 px-4 py-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-medium text-zinc-700">
+                  {emailByUserId.get(comment.created_by) ?? "Pengguna"}
+                </span>
+                {user && comment.created_by === user.id && (
+                  <form action={deleteComment}>
+                    {hiddenFields}
+                    <input type="hidden" name="commentId" value={comment.id} />
+                    <button
+                      type="submit"
+                      className="text-[12px] text-zinc-400 transition-colors hover:text-red-600"
+                    >
+                      Hapus
+                    </button>
+                  </form>
+                )}
+              </div>
+              <p className="mt-1 text-[14px] text-zinc-600">{comment.konten}</p>
+            </li>
+          ))}
+          {comments.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Belum ada komentar.</li>
+          )}
+        </ul>
+
+        <form action={createComment} className="mt-4 flex items-start gap-3">
+          {hiddenFields}
+          <textarea
+            name="konten"
+            rows={2}
+            placeholder="Tulis komentar..."
+            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-zinc-900 px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
+          >
+            Kirim
+          </button>
+        </form>
+      </div>
+    </>
+  );
+}

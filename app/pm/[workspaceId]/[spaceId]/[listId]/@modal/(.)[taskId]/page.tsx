@@ -1,8 +1,7 @@
-import { FormPageShell } from "@/components/ui/FormPageShell";
-import { FormPageHeader } from "@/components/ui/FormPageHeader";
+import { PmTaskModal } from "@/components/pm/PmTaskModal";
 import { PmTaskDetailContent } from "@/components/pm/PmTaskDetailContent";
 
-export default async function TaskDetailPage({
+export default async function TaskModalPage({
   params,
   searchParams,
 }: {
@@ -14,12 +13,7 @@ export default async function TaskDetailPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
 
   return (
-    <FormPageShell maxWidth="max-w-4xl">
-      <FormPageHeader
-        title="Detail Task"
-        backHref={`/pm/${workspaceId}/${spaceId}/${listId}`}
-        backLabel="Kembali ke List"
-      />
+    <PmTaskModal>
       <PmTaskDetailContent
         workspaceId={workspaceId}
         spaceId={spaceId}
@@ -27,6 +21,6 @@ export default async function TaskDetailPage({
         taskId={taskId}
         error={error}
       />
-    </FormPageShell>
+    </PmTaskModal>
   );
 }
