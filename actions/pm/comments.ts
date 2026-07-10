@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requirePmAccess } from "@/lib/pm/access";
 import { commentSchema } from "@/lib/pm/schema";
+import { notifyTaskCommented } from "@/lib/pm/notifications";
 
 function taskPath(workspaceId: string, spaceId: string, listId: string, taskId: string) {
   return `/pm/${workspaceId}/${spaceId}/${listId}/${taskId}`;
@@ -40,6 +41,21 @@ export async function createComment(formData: FormData) {
 
   if (error) {
     return redirect(`${path}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  const { data: task } = await supabase
+    .from("pm_tasks")
+    .select("judul, assignee_id")
+    .eq("id", taskId)
+    .single();
+
+  if (task) {
+    await notifyTaskCommented(supabase, {
+      assigneeId: task.assignee_id,
+      actorId: user.id,
+      taskId,
+      judul: task.judul,
+    });
   }
 
   redirect(path);

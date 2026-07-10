@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requirePmAccess } from "@/lib/pm/access";
 import { taskSchema } from "@/lib/pm/schema";
+import { notifyTaskAssigned } from "@/lib/pm/notifications";
 
 function pathBase(workspaceId: string, spaceId: string, listId: string) {
   return `/pm/${workspaceId}/${spaceId}/${listId}`;
@@ -59,6 +60,13 @@ export async function createTask(formData: FormData) {
     return redirect(`${base}?error=${encodeURIComponent(error?.message ?? "Gagal membuat Task.")}`);
   }
 
+  await notifyTaskAssigned(supabase, {
+    assigneeId: assigneeId || null,
+    actorId: user.id,
+    taskId: task.id,
+    judul,
+  });
+
   redirect(`${base}/${task.id}`);
 }
 
@@ -66,6 +74,12 @@ export async function updateTask(formData: FormData) {
   await requirePmAccess();
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return redirect("/login");
+
   const workspaceId = formData.get("workspaceId") as string;
   const spaceId = formData.get("spaceId") as string;
   const listId = formData.get("listId") as string;
@@ -88,6 +102,12 @@ export async function updateTask(formData: FormData) {
 
   const { judul, deskripsi, status, priority, assigneeId, dueDate } = parsed.data;
 
+  const { data: existing } = await supabase
+    .from("pm_tasks")
+    .select("assignee_id")
+    .eq("id", taskId)
+    .single();
+
   const { error } = await supabase
     .from("pm_tasks")
     .update({
@@ -102,6 +122,15 @@ export async function updateTask(formData: FormData) {
 
   if (error) {
     return redirect(`${base}/${taskId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  if (assigneeId && assigneeId !== existing?.assignee_id) {
+    await notifyTaskAssigned(supabase, {
+      assigneeId,
+      actorId: user.id,
+      taskId,
+      judul,
+    });
   }
 
   redirect(`${base}/${taskId}`);
