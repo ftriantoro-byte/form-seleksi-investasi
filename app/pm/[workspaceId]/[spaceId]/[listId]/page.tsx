@@ -2,10 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { renameList, deleteList } from "@/actions/pm/lists";
 import { createTask } from "@/actions/pm/tasks";
-import {
-  TASK_STATUS_VALUES,
-  TASK_PRIORITY_VALUES,
-} from "@/lib/pm/schema";
+import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
 import {
   TASK_STATUS_LABEL,
   TASK_STATUS_BADGE_KELAS,
@@ -15,6 +12,7 @@ import {
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { FormField } from "@/components/ui/FormField";
+import { PmBoardView } from "@/components/pm/PmBoardView";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 
@@ -27,15 +25,41 @@ type PmTaskRow = {
   due_date: string | null;
 };
 
+const SORT_VALUES = ["created_at", "judul", "due_date"] as const;
+const SORT_LABEL: Record<string, string> = {
+  created_at: "Terbaru dibuat",
+  judul: "Judul (A-Z)",
+  due_date: "Due Date terdekat",
+};
+
 export default async function ListDetailPage({
   params,
   searchParams,
 }: {
   params: Promise<{ workspaceId: string; spaceId: string; listId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    view?: string;
+    status?: string;
+    assignee?: string;
+    priority?: string;
+    sort?: string;
+  }>;
 }) {
   const { workspaceId, spaceId, listId } = await params;
-  const { error } = await searchParams;
+  const {
+    error,
+    view: viewParam,
+    status: statusFilter,
+    assignee: assigneeFilter,
+    priority: priorityFilter,
+    sort: sortParam,
+  } = await searchParams;
+  const view = viewParam === "board" ? "board" : "list";
+  const sort = SORT_VALUES.includes(sortParam as (typeof SORT_VALUES)[number])
+    ? (sortParam as (typeof SORT_VALUES)[number])
+    : "created_at";
+
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
@@ -55,18 +79,28 @@ export default async function ListDetailPage({
     );
   }
 
+  let taskQuery = supabase
+    .from("pm_tasks")
+    .select("id, judul, status, priority, assignee_id, due_date")
+    .eq("list_id", listId);
+
+  if (statusFilter) taskQuery = taskQuery.eq("status", statusFilter);
+  if (assigneeFilter) taskQuery = taskQuery.eq("assignee_id", assigneeFilter);
+  if (priorityFilter) taskQuery = taskQuery.eq("priority", priorityFilter);
+
+  taskQuery = taskQuery.order(sort, { ascending: true, nullsFirst: false });
+
   const [{ data: tasksRaw }, { data: anggotaRaw }] = await Promise.all([
-    supabase
-      .from("pm_tasks")
-      .select("id, judul, status, priority, assignee_id, due_date")
-      .eq("list_id", listId)
-      .order("created_at", { ascending: true }),
+    taskQuery,
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
   ]);
 
   const tasks = (tasksRaw ?? []) as PmTaskRow[];
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
+  const emailByUserIdRecord = Object.fromEntries(emailByUserId);
+
+  const listBase = `/pm/${workspaceId}/${spaceId}/${listId}`;
 
   return (
     <FormPageShell maxWidth="max-w-4xl">
@@ -83,68 +117,157 @@ export default async function ListDetailPage({
         </p>
       )}
 
-      <div className="overflow-hidden rounded-3xl border border-black/[0.04] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-[13px]">
-            <thead>
-              <tr className="border-b border-zinc-100 text-zinc-400">
-                <th className="px-6 py-3.5 font-medium">Task</th>
-                <th className="px-3 py-3.5 font-medium">Assignee</th>
-                <th className="px-3 py-3.5 font-medium">Due Date</th>
-                <th className="px-3 py-3.5 font-medium">Status</th>
-                <th className="px-3 py-3.5 font-medium">Priority</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task) => (
-                <tr
-                  key={task.id}
-                  className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
-                >
-                  <td className="px-6 py-3.5 font-medium text-zinc-800">
-                    <Link
-                      href={`/pm/${workspaceId}/${spaceId}/${listId}/${task.id}`}
-                      className="hover:underline"
-                    >
-                      {task.judul}
-                    </Link>
-                  </td>
-                  <td className="px-3 py-3.5 text-zinc-500">
-                    {task.assignee_id ? (emailByUserId.get(task.assignee_id) ?? "-") : "-"}
-                  </td>
-                  <td className="px-3 py-3.5 text-zinc-500">{task.due_date ?? "-"}</td>
-                  <td className="px-3 py-3.5">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                        TASK_STATUS_BADGE_KELAS[task.status] ?? "bg-zinc-100 text-zinc-500"
-                      }`}
-                    >
-                      {TASK_STATUS_LABEL[task.status] ?? task.status}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3.5">
-                    {task.priority && (
-                      <span
-                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                          TASK_PRIORITY_BADGE_KELAS[task.priority] ?? "bg-zinc-100 text-zinc-500"
-                        }`}
-                      >
-                        {TASK_PRIORITY_LABEL[task.priority] ?? task.priority}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {tasks.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-10 text-center text-zinc-400">
-                    Belum ada Task.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      <div className="flex items-center justify-between gap-4">
+        <div className="inline-flex rounded-full bg-zinc-100 p-1">
+          <Link
+            href={{ pathname: listBase, query: { view: "list" } }}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+              view === "list" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+            }`}
+          >
+            List
+          </Link>
+          <Link
+            href={{ pathname: listBase, query: { view: "board" } }}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+              view === "board" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+            }`}
+          >
+            Board
+          </Link>
         </div>
+      </div>
+
+      <form className="mt-4 flex flex-wrap items-center gap-3">
+        <input type="hidden" name="view" value={view} />
+        <select
+          name="status"
+          defaultValue={statusFilter ?? ""}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+        >
+          <option value="">Semua status</option>
+          {TASK_STATUS_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {TASK_STATUS_LABEL[value]}
+            </option>
+          ))}
+        </select>
+        <select
+          name="assignee"
+          defaultValue={assigneeFilter ?? ""}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+        >
+          <option value="">Semua assignee</option>
+          {anggota.map((a) => (
+            <option key={a.user_id} value={a.user_id}>
+              {a.email}
+            </option>
+          ))}
+        </select>
+        <select
+          name="priority"
+          defaultValue={priorityFilter ?? ""}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+        >
+          <option value="">Semua priority</option>
+          {TASK_PRIORITY_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {TASK_PRIORITY_LABEL[value]}
+            </option>
+          ))}
+        </select>
+        {view === "list" && (
+          <select
+            name="sort"
+            defaultValue={sort}
+            className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+          >
+            {SORT_VALUES.map((value) => (
+              <option key={value} value={value}>
+                {SORT_LABEL[value]}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          type="submit"
+          className="rounded-full bg-zinc-900 px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
+        >
+          Terapkan
+        </button>
+        <Link
+          href={{ pathname: listBase, query: { view } }}
+          className="text-[13px] text-zinc-400 transition-colors hover:text-zinc-700"
+        >
+          Reset filter
+        </Link>
+      </form>
+
+      <div className="mt-4">
+        {view === "board" ? (
+          <PmBoardView tasks={tasks} emailByUserId={emailByUserIdRecord} listBase={listBase} />
+        ) : (
+          <div className="overflow-hidden rounded-3xl border border-black/[0.04] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-left text-[13px]">
+                <thead>
+                  <tr className="border-b border-zinc-100 text-zinc-400">
+                    <th className="px-6 py-3.5 font-medium">Task</th>
+                    <th className="px-3 py-3.5 font-medium">Assignee</th>
+                    <th className="px-3 py-3.5 font-medium">Due Date</th>
+                    <th className="px-3 py-3.5 font-medium">Status</th>
+                    <th className="px-3 py-3.5 font-medium">Priority</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tasks.map((task) => (
+                    <tr
+                      key={task.id}
+                      className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
+                    >
+                      <td className="px-6 py-3.5 font-medium text-zinc-800">
+                        <Link href={`${listBase}/${task.id}`} className="hover:underline">
+                          {task.judul}
+                        </Link>
+                      </td>
+                      <td className="px-3 py-3.5 text-zinc-500">
+                        {task.assignee_id ? (emailByUserId.get(task.assignee_id) ?? "-") : "-"}
+                      </td>
+                      <td className="px-3 py-3.5 text-zinc-500">{task.due_date ?? "-"}</td>
+                      <td className="px-3 py-3.5">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            TASK_STATUS_BADGE_KELAS[task.status] ?? "bg-zinc-100 text-zinc-500"
+                          }`}
+                        >
+                          {TASK_STATUS_LABEL[task.status] ?? task.status}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3.5">
+                        {task.priority && (
+                          <span
+                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                              TASK_PRIORITY_BADGE_KELAS[task.priority] ?? "bg-zinc-100 text-zinc-500"
+                            }`}
+                          >
+                            {TASK_PRIORITY_LABEL[task.priority] ?? task.priority}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {tasks.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-zinc-400">
+                        Belum ada Task.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="mt-6 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">

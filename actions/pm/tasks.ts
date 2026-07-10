@@ -107,6 +107,27 @@ export async function updateTask(formData: FormData) {
   redirect(`${base}/${taskId}`);
 }
 
+// Dipanggil langsung (bukan lewat <form action>) dari PmBoardView (Client
+// Component, drag-and-drop) saat kartu Task dipindah ke kolom status lain.
+export async function updateTaskStatus(taskId: string, status: string) {
+  await requirePmAccess();
+
+  const parsedStatus = taskSchema.shape.status.safeParse(status);
+  if (!parsedStatus.success) {
+    throw new Error("Status tidak valid.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pm_tasks")
+    .update({ status: parsedStatus.data })
+    .eq("id", taskId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 export async function deleteTask(formData: FormData) {
   await requirePmAccess();
 
