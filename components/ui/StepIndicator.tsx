@@ -1,16 +1,24 @@
-const STEPS = [
+type Step = { key: string; label: string };
+
+const DEFAULT_STEPS: Step[] = [
   { key: "A", label: "Identitas" },
   { key: "B", label: "Gate" },
   { key: "C", label: "Skoring" },
   { key: "D", label: "Hasil" },
-] as const;
+];
 
-export function StepIndicator({ current }: { current: "A" | "B" | "C" | "D" }) {
-  const currentIndex = STEPS.findIndex((s) => s.key === current);
+export function StepIndicator({
+  current,
+  steps = DEFAULT_STEPS,
+}: {
+  current: string;
+  steps?: Step[];
+}) {
+  const currentIndex = steps.findIndex((s) => s.key === current);
 
   return (
     <div className="mb-8 flex items-center">
-      {STEPS.map((step, i) => {
+      {steps.map((step, i) => {
         const isDone = i < currentIndex;
         const isCurrent = i === currentIndex;
         return (
@@ -33,7 +41,7 @@ export function StepIndicator({ current }: { current: "A" | "B" | "C" | "D" }) {
                 {step.label}
               </span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <div
                 className={`mx-2 h-px flex-1 transition-colors duration-200 ${
                   isDone ? "bg-zinc-900/15" : "bg-zinc-100"
