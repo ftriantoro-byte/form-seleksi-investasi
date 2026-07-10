@@ -2,6 +2,7 @@ import Link from "next/link";
 import { logout } from "@/actions/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole, type AppRole } from "@/lib/supabase/role";
+import { getPmMembership } from "@/lib/pm/access";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -53,6 +54,7 @@ export default async function HomePage() {
 
   const role = user ? await getCurrentUserRole() : null;
   const summary = user && role ? await getSummary(supabase, user.id, role) : null;
+  const pmRole = user ? await getPmMembership() : null;
 
   return (
     <div className="min-h-screen bg-[#fbfbfd]">
@@ -74,6 +76,14 @@ export default async function HomePage() {
               >
                 Dashboard
               </Link>
+              {pmRole && (
+                <Link
+                  href="/pm"
+                  className="text-[14px] text-zinc-500 transition-colors hover:text-zinc-900"
+                >
+                  Manajemen Proyek
+                </Link>
+              )}
               <form action={logout}>
                 <button
                   type="submit"

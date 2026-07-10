@@ -121,7 +121,7 @@ Belum diuji eksplisit (gap kecil, bukan blocker): jalur "Hentikan proses" (evalu
 ### FASE A — Inti
 
 - [x] A.1 Skema database inti (`pm_workspaces`, `pm_workspace_members`, `pm_members`, `pm_spaces`, `pm_lists`, `pm_tasks`) + RLS — **dijalankan & diverifikasi** di project Supabase asli (3 migration lewat SQL Editor, admin PM pertama di-bootstrap manual ke `pm_members`); regresi nol dikonfirmasi: landing page & dashboard modul form (Seleksi Investasi + Quick Screen Proyek) tetap tampil normal tanpa error setelah migration
-- [ ] A.2 Nav & akses: menu modul PM di dashboard cuma muncul untuk user yang ada di `pm_members`
+- [x] A.2 Nav & akses: menu modul PM di dashboard cuma muncul untuk user yang ada di `pm_members` — **diuji end-to-end** di browser sungguhan terhadap Supabase asli: `budi@gmail.com` (bukan anggota `pm_members`) tidak melihat link "Manajemen Proyek" & `/pm` menampilkan pesan akses ditolak; `fajar@wikagedung.id` (admin di `pm_members`) melihat link-nya dan berhasil masuk ke halaman placeholder `/pm` tanpa error
 - [ ] A.3 CRUD Workspace/Space/List (role admin/member, tanpa Guest)
 - [ ] A.4 CRUD Task (assignee, due date, status, priority) + Comment + Checklist
 - [ ] A.5 List View (tabel) + Board View (Kanban drag-and-drop)
