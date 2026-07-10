@@ -39,7 +39,9 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 - [x] 5.1 Export PDF hasil evaluasi (layout sesuai form Excel, area tanda tangan 4 pihak) — **diuji end-to-end** dengan submission asli yang sudah disetujui penuh: fetch ke route PDF, status 200, `%PDF-1.3` valid, 7784 bytes
 - [x] 5.2 Testing end-to-end alur lengkap — **selesai**, lihat ringkasan di bawah
-- [~] 5.3 Deploy ke Vercel — persiapan selesai (`DEPLOYMENT.md` Bagian 1-4 sudah dijalankan user: Supabase + migration + user test + testing lokal). **Push ke GitHub & deploy Vercel (Bagian 5-7) belum dilakukan.**
+- [x] 5.3 Deploy ke Vercel — **selesai**. Repo di [github.com/ftriantoro-byte/form-seleksi-investasi](https://github.com/ftriantoro-byte/form-seleksi-investasi), live di **[form-seleksi-investasi.vercel.app](https://form-seleksi-investasi.vercel.app)**, terverifikasi (halaman login termuat benar, bukan error). Satu masalah ditemukan & diperbaiki saat deploy: lihat catatan "Sensitive env var" di bawah.
+
+**Semua tahap FASE SETUP s/d EXPORT & FINALISASI selesai dan terverifikasi. Form Seleksi Investasi production-ready.**
 
 ---
 
@@ -74,3 +76,4 @@ Belum diuji eksplisit (gap kecil, bukan blocker): jalur "Hentikan proses" (evalu
 - Beberapa keputusan desain untuk resolusi ambiguitas PANDUAN.md di tahap 4.1-4.3 (rekomendasi bukan status tersendiri, approval tetap jalan penuh berapa pun skornya, "PARKIR - evaluasi ulang maks 1x" belum ada mekanismenya) dicatat lengkap di ARCHITECTURE.md §6.
 - "PARKIR - minta perbaikan proposal, evaluasi ulang maksimal 1 kali": teks rekomendasi ini persis dari PANDUAN.md, tapi **mekanisme evaluasi ulang/revisi proposal belum ada** (tidak ada counter, tidak ada alur resubmit). Jika dibutuhkan, ini scope tambahan di luar checklist asli — tanyakan ke user dulu sebelum membangunnya.
 - Sanity-check manual (di luar aplikasi, tanpa DB): ambang batas rekomendasi 4.1 dicoba di titik batas (4.00, 3.99, 3.00, 2.99, 2.00, 1.99) — hasil sesuai spesifikasi.
+- **Pelajaran deploy Vercel (tahap 5.3):** deployment pertama gagal dengan `Invalid supabaseUrl` walau env var sudah diisi, karena toggle **"Sensitive"** aktif pada `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`. Variable `NEXT_PUBLIC_*` harus **tidak** ditandai Sensitive (nilainya memang didesain publik/terlihat di browser) — kalau ditandai Sensitive, Next.js gagal meng-inline nilainya saat build. Solusi: hapus & buat ulang variable dengan toggle Sensitive OFF, lalu redeploy. **Catat ini di DEPLOYMENT.md untuk form-form berikutnya** supaya tidak terulang.

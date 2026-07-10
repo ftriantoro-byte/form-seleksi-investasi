@@ -77,15 +77,20 @@ Project ini sudah punya git repo lokal (terpisah dari project lain di `D:\PROYEK
 3. Di bagian **Environment Variables**, tambahkan dua variable (nilai sama seperti `.env.local`):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
+   ⚠️ **PENTING — jangan aktifkan toggle "Sensitive"** pada kedua variable ini. Variable berawalan `NEXT_PUBLIC_` memang didesain untuk terlihat di browser (bukan rahasia); kalau ditandai "Sensitive", Next.js **gagal meng-inline nilainya saat build** dan aplikasi akan crash dengan error `Invalid supabaseUrl: Must be a valid HTTP or HTTPS URL` begitu diakses — persis yang terjadi di deployment pertama form ini. Kalau sudah terlanjur ditandai Sensitive dan tidak bisa dimatikan togglenya, **hapus variable itu dan buat ulang** dari awal dengan Sensitive tetap OFF.
 4. Klik **Deploy**, tunggu build selesai.
 5. Setelah dapat URL (format `https://<nama-project>.vercel.app`), buka dan cek halaman `/login` muncul dengan benar.
+6. Kalau env var ditambah/diubah **setelah** deploy pertama, wajib **redeploy manual** — perubahan env var tidak otomatis diterapkan ke deployment yang sudah jalan. Caranya: **Deployments** → titik tiga (⋯) pada deployment teratas → **Redeploy**.
 
 ## Bagian 7 — Verifikasi Setelah Deploy
 
 Setelah Anda deploy dan kirim URL-nya, beri tahu saya — saya akan bantu:
-- Cek halaman login & landing page termuat benar
-- Cek tidak ada error di console/network
+- Cek halaman login & landing page termuat benar (lewat `WebFetch` ke URL production)
+- Cek log runtime di Vercel Dashboard (menu **Logs**) kalau ada error
 - Pandu Anda ulangi sebagian skenario testing Bagian 4 di URL production
+
+**Status form Seleksi Investasi:** sudah dijalankan lengkap — repo di [github.com/ftriantoro-byte/form-seleksi-investasi](https://github.com/ftriantoro-byte/form-seleksi-investasi), live di **[form-seleksi-investasi.vercel.app](https://form-seleksi-investasi.vercel.app)**, terverifikasi jalan normal setelah masalah "Sensitive" env var di atas diperbaiki.
 
 ---
 
