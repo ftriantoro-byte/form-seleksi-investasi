@@ -66,27 +66,31 @@ function FormKeputusan({
   return (
     <form
       action={putuskanApproval}
-      className="mt-6 flex flex-col gap-3 rounded-lg border border-gray-200 p-4"
+      className="flex flex-col gap-4 rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-7"
     >
       <input type="hidden" name="submissionId" value={submissionId} />
       <input type="hidden" name="tingkat" value={tingkat} />
-      <p className="text-sm font-medium text-gray-700">
+      <p className="text-[14px] font-medium text-zinc-700">
         Keputusan Anda ({LABEL_TINGKAT[tingkat]})
-        {isFinal && " — final, tidak ada eskalasi setelah ini"}
+        {isFinal && (
+          <span className="ml-2 rounded-full bg-zinc-100 px-2.5 py-0.5 text-[11px] font-medium text-zinc-500">
+            final &middot; tanpa eskalasi
+          </span>
+        )}
       </p>
       <textarea
         name="catatan"
         required
         placeholder="Catatan (wajib)"
         rows={3}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none transition-all duration-150 placeholder:text-zinc-400 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
       />
       <div className="flex gap-3">
         <button
           type="submit"
           name="keputusan"
           value="disetujui"
-          className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
+          className="rounded-full bg-emerald-600 px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-all duration-150 hover:bg-emerald-700 active:scale-[0.98]"
         >
           Setuju
         </button>
@@ -94,7 +98,7 @@ function FormKeputusan({
           type="submit"
           name="keputusan"
           value="ditolak"
-          className="rounded-md bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-800"
+          className="rounded-full bg-red-600 px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-all duration-150 hover:bg-red-700 active:scale-[0.98]"
         >
           Tolak
         </button>
@@ -113,11 +117,11 @@ function PilihanLanjutan({
   return (
     <form
       action={putuskanLanjutan}
-      className="mt-6 flex flex-col gap-3 rounded-lg border border-amber-300 bg-amber-50 p-4"
+      className="flex flex-col gap-4 rounded-3xl border border-amber-100 bg-amber-50/60 p-6 sm:p-7"
     >
       <input type="hidden" name="submissionId" value={submissionId} />
       <input type="hidden" name="tingkat" value={tingkat} />
-      <p className="text-sm font-medium text-amber-800">
+      <p className="text-[14px] font-medium text-amber-800">
         Proposal ditolak di tingkat {LABEL_TINGKAT[tingkat]}. Pilih tindak lanjut:
       </p>
       <div className="flex gap-3">
@@ -125,7 +129,7 @@ function PilihanLanjutan({
           type="submit"
           name="pilihan"
           value="hentikan"
-          className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-all duration-150 hover:bg-black active:scale-[0.98]"
         >
           Hentikan proses
         </button>
@@ -133,7 +137,7 @@ function PilihanLanjutan({
           type="submit"
           name="pilihan"
           value="teruskan"
-          className="rounded-md border border-gray-400 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+          className="rounded-full border border-amber-300 bg-white px-5 py-2.5 text-[14px] font-medium text-amber-700 shadow-sm transition-all duration-150 hover:bg-amber-50 active:scale-[0.98]"
         >
           Tetap teruskan
         </button>

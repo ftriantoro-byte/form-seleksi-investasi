@@ -6,6 +6,9 @@ import {
   hariIniWib,
 } from "@/lib/forms/seleksi-investasi/utils";
 import { BagianAForm } from "@/components/forms/seleksi-investasi/BagianAForm";
+import { FormPageShell } from "@/components/ui/FormPageShell";
+import { FormPageHeader } from "@/components/ui/FormPageHeader";
+import { StepIndicator } from "@/components/ui/StepIndicator";
 
 export default async function FormBaruPage({
   searchParams,
@@ -17,11 +20,11 @@ export default async function FormBaruPage({
 
   if (role !== "evaluator") {
     return (
-      <main className="mx-auto max-w-xl p-8">
-        <p className="text-sm text-gray-600">
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
           Hanya role Evaluator yang bisa membuat proposal baru.
         </p>
-      </main>
+      </FormPageShell>
     );
   }
 
@@ -43,9 +46,13 @@ export default async function FormBaruPage({
   const hariIni = hariIniWib();
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="text-2xl font-semibold">Seleksi Awal Proposal Investasi</h1>
-      <p className="mt-1 text-sm text-gray-600">Bagian A &mdash; Identitas Proposal</p>
+    <FormPageShell>
+      <FormPageHeader
+        title="Seleksi Awal Proposal Investasi"
+        subtitle="Bagian A — Identitas Proposal"
+        backHref="/forms/seleksi-investasi"
+      />
+      <StepIndicator current="A" />
 
       <BagianAForm
         nomorRegistrasiDefault={nomorRegistrasiDefault}
@@ -54,6 +61,6 @@ export default async function FormBaruPage({
         evaluatorPicDefault={user?.user_metadata?.full_name ?? user?.email ?? ""}
         error={error}
       />
-    </main>
+    </FormPageShell>
   );
 }

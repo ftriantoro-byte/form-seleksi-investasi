@@ -77,20 +77,20 @@ export function getRekomendasi(totalSkor: number): { label: string; kelas: strin
   if (totalSkor >= 4) {
     return {
       label: "PRIORITAS A - lanjut studi kelayakan penuh",
-      kelas: "bg-green-100 text-green-800",
+      kelas: "bg-emerald-50 text-emerald-600",
     };
   }
   if (totalSkor >= 3) {
     return {
       label: "PRIORITAS B - lanjut dengan catatan perbaikan/klarifikasi",
-      kelas: "bg-blue-100 text-blue-800",
+      kelas: "bg-blue-50 text-blue-600",
     };
   }
   if (totalSkor >= 2) {
     return {
       label: "PARKIR - minta perbaikan proposal, evaluasi ulang maksimal 1 kali",
-      kelas: "bg-yellow-100 text-yellow-800",
+      kelas: "bg-amber-50 text-amber-600",
     };
   }
-  return { label: "TIDAK DILANJUTKAN", kelas: "bg-red-100 text-red-800" };
+  return { label: "TIDAK DILANJUTKAN", kelas: "bg-red-50 text-red-600" };
 }

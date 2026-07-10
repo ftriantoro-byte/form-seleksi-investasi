@@ -1,19 +1,22 @@
 import Link from "next/link";
+import { FormPageShell } from "@/components/ui/FormPageShell";
+import { FormPageHeader } from "@/components/ui/FormPageHeader";
 
 export default function SeleksiInvestasiPage() {
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="text-2xl font-semibold">Seleksi Awal Proposal Investasi</h1>
-      <p className="mt-2 text-gray-600">
-        Seleksi awal proposal investasi: kriteria gugur, skoring berbobot, dan
-        approval bertingkat (Manajer → VP → Direksi).
-      </p>
+    <FormPageShell>
+      <FormPageHeader
+        title="Seleksi Awal Proposal Investasi"
+        subtitle="Kriteria gugur, skoring berbobot, dan approval bertingkat (Manajer → VP → Direksi)."
+        backHref="/"
+        backLabel="Semua form"
+      />
       <Link
         href="/forms/seleksi-investasi/baru"
-        className="mt-6 inline-block rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        className="inline-flex items-center rounded-full bg-zinc-900 px-5 py-3 text-[15px] font-medium text-white shadow-sm transition-all duration-150 hover:bg-black active:scale-[0.98]"
       >
         Buat proposal baru
       </Link>
-    </main>
+    </FormPageShell>
   );
 }

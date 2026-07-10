@@ -9,10 +9,12 @@ import {
 } from "@/lib/forms/seleksi-investasi/schema";
 import {
   STATUS_LABEL,
+  STATUS_BADGE_KELAS,
   LABEL_TINGKAT,
   LABEL_STATUS_APPROVAL,
 } from "@/lib/forms/seleksi-investasi/labels";
 import { ApprovalActions } from "@/components/forms/seleksi-investasi/ApprovalActions";
+import { FormPageShell } from "@/components/ui/FormPageShell";
 
 type SubmissionData = {
   bagianA?: {
@@ -58,6 +60,23 @@ type ApprovalRow = {
 
 const URUTAN_TINGKAT = ["manajer", "vp", "direksi"] as const;
 
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-7">
+      <h2 className="text-[13px] font-semibold uppercase tracking-wide text-zinc-400">
+        {title}
+      </h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
 export default async function SubmissionDetailPage({
   params,
   searchParams,
@@ -82,11 +101,11 @@ export default async function SubmissionDetailPage({
 
   if (!submission) {
     return (
-      <main className="mx-auto max-w-3xl p-8">
-        <p className="text-sm text-gray-600">
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
           Proposal tidak ditemukan (atau Anda tidak berwenang melihatnya).
         </p>
-      </main>
+      </FormPageShell>
     );
   }
 
@@ -119,173 +138,230 @@ export default async function SubmissionDetailPage({
 
   const { bagianA, bagianB, bagianC, bagianD } = submission.data;
   const rekomendasi = submission.total_skor != null ? getRekomendasi(submission.total_skor) : null;
+  const statusKelas = STATUS_BADGE_KELAS[submission.status] ?? "bg-zinc-100 text-zinc-500";
 
   return (
-    <main className="mx-auto max-w-3xl p-8">
-      <h1 className="text-2xl font-semibold">
-        {bagianA?.namaProyek ?? "Proposal"}{" "}
-        <span className="text-base font-normal text-gray-500">
-          ({bagianA?.nomorRegistrasi ?? submission.id})
-        </span>
-      </h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Status: {STATUS_LABEL[submission.status] ?? submission.status}
-      </p>
+    <FormPageShell maxWidth="max-w-3xl">
+      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-[26px] font-semibold tracking-tight text-zinc-900">
+            {bagianA?.namaProyek ?? "Proposal"}
+          </h1>
+          <p className="mt-1 text-[14px] text-zinc-400">
+            {bagianA?.nomorRegistrasi ?? submission.id}
+          </p>
+          <div
+            className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold ${statusKelas}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+            {STATUS_LABEL[submission.status] ?? submission.status}
+          </div>
+        </div>
 
-      <a
-        href={`/forms/seleksi-investasi/${submission.id}/pdf`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="mt-3 inline-block rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
-      >
-        Download PDF
-      </a>
+        <a
+          href={`/forms/seleksi-investasi/${submission.id}/pdf`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-2 text-[13px] font-medium text-zinc-600 shadow-sm transition-colors duration-150 hover:border-zinc-300 hover:bg-zinc-50"
+        >
+          Download PDF
+        </a>
+      </div>
 
       {error && (
-        <p className="mt-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="mb-6 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">{error}</p>
       )}
 
-      {bagianA && (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-700">Bagian A &mdash; Identitas Proposal</h2>
-          <dl className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-            <dt className="text-gray-500">Tanggal diterima</dt>
-            <dd>{bagianA.tanggalDiterima}</dd>
-            <dt className="text-gray-500">Lokasi proyek</dt>
-            <dd>{bagianA.lokasiProyek}</dd>
-            <dt className="text-gray-500">Nama pengusul</dt>
-            <dd>{bagianA.namaPengusul}</dd>
-            <dt className="text-gray-500">Sumber proposal</dt>
-            <dd>{bagianA.sumberProposal}</dd>
-            <dt className="text-gray-500">Skema kerjasama</dt>
-            <dd>{bagianA.skemaKerjasama}</dd>
-            <dt className="text-gray-500">Estimasi nilai investasi</dt>
-            <dd>Rp {Number(bagianA.estimasiNilaiInvestasi).toLocaleString("id-ID")}</dd>
-            <dt className="text-gray-500">Evaluator/PIC</dt>
-            <dd>{bagianA.evaluatorPic}</dd>
-            <dt className="text-gray-500">Target selesai</dt>
-            <dd>{bagianA.targetSelesai}</dd>
-          </dl>
-        </section>
-      )}
-
-      {bagianB && (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-700">Bagian B &mdash; Kriteria Gugur (Gate)</h2>
-          <ul className="mt-2 flex flex-col gap-1 text-sm">
-            {GATE_CRITERIA.map(({ kode, label }) => (
-              <li key={kode}>
-                <span
-                  className={
-                    bagianB[kode].jawaban === "tidak" ? "text-red-700" : "text-green-700"
-                  }
-                >
-                  {bagianB[kode].jawaban === "tidak" ? "Tidak" : "Ya"}
-                </span>{" "}
-                &mdash; {kode}: {label}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {bagianC && (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-700">Bagian C &mdash; Skoring Berbobot</h2>
-          <table className="mt-2 w-full text-left text-sm">
-            <thead>
-              <tr className="text-gray-500">
-                <th className="py-1 pr-2">Kriteria</th>
-                <th className="pr-2">Bobot</th>
-                <th className="pr-2">Skor</th>
-                <th className="pr-2">Nilai tertimbang</th>
-              </tr>
-            </thead>
-            <tbody>
-              {SCORING_CRITERIA.map(({ kode, label, bobot }) => (
-                <tr key={kode}>
-                  <td className="py-1 pr-2">
-                    {kode}: {label}
-                  </td>
-                  <td className="pr-2">{bobot.toFixed(2)}</td>
-                  <td className="pr-2">{bagianC[kode].skor}</td>
-                  <td className="pr-2">{(bobot * bagianC[kode].skor).toFixed(2)}</td>
-                </tr>
+      <div className="flex flex-col gap-5">
+        {bagianA && (
+          <Section title="Bagian A — Identitas Proposal">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-[14px] sm:grid-cols-2">
+              {(
+                [
+                  ["Tanggal diterima", bagianA.tanggalDiterima],
+                  ["Lokasi proyek", bagianA.lokasiProyek],
+                  ["Nama pengusul", bagianA.namaPengusul],
+                  ["Sumber proposal", bagianA.sumberProposal],
+                  ["Skema kerjasama", bagianA.skemaKerjasama],
+                  [
+                    "Estimasi nilai investasi",
+                    `Rp ${Number(bagianA.estimasiNilaiInvestasi).toLocaleString("id-ID")}`,
+                  ],
+                  ["Evaluator/PIC", bagianA.evaluatorPic],
+                  ["Target selesai", bagianA.targetSelesai],
+                ] as const
+              ).map(([label, value]) => (
+                <div key={label}>
+                  <dt className="text-zinc-400">{label}</dt>
+                  <dd className="mt-0.5 font-medium text-zinc-800">{value}</dd>
+                </div>
               ))}
-            </tbody>
-          </table>
-          {submission.total_skor != null && (
-            <p className="mt-2 text-sm font-semibold">
-              Total skor tertimbang: {Number(submission.total_skor).toFixed(2)} / 5.00
-            </p>
-          )}
-        </section>
-      )}
+            </dl>
+          </Section>
+        )}
 
-      {rekomendasi && (
-        <div
-          className={`mt-6 inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${rekomendasi.kelas}`}
-        >
-          {rekomendasi.label}
-        </div>
-      )}
-
-      {bagianD && (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-700">Bagian D &mdash; Catatan &amp; Pernyataan</h2>
-          <p className="mt-2 text-sm text-gray-700">{bagianD.catatanEvaluator}</p>
-          <p className="mt-2 text-sm">
-            Pernyataan bebas benturan kepentingan:{" "}
-            <span className="font-medium">
-              {bagianD.pernyataanBebasBenturan === "ya" ? "Ya" : "Tidak"}
-            </span>{" "}
-            &mdash; {bagianD.namaEvaluator}
-          </p>
-        </section>
-      )}
-
-      {approvalChainRaw && approvalChainRaw.length > 0 && (
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-gray-700">Alur Approval</h2>
-          <ul className="mt-2 flex flex-col gap-3">
-            {approvalChain.map((baris, i) => {
-              const tingkat = URUTAN_TINGKAT[i];
-              if (!baris) {
+        {bagianB && (
+          <Section title="Bagian B — Kriteria Gugur (Gate)">
+            <ul className="flex flex-col gap-2">
+              {GATE_CRITERIA.map(({ kode, label }) => {
+                const gagal = bagianB[kode].jawaban === "tidak";
                 return (
-                  <li key={tingkat} className="text-sm text-gray-400">
-                    {LABEL_TINGKAT[tingkat]}: belum dimulai
+                  <li key={kode} className="flex items-start gap-3 text-[14px]">
+                    <span
+                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
+                        gagal ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"
+                      }`}
+                    >
+                      {gagal ? "✕" : "✓"}
+                    </span>
+                    <span className="text-zinc-600">
+                      <span className="text-zinc-400">{kode}</span> {label}
+                    </span>
                   </li>
                 );
-              }
-              const nama = baris.approver_user_id
-                ? (namaApprover.get(baris.approver_user_id) ?? "-")
-                : null;
-              return (
-                <li key={tingkat} className="rounded-lg border border-gray-200 p-3 text-sm">
-                  <p className="font-medium">
-                    {LABEL_TINGKAT[tingkat]}: {LABEL_STATUS_APPROVAL[baris.status]}
-                    {nama && ` — ${nama}`}
-                  </p>
-                  {baris.catatan && <p className="mt-1 text-gray-600">{baris.catatan}</p>}
-                  {baris.diteruskan_meski_ditolak && (
-                    <p className="mt-1 text-xs font-medium text-amber-700">
-                      Ditolak di tingkat ini, diteruskan atas permintaan Evaluator
-                    </p>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
+              })}
+            </ul>
+          </Section>
+        )}
 
-      <ApprovalActions
-        submissionId={submission.id}
-        submissionStatus={submission.status}
-        isOwner={user?.id === submission.dibuat_oleh}
-        role={role}
-        approvalChain={approvalChain}
-      />
-    </main>
+        {bagianC && (
+          <Section title="Bagian C — Skoring Berbobot">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[480px] text-left text-[13px]">
+                <thead>
+                  <tr className="text-zinc-400">
+                    <th className="pb-2 font-medium">Kriteria</th>
+                    <th className="pb-2 pl-2 font-medium">Bobot</th>
+                    <th className="pb-2 pl-2 font-medium">Skor</th>
+                    <th className="pb-2 pl-2 font-medium">Nilai</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {SCORING_CRITERIA.map(({ kode, label, bobot }) => (
+                    <tr key={kode} className="border-t border-zinc-100">
+                      <td className="py-2 pr-2 text-zinc-700">
+                        <span className="text-zinc-400">{kode}</span> {label}
+                      </td>
+                      <td className="py-2 pl-2 text-zinc-500">{bobot.toFixed(2)}</td>
+                      <td className="py-2 pl-2 text-zinc-500">{bagianC[kode].skor}</td>
+                      <td className="py-2 pl-2 font-medium text-zinc-800">
+                        {(bobot * bagianC[kode].skor).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {submission.total_skor != null && (
+              <div className="mt-4 flex items-center justify-between rounded-2xl bg-zinc-50 px-4 py-3">
+                <span className="text-[13px] font-medium text-zinc-500">
+                  Total skor tertimbang
+                </span>
+                <span className="text-[17px] font-semibold text-zinc-900">
+                  {Number(submission.total_skor).toFixed(2)}{" "}
+                  <span className="text-[12px] font-normal text-zinc-400">/ 5.00</span>
+                </span>
+              </div>
+            )}
+          </Section>
+        )}
+
+        {rekomendasi && (
+          <div
+            className={`inline-flex w-fit items-center gap-1.5 rounded-full px-4 py-2 text-[13px] font-semibold ${rekomendasi.kelas}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+            {rekomendasi.label}
+          </div>
+        )}
+
+        {bagianD && (
+          <Section title="Bagian D — Catatan & Pernyataan">
+            <p className="text-[14px] leading-relaxed text-zinc-700">
+              {bagianD.catatanEvaluator}
+            </p>
+            <p className="mt-3 text-[13px] text-zinc-500">
+              Pernyataan bebas benturan kepentingan:{" "}
+              <span className="font-medium text-zinc-700">
+                {bagianD.pernyataanBebasBenturan === "ya" ? "Ya" : "Tidak"}
+              </span>{" "}
+              &mdash; {bagianD.namaEvaluator}
+            </p>
+          </Section>
+        )}
+
+        {approvalChainRaw && approvalChainRaw.length > 0 && (
+          <Section title="Alur Approval">
+            <div className="flex flex-col">
+              {approvalChain.map((baris, i) => {
+                const tingkat = URUTAN_TINGKAT[i];
+                const isLast = i === approvalChain.length - 1;
+                const nama = baris?.approver_user_id
+                  ? (namaApprover.get(baris.approver_user_id) ?? "-")
+                  : null;
+                const dotKelas = !baris
+                  ? "bg-zinc-100 text-zinc-300"
+                  : baris.status === "disetujui"
+                    ? "bg-emerald-100 text-emerald-600"
+                    : baris.status === "ditolak"
+                      ? "bg-red-100 text-red-600"
+                      : "bg-amber-100 text-amber-600";
+                const dotIsi = !baris
+                  ? "–"
+                  : baris.status === "disetujui"
+                    ? "✓"
+                    : baris.status === "ditolak"
+                      ? "✕"
+                      : "…";
+
+                return (
+                  <div key={tingkat} className="flex gap-4">
+                    <div className="flex flex-col items-center">
+                      <div
+                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${dotKelas}`}
+                      >
+                        {dotIsi}
+                      </div>
+                      {!isLast && <div className="w-px flex-1 bg-zinc-100" />}
+                    </div>
+                    <div className={isLast ? "pb-0" : "pb-6"}>
+                      <p className="pt-0.5 text-[14px] font-medium text-zinc-800">
+                        {LABEL_TINGKAT[tingkat]}
+                        {baris && (
+                          <span className="font-normal text-zinc-400">
+                            {" "}
+                            &middot; {LABEL_STATUS_APPROVAL[baris.status]}
+                            {nama && ` oleh ${nama}`}
+                          </span>
+                        )}
+                      </p>
+                      {!baris && (
+                        <p className="mt-0.5 text-[13px] text-zinc-400">Belum dimulai</p>
+                      )}
+                      {baris?.catatan && (
+                        <p className="mt-1 text-[13px] text-zinc-500">{baris.catatan}</p>
+                      )}
+                      {baris?.diteruskan_meski_ditolak && (
+                        <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                          Ditolak di tingkat ini, diteruskan atas permintaan Evaluator
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Section>
+        )}
+
+        <ApprovalActions
+          submissionId={submission.id}
+          submissionStatus={submission.status}
+          isOwner={user?.id === submission.dibuat_oleh}
+          role={role}
+          approvalChain={approvalChain}
+        />
+      </div>
+    </FormPageShell>
   );
 }

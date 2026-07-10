@@ -28,46 +28,54 @@ export function BagianBForm({
   const semuaYa = GATE_CRITERIA.every(({ kode }) => jawaban[kode] === "ya");
 
   const badge = adaTidak
-    ? { teks: "Tidak Lulus", kelas: "bg-red-100 text-red-800" }
+    ? { teks: "Tidak Lulus", kelas: "bg-red-50 text-red-600" }
     : semuaYa
-      ? { teks: "Lulus Gate", kelas: "bg-green-100 text-green-800" }
-      : { teks: "Belum lengkap", kelas: "bg-gray-100 text-gray-600" };
+      ? { teks: "Lulus Gate", kelas: "bg-emerald-50 text-emerald-600" }
+      : { teks: "Belum lengkap", kelas: "bg-zinc-100 text-zinc-500" };
 
   return (
-    <form action={submitBagianB} className="mt-6 flex flex-col gap-6">
+    <form action={submitBagianB} className="flex flex-col gap-5">
       <input type="hidden" name="submissionId" value={submissionId} />
 
-      <div
-        className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-sm font-medium ${badge.kelas}`}
-      >
-        {badge.teks}
+      <div className="sticky top-4 z-10 flex justify-start">
+        <div
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold shadow-sm ring-1 ring-black/[0.03] transition-colors duration-300 ${badge.kelas}`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+          {badge.teks}
+        </div>
       </div>
 
       {error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p className="rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">{error}</p>
       )}
 
       {GATE_CRITERIA.map(({ kode, label }) => (
-        <fieldset key={kode} className="rounded-lg border border-gray-200 p-4">
-          <legend className="px-1 text-sm font-medium text-gray-700">
-            {kode}: {label}
+        <fieldset
+          key={kode}
+          className="rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)]"
+        >
+          <legend className="px-1 text-[14px] font-medium text-zinc-700">
+            <span className="text-zinc-400">{kode}</span> &nbsp;{label}
           </legend>
-          <div className="mt-2 flex gap-6">
-            <label className="flex items-center gap-2 text-sm">
+          <div className="mt-3 flex gap-2.5">
+            <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-[14px] font-medium text-zinc-600 transition-colors duration-150 has-[:checked]:border-zinc-900 has-[:checked]:bg-zinc-900 has-[:checked]:text-white">
               <input
                 type="radio"
                 name={`${kode}_jawaban`}
                 value="ya"
                 required
+                className="sr-only"
                 onChange={() => setJawaban((prev) => ({ ...prev, [kode]: "ya" }))}
               />
               Ya
             </label>
-            <label className="flex items-center gap-2 text-sm">
+            <label className="flex cursor-pointer items-center gap-2 rounded-full border border-zinc-200 px-4 py-2 text-[14px] font-medium text-zinc-600 transition-colors duration-150 has-[:checked]:border-red-500 has-[:checked]:bg-red-500 has-[:checked]:text-white">
               <input
                 type="radio"
                 name={`${kode}_jawaban`}
                 value="tidak"
+                className="sr-only"
                 onChange={() => setJawaban((prev) => ({ ...prev, [kode]: "tidak" }))}
               />
               Tidak
@@ -78,14 +86,14 @@ export function BagianBForm({
             required
             placeholder="Bukti/catatan"
             rows={2}
-            className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            className="mt-3 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none transition-all duration-150 placeholder:text-zinc-400 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
           />
         </fieldset>
       ))}
 
       <button
         type="submit"
-        className="mt-2 w-fit rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+        className="mt-1 w-fit rounded-full bg-zinc-900 px-5 py-3 text-[15px] font-medium text-white shadow-sm transition-all duration-150 hover:bg-black active:scale-[0.98]"
       >
         Simpan Bagian B
       </button>

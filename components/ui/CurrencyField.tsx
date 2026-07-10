@@ -27,11 +27,14 @@ export function CurrencyField({
 
   return (
     <div>
-      <label htmlFor={name} className="block text-sm font-medium text-gray-700">
+      <label
+        htmlFor={name}
+        className="block text-[13px] font-medium text-zinc-500"
+      >
         {label}
       </label>
-      <div className="mt-1 flex items-center rounded-md border border-gray-300 px-3">
-        <span className="text-sm text-gray-500">Rp</span>
+      <div className="mt-1.5 flex items-center rounded-xl border border-zinc-200 bg-white px-4 shadow-sm transition-all duration-150 hover:border-zinc-300 focus-within:border-blue-400 focus-within:ring-4 focus-within:ring-blue-500/10">
+        <span className="text-[15px] text-zinc-400">Rp</span>
         <input
           id={name}
           type="text"
@@ -39,7 +42,7 @@ export function CurrencyField({
           value={tampilan}
           onChange={(e) => setTampilan(formatRibuan(e.target.value))}
           required={required}
-          className="w-full border-0 px-2 py-2 text-sm focus:outline-none focus:ring-0"
+          className="w-full border-0 bg-transparent px-2 py-2.5 text-[15px] text-zinc-900 outline-none"
         />
       </div>
       {/* Nilai murni tanpa pemisah ribuan yang benar-benar dikirim ke server. */}

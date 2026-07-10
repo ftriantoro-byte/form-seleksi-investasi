@@ -2,6 +2,9 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getRekomendasi } from "@/lib/forms/seleksi-investasi/utils";
 import { BagianDForm } from "@/components/forms/seleksi-investasi/BagianDForm";
+import { FormPageShell } from "@/components/ui/FormPageShell";
+import { FormPageHeader } from "@/components/ui/FormPageHeader";
+import { StepIndicator } from "@/components/ui/StepIndicator";
 
 export default async function BagianDPage({
   params,
@@ -22,74 +25,85 @@ export default async function BagianDPage({
 
   if (!submission) {
     return (
-      <main className="mx-auto max-w-2xl p-8">
-        <p className="text-sm text-gray-600">
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
           Proposal tidak ditemukan (atau Anda tidak berwenang melihatnya).
         </p>
-      </main>
+      </FormPageShell>
     );
   }
 
   if (submission.status === "draft" || submission.status === "tidak_lulus_gate") {
     return (
-      <main className="mx-auto max-w-2xl p-8">
-        <p className="text-sm text-gray-600">
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
           Proposal ini belum lulus kriteria gugur (gate), Bagian D belum bisa diakses.
         </p>
-      </main>
+      </FormPageShell>
     );
   }
 
   if (submission.status === "menunggu_skoring" && submission.total_skor == null) {
     return (
-      <main className="mx-auto max-w-2xl p-8">
-        <p className="text-sm text-gray-600">
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
           Selesaikan Bagian C (skoring) terlebih dahulu.
         </p>
         <Link
           href={`/forms/seleksi-investasi/${submissionId}/bagian-c`}
-          className="mt-4 inline-block rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
+          className="mt-5 inline-flex items-center rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-all duration-150 hover:bg-black active:scale-[0.98]"
         >
           Ke Bagian C
         </Link>
-      </main>
+      </FormPageShell>
     );
   }
 
   if (submission.status !== "menunggu_skoring") {
     return (
-      <main className="mx-auto max-w-2xl p-8">
-        <h1 className="text-2xl font-semibold">Seleksi Awal Proposal Investasi</h1>
-        <p className="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
-          Bagian D untuk proposal ini sudah difinalisasi.
-        </p>
-        <Link
-          href={`/forms/seleksi-investasi/${submissionId}`}
-          className="mt-4 inline-block rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800"
-        >
-          Lihat detail &amp; status approval
-        </Link>
-      </main>
+      <FormPageShell>
+        <FormPageHeader title="Seleksi Awal Proposal Investasi" />
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-6">
+          <p className="text-[14px] text-emerald-800">
+            Bagian D untuk proposal ini sudah difinalisasi.
+          </p>
+          <Link
+            href={`/forms/seleksi-investasi/${submissionId}`}
+            className="mt-4 inline-flex items-center rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white shadow-sm transition-all duration-150 hover:bg-black active:scale-[0.98]"
+          >
+            Lihat detail &amp; status approval
+          </Link>
+        </div>
+      </FormPageShell>
     );
   }
 
   const rekomendasi = getRekomendasi(submission.total_skor!);
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="text-2xl font-semibold">Seleksi Awal Proposal Investasi</h1>
-      <p className="mt-1 text-sm text-gray-600">Bagian D &mdash; Hasil &amp; Approval</p>
+    <FormPageShell>
+      <FormPageHeader
+        title="Seleksi Awal Proposal Investasi"
+        subtitle="Bagian D — Hasil & Approval"
+      />
+      <StepIndicator current="D" />
 
-      <div
-        className={`mt-4 inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${rekomendasi.kelas}`}
-      >
-        {rekomendasi.label}
+      <div className="mb-6 rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <div
+          className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[13px] font-semibold ${rekomendasi.kelas}`}
+        >
+          <span className="h-1.5 w-1.5 rounded-full bg-current opacity-60" />
+          {rekomendasi.label}
+        </div>
+        <p className="mt-2.5 text-[14px] text-zinc-500">
+          Total skor tertimbang:{" "}
+          <span className="font-medium text-zinc-700">
+            {submission.total_skor!.toFixed(2)} / 5.00
+          </span>
+        </p>
       </div>
-      <p className="mt-1 text-sm text-gray-600">
-        Total skor tertimbang: {submission.total_skor!.toFixed(2)} / 5.00
-      </p>
 
       <BagianDForm submissionId={submission.id} error={error} />
-    </main>
+    </FormPageShell>
   );
 }

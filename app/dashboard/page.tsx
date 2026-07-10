@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUserRole } from "@/lib/supabase/role";
-import { STATUS_LABEL } from "@/lib/forms/seleksi-investasi/labels";
+import { STATUS_LABEL, STATUS_BADGE_KELAS } from "@/lib/forms/seleksi-investasi/labels";
+import { FormPageShell } from "@/components/ui/FormPageShell";
 
 type SubmissionRingkas = {
   id: string;
@@ -41,9 +42,9 @@ export default async function DashboardPage({
 
   if (!user || !role) {
     return (
-      <main className="mx-auto max-w-4xl p-8">
-        <p className="text-sm text-gray-600">Role Anda belum diatur, hubungi admin.</p>
-      </main>
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">Role Anda belum diatur, hubungi admin.</p>
+      </FormPageShell>
     );
   }
 
@@ -89,79 +90,108 @@ export default async function DashboardPage({
   }
 
   return (
-    <main className="mx-auto max-w-5xl p-8">
-      <h1 className="text-2xl font-semibold">Dashboard Submission</h1>
+    <FormPageShell maxWidth="max-w-5xl">
+      <h1 className="text-[26px] font-semibold tracking-tight text-zinc-900">
+        Dashboard Submission
+      </h1>
 
       {isApproverRole && (
-        <div className="mt-4 flex gap-2 text-sm">
+        <div className="mt-5 inline-flex rounded-full bg-zinc-100 p-1">
           <Link
             href="/dashboard"
-            className={`rounded-md px-3 py-1.5 ${tab !== "riwayat" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"}`}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+              tab !== "riwayat" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+            }`}
           >
             Menunggu Keputusan Saya
           </Link>
           <Link
             href="/dashboard?tab=riwayat"
-            className={`rounded-md px-3 py-1.5 ${tab === "riwayat" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-700"}`}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+              tab === "riwayat" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+            }`}
           >
             Riwayat
           </Link>
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 text-gray-500">
-              <th className="py-2 pr-4">No. Registrasi</th>
-              <th className="py-2 pr-4">Nama Proyek</th>
-              <th className="py-2 pr-4">Tanggal Diterima</th>
-              <th className="py-2 pr-4">Evaluator</th>
-              <th className="py-2 pr-4">Status</th>
-              <th className="py-2 pr-4">Tingkat Saat Ini</th>
-              <th className="py-2 pr-4">Total Skor</th>
-              <th className="py-2 pr-4">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(submissions ?? []).map((s) => (
-              <tr key={s.id} className="border-b border-gray-100">
-                <td className="py-2 pr-4">{s.data.bagianA?.nomorRegistrasi ?? "-"}</td>
-                <td className="py-2 pr-4">{s.data.bagianA?.namaProyek ?? "-"}</td>
-                <td className="py-2 pr-4">{s.data.bagianA?.tanggalDiterima ?? "-"}</td>
-                <td className="py-2 pr-4">{s.data.bagianA?.evaluatorPic ?? "-"}</td>
-                <td className="py-2 pr-4">
-                  {STATUS_LABEL[s.status] ?? s.status}
-                  {perluTindakanIds.has(s.id) && (
-                    <span className="ml-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-                      perlu keputusan Anda
-                    </span>
-                  )}
-                </td>
-                <td className="py-2 pr-4">{s.tingkat_approval_saat_ini ?? "-"}</td>
-                <td className="py-2 pr-4">
-                  {s.total_skor != null ? Number(s.total_skor).toFixed(2) : "-"}
-                </td>
-                <td className="py-2 pr-4">
-                  <Link
-                    href={`/forms/seleksi-investasi/${s.id}`}
-                    className="text-gray-900 underline"
-                  >
-                    Lihat
-                  </Link>
-                </td>
+      <div className="mt-6 overflow-hidden rounded-3xl border border-black/[0.04] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[820px] text-left text-[13px]">
+            <thead>
+              <tr className="border-b border-zinc-100 text-zinc-400">
+                <th className="px-6 py-3.5 font-medium">No. Registrasi</th>
+                <th className="px-3 py-3.5 font-medium">Nama Proyek</th>
+                <th className="px-3 py-3.5 font-medium">Tanggal Diterima</th>
+                <th className="px-3 py-3.5 font-medium">Evaluator</th>
+                <th className="px-3 py-3.5 font-medium">Status</th>
+                <th className="px-3 py-3.5 font-medium">Tingkat</th>
+                <th className="px-3 py-3.5 font-medium">Skor</th>
+                <th className="px-6 py-3.5 font-medium">Aksi</th>
               </tr>
-            ))}
-            {(!submissions || submissions.length === 0) && (
-              <tr>
-                <td colSpan={8} className="py-6 text-center text-gray-400">
-                  Tidak ada data.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {(submissions ?? []).map((s) => (
+                <tr
+                  key={s.id}
+                  className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
+                >
+                  <td className="px-6 py-3.5 font-medium text-zinc-800">
+                    {s.data.bagianA?.nomorRegistrasi ?? "-"}
+                  </td>
+                  <td className="px-3 py-3.5 text-zinc-600">
+                    {s.data.bagianA?.namaProyek ?? "-"}
+                  </td>
+                  <td className="px-3 py-3.5 text-zinc-500">
+                    {s.data.bagianA?.tanggalDiterima ?? "-"}
+                  </td>
+                  <td className="px-3 py-3.5 text-zinc-500">
+                    {s.data.bagianA?.evaluatorPic ?? "-"}
+                  </td>
+                  <td className="px-3 py-3.5">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                          STATUS_BADGE_KELAS[s.status] ?? "bg-zinc-100 text-zinc-500"
+                        }`}
+                      >
+                        {STATUS_LABEL[s.status] ?? s.status}
+                      </span>
+                      {perluTindakanIds.has(s.id) && (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                          perlu keputusan Anda
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-3 py-3.5 text-zinc-500">
+                    {s.tingkat_approval_saat_ini ?? "-"}
+                  </td>
+                  <td className="px-3 py-3.5 font-medium text-zinc-700">
+                    {s.total_skor != null ? Number(s.total_skor).toFixed(2) : "-"}
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <Link
+                      href={`/forms/seleksi-investasi/${s.id}`}
+                      className="font-medium text-zinc-900 underline decoration-zinc-300 underline-offset-2 transition-colors hover:decoration-zinc-900"
+                    >
+                      Lihat
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {(!submissions || submissions.length === 0) && (
+                <tr>
+                  <td colSpan={8} className="px-6 py-10 text-center text-zinc-400">
+                    Tidak ada data.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </main>
+    </FormPageShell>
   );
 }

@@ -1,6 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 import { BagianCForm, type RubrikKriteria } from "@/components/forms/seleksi-investasi/BagianCForm";
 import { SCORING_CRITERIA, type ScoringKode } from "@/lib/forms/seleksi-investasi/schema";
+import { FormPageShell } from "@/components/ui/FormPageShell";
+import { FormPageHeader } from "@/components/ui/FormPageHeader";
+import { StepIndicator } from "@/components/ui/StepIndicator";
 
 type BagianCTersimpan = Record<ScoringKode, { skor: number; justifikasi: string }>;
 
@@ -36,33 +39,35 @@ export default async function BagianCPage({
 
   if (!submission) {
     return (
-      <main className="mx-auto max-w-2xl p-8">
-        <p className="text-sm text-gray-600">
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
           Proposal tidak ditemukan (atau Anda tidak berwenang melihatnya).
         </p>
-      </main>
+      </FormPageShell>
     );
   }
 
   if (submission.status === "draft" || submission.status === "tidak_lulus_gate") {
     return (
-      <main className="mx-auto max-w-2xl p-8">
-        <p className="text-sm text-gray-600">
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
           Proposal ini belum lulus kriteria gugur (gate), Bagian C belum bisa diakses.
         </p>
-      </main>
+      </FormPageShell>
     );
   }
 
   if (submission.status !== "menunggu_skoring") {
     return (
-      <main className="mx-auto max-w-2xl p-8">
-        <h1 className="text-2xl font-semibold">Seleksi Awal Proposal Investasi</h1>
-        <p className="mt-4 rounded-md bg-green-50 px-4 py-3 text-sm text-green-800">
-          Bagian C untuk proposal ini sudah diselesaikan dan sudah lanjut ke tahap
-          berikutnya. Lihat status lengkap di dashboard (sedang dibangun, tahap 4.4).
-        </p>
-      </main>
+      <FormPageShell>
+        <FormPageHeader title="Seleksi Awal Proposal Investasi" />
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-6">
+          <p className="text-[14px] text-emerald-800">
+            Bagian C untuk proposal ini sudah diselesaikan dan sudah lanjut ke tahap
+            berikutnya. Lihat status lengkap di dashboard.
+          </p>
+        </div>
+      </FormPageShell>
     );
   }
 
@@ -83,9 +88,12 @@ export default async function BagianCPage({
   }
 
   return (
-    <main className="mx-auto max-w-2xl p-8">
-      <h1 className="text-2xl font-semibold">Seleksi Awal Proposal Investasi</h1>
-      <p className="mt-1 text-sm text-gray-600">Bagian C &mdash; Skoring Berbobot</p>
+    <FormPageShell maxWidth="max-w-3xl">
+      <FormPageHeader
+        title="Seleksi Awal Proposal Investasi"
+        subtitle="Bagian C — Skoring Berbobot"
+      />
+      <StepIndicator current="C" />
 
       <BagianCForm
         submissionId={submission.id}
@@ -93,6 +101,6 @@ export default async function BagianCPage({
         nilaiAwal={submission.data.bagianC}
         error={error}
       />
-    </main>
+    </FormPageShell>
   );
 }
