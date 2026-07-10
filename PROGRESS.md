@@ -45,6 +45,40 @@ Setiap kali sebuah tahap selesai, checkbox diupdate dan dibuat 1 git commit yang
 
 ---
 
+## FORM QUICK SCREEN PROYEK — SETUP
+
+- [x] 0.1 Migration: generalisasi trigger `buat_approval_chain_awal()` (kolom `forms.tingkat_approval_maksimal`, default `direksi` sehingga Seleksi Investasi tidak berubah) + seed row `forms` untuk `quick-screen-proyek` (`tingkat_approval_maksimal = 'vp'`)
+
+## FORM QUICK SCREEN PROYEK — BAGIAN A (Identitas Proyek)
+
+- [x] 1.1 Form input Bagian A (11 field: No. Dokumen, Tanggal, Status Dokumen, Nama Proyek, Sektor/Tipologi, Pemilik/Pemberi Informasi, Lokasi, Tanggal Info Diterima, Estimasi Nilai, Sumber Informasi, Deskripsi) — **diuji end-to-end** di browser: auto-suggest No. Dokumen "QSP-2026-001" lalu "QSP-2026-002" (increment benar per tahun), CurrencyField format ribuan benar
+
+## FORM QUICK SCREEN PROYEK — BAGIAN B (Skema Kerjasama)
+
+- [x] 2.1 Tabel 8 opsi skema kerjasama (Ya/Tidak + catatan opsional), bukan gate pass/fail — **diuji end-to-end**: pilih 2 dari 8 skema (Design & Build, BOT), submit, tampil benar dengan tanda ✓/– di halaman review
+
+## FORM QUICK SCREEN PROYEK — BAGIAN C (Penilaian 4 Dimensi)
+
+- [x] 3.1 Form input 20 kriteria skala H/M/L (skor 3/2/1), 4 dimensi x 5 kriteria, catatan opsional per kriteria — **diuji end-to-end** 2x (skor campuran & skor minimum semua)
+- [x] 3.2 Kalkulasi skor per dimensi & total skor (maks 60) + radar chart live (Recharts, 4 sumbu skala 0-15) — **diuji end-to-end**: skor campuran (Pasar 13, Teknis 13, Legal 10, Skema&Finansial 7) → total 43, cocok 100% dengan hitungan manual; radar chart live update saat radio diklik
+- [x] 3.3 Logika hasil otomatis GO/GO BERSYARAT/CAUTION/NO-GO berdasarkan ambang skor (48/36/28) — **diuji end-to-end** 2 titik: skor 43 → "GO BERSYARAT" (rentang 36-47) benar; skor 20 (semua L) → "NO-GO" (<28) benar. Titik batas 48/36/28 lainnya belum dicoba langsung di browser (hanya code review terhadap `getHasilQuickScreen()`), tapi logikanya if/else sederhana beruntun — risiko rendah
+
+## FORM QUICK SCREEN PROYEK — BAGIAN D & APPROVAL
+
+- [x] 4.1 Field catatan analis (Faktor Pendorong, Faktor Risiko, Data/Dokumen untuk OFT, Urgensi & Tenggat) — **diuji end-to-end**
+- [x] 4.2 Alur approval 2 tingkat (Manajer → VP), Setuju/Tolak biasa, tolak di tingkat manapun = langsung final ditolak (tanpa hentikan/teruskan) — **diuji end-to-end penuh** 2 jalur: (a) Manajer setuju → VP setuju (final, badge "tanpa eskalasi" tampil) → status "Disetujui"; (b) submission kedua, Manajer tolak → status langsung "Ditolak" final, tidak ada prompt hentikan/teruskan ke evaluator. Trigger `buat_approval_chain_awal()` terkonfirmasi hanya buat 2 baris approval_chain (manajer, vp) untuk form ini
+- [x] 4.3 Dashboard (`/dashboard`) digeneralisasi lintas form (join `forms`, kolom Form, fallback field Bagian A, link dinamis per slug) — **diuji end-to-end**: submission Quick Screen & Seleksi Investasi tampil bersamaan di satu tabel, kolom "Form" membedakan keduanya, data lama Seleksi Investasi (No. Registrasi, skor format 2 desimal, link) tidak berubah
+
+## EXPORT & FINALISASI QUICK SCREEN PROYEK
+
+- [x] 5.1 Export PDF (identitas proyek, skema kerjasama terpilih, skor 4 dimensi + radar chart digambar manual, badge hasil, catatan analis, area tanda tangan Manajer & VP) — **diuji end-to-end**: fetch ke route PDF, status 200, `%PDF-1.3` valid, 5992 bytes, `Content-Type: application/pdf`
+- [x] 5.2 Testing end-to-end alur lengkap (A→D, approval Manajer→VP, reject langsung final, PDF) — **selesai**, lihat detail di setiap butir di atas plus regresi Seleksi Investasi di bawah
+- [ ] 5.3 Commit & push ke repo yang sama (Vercel auto-deploy) — commit lokal sudah dibuat per tahap, **push ke GitHub belum dilakukan** (menunggu konfirmasi user)
+
+**Regresi nol terhadap Seleksi Investasi dikonfirmasi:** submission baru form Seleksi Investasi (PRP-2026-035) dibuat penuh A→D setelah migration generalisasi trigger dijalankan — approval_chain tetap otomatis berisi 3 baris (Manajer/VP/Direksi, semua "Menunggu") persis seperti sebelumnya. `StepIndicator` form Seleksi Investasi juga tidak berubah tampilannya (masih A/B/C/D dengan label Identitas/Gate/Skoring/Hasil, karena parameter `steps` di komponen itu opsional dengan default sama).
+
+---
+
 ## Ringkasan Testing End-to-End (tahap 5.2) — 2026-07-09/10
 
 Dijalankan langsung di browser (Claude Preview) terhadap project Supabase asli milik user, bukan simulasi. Skenario yang lolos:
