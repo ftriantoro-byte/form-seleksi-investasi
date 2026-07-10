@@ -10,6 +10,11 @@ export const spaceSchema = z.object({
   deskripsi: z.string().optional(),
 });
 
+export const folderSchema = z.object({
+  nama: z.string().min(1, "Nama Folder wajib diisi"),
+  deskripsi: z.string().optional(),
+});
+
 export const listSchema = z.object({
   nama: z.string().min(1, "Nama List wajib diisi"),
   deskripsi: z.string().optional(),

@@ -131,7 +131,7 @@ Belum diuji eksplisit (gap kecil, bukan blocker): jalur "Hentikan proses" (evalu
 
 ### FASE B — Lengkapi Fitur Kerja
 
-- [ ] B.1 Folder & Subtask
+- [x] B.1 Folder & Subtask — Skema: tabel `pm_folders` baru (Space → Folder → List, opsional — List tetap bisa langsung di bawah Space kalau `folder_id` null, perilaku lama tidak berubah); `pm_lists.folder_id` & `pm_tasks.parent_task_id` nullable (sudah disiapkan sejak A.1). RLS Folder pakai `pm_can_access_space()` yang sudah ada; RLS List/Task tidak berubah (tetap anchor ke `space_id`/`list_id`). Rute Folder pakai path literal `/pm/{ws}/{space}/folder/{folderId}` (bukan `[folderId]` sejajar `[listId]`, supaya tidak ambigu dengan segmen dinamis List). Sidebar (`app/pm/layout.tsx`) dirakit dari 4 query datar (bukan nested select PostgREST) karena `pm_lists` punya dua FK (space_id & folder_id) yang perlu dipisah jadi "List langsung di Space" vs "List di dalam Folder". Subtask: form tambah minimal (cuma judul, `createSubtask`), ditampilkan di `PmTaskDetailContent` sebagai section baru + indikator "Subtask dari {induk}" saat melihat Subtask itu sendiri. **Diuji end-to-end oleh user secara manual** (tool browser saya masih down): buat Folder → List di dalamnya tidak muncul di List langsung Space → sidebar tampilkan Folder (📁) bersarang dengan benar → rename/hapus Folder (cascade ke List di dalamnya) → tambah Subtask dari Task Detail → klik masuk ke Subtask → link "Subtask dari ..." ke induk benar. Semua berfungsi sesuai desain.
 - [ ] B.2 Calendar View & Gantt View + Task Dependency
 - [ ] B.3 Real-time sync via Supabase Realtime (Postgres Changes)
 - [ ] B.4 Sistem @mention (user & task)

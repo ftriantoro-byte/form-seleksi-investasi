@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { updateTask, deleteTask } from "@/actions/pm/tasks";
+import { updateTask, deleteTask, createSubtask } from "@/actions/pm/tasks";
 import { createComment, deleteComment } from "@/actions/pm/comments";
 import {
   createChecklistItem,
@@ -7,7 +8,7 @@ import {
   deleteChecklistItem,
 } from "@/actions/pm/checklist";
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
-import { TASK_STATUS_LABEL, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
+import { TASK_STATUS_LABEL, TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { FormField } from "@/components/ui/FormField";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
@@ -21,6 +22,7 @@ type PmTaskDetail = {
   priority: string | null;
   assignee_id: string | null;
   due_date: string | null;
+  parent_task_id: string | null;
 };
 
 type PmChecklistItemRow = {
@@ -34,6 +36,12 @@ type PmCommentRow = {
   konten: string;
   created_by: string;
   created_at: string;
+};
+
+type PmSubtaskRow = {
+  id: string;
+  judul: string;
+  status: string;
 };
 
 // Dipakai dari dua tempat: halaman penuh [taskId]/page.tsx (navigasi
@@ -63,7 +71,7 @@ export async function PmTaskDetailContent({
 
   const { data: taskRaw } = await supabase
     .from("pm_tasks")
-    .select("id, list_id, judul, deskripsi, status, priority, assignee_id, due_date")
+    .select("id, list_id, judul, deskripsi, status, priority, assignee_id, due_date, parent_task_id")
     .eq("id", taskId)
     .single();
 
@@ -77,8 +85,8 @@ export async function PmTaskDetailContent({
     );
   }
 
-  const [{ data: anggotaRaw }, { data: checklistRaw }, { data: commentsRaw }] = await Promise.all(
-    [
+  const [{ data: anggotaRaw }, { data: checklistRaw }, { data: commentsRaw }, { data: subtasksRaw }, { data: parentRaw }] =
+    await Promise.all([
       supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
       supabase
         .from("pm_checklist_items")
@@ -90,13 +98,22 @@ export async function PmTaskDetailContent({
         .select("id, konten, created_by, created_at")
         .eq("task_id", taskId)
         .order("created_at", { ascending: true }),
-    ],
-  );
+      supabase
+        .from("pm_tasks")
+        .select("id, judul, status")
+        .eq("parent_task_id", taskId)
+        .order("created_at", { ascending: true }),
+      task.parent_task_id
+        ? supabase.from("pm_tasks").select("id, judul").eq("id", task.parent_task_id).single()
+        : Promise.resolve({ data: null }),
+    ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
   const checklist = (checklistRaw ?? []) as PmChecklistItemRow[];
   const comments = (commentsRaw ?? []) as PmCommentRow[];
+  const subtasks = (subtasksRaw ?? []) as PmSubtaskRow[];
+  const parentTask = parentRaw as { id: string; judul: string } | null;
 
   const hiddenFields = (
     <>
@@ -107,8 +124,19 @@ export async function PmTaskDetailContent({
     </>
   );
 
+  const listBase = `/pm/${workspaceId}/${spaceId}/${listId}`;
+
   return (
     <>
+      {parentTask && (
+        <p className="mb-3 text-[13px] text-zinc-400">
+          Subtask dari{" "}
+          <Link href={`${listBase}/${parentTask.id}`} className="text-zinc-600 hover:underline">
+            {parentTask.judul}
+          </Link>
+        </p>
+      )}
+
       {error && (
         <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">
           {error}
@@ -261,6 +289,45 @@ export async function PmTaskDetailContent({
           <input
             name="konten"
             placeholder="Tambah item checklist..."
+            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          >
+            Tambah
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Subtask</h3>
+        <ul className="mt-4 space-y-1.5">
+          {subtasks.map((sub) => (
+            <li key={sub.id} className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50">
+              <Link href={`${listBase}/${sub.id}`} className="truncate text-[14px] text-zinc-700 hover:underline">
+                {sub.judul}
+              </Link>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                  TASK_STATUS_BADGE_KELAS[sub.status] ?? "bg-zinc-100 text-zinc-500"
+                }`}
+              >
+                {TASK_STATUS_LABEL[sub.status] ?? sub.status}
+              </span>
+            </li>
+          ))}
+          {subtasks.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Belum ada Subtask.</li>
+          )}
+        </ul>
+
+        <form action={createSubtask} className="mt-4 flex items-center gap-3">
+          {hiddenFields}
+          <input type="hidden" name="parentTaskId" value={taskId} />
+          <input
+            name="judul"
+            placeholder="Tambah Subtask..."
             className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
           />
           <button

@@ -4,11 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 type PmList = { id: string; nama: string };
-type PmSpace = { id: string; nama: string; pm_lists: PmList[] };
-type PmWorkspace = { id: string; nama: string; pm_spaces: PmSpace[] };
+type PmFolder = { id: string; nama: string; lists: PmList[] };
+type PmSpace = { id: string; nama: string; folders: PmFolder[]; lists: PmList[] };
+type PmWorkspace = { id: string; nama: string; spaces: PmSpace[] };
 
 export function PmSidebar({ workspaces }: { workspaces: PmWorkspace[] }) {
   const pathname = usePathname();
+
+  function listLink(href: string, label: string, indentClass: string) {
+    return (
+      <Link
+        key={href}
+        href={href}
+        className={`${indentClass} block truncate rounded-lg px-3 py-1.5 text-[13px] transition-colors ${
+          pathname === href
+            ? "bg-zinc-100 font-medium text-zinc-900"
+            : "text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900"
+        }`}
+      >
+        {label}
+      </Link>
+    );
+  }
 
   return (
     <nav className="flex h-screen w-64 shrink-0 flex-col overflow-y-auto border-r border-black/[0.04] bg-white px-3 py-5">
@@ -35,7 +52,7 @@ export function PmSidebar({ workspaces }: { workspaces: PmWorkspace[] }) {
             >
               {ws.nama}
             </Link>
-            {ws.pm_spaces.map((space) => {
+            {ws.spaces.map((space) => {
               const spaceHref = `${workspaceHref}/${space.id}`;
               return (
                 <div key={space.id} className="ml-3">
@@ -49,22 +66,20 @@ export function PmSidebar({ workspaces }: { workspaces: PmWorkspace[] }) {
                   >
                     {space.nama}
                   </Link>
-                  {space.pm_lists.map((list) => {
-                    const listHref = `${spaceHref}/${list.id}`;
+                  {space.folders.map((folder) => {
+                    const folderHref = `${spaceHref}/folder/${folder.id}`;
                     return (
-                      <Link
-                        key={list.id}
-                        href={listHref}
-                        className={`ml-3 block truncate rounded-lg px-3 py-1.5 text-[13px] transition-colors ${
-                          pathname === listHref
-                            ? "bg-zinc-100 font-medium text-zinc-900"
-                            : "text-zinc-400 hover:bg-zinc-50 hover:text-zinc-900"
-                        }`}
-                      >
-                        {list.nama}
-                      </Link>
+                      <div key={folder.id} className="ml-3">
+                        {listLink(folderHref, `📁 ${folder.nama}`, "")}
+                        {folder.lists.map((list) =>
+                          listLink(`${spaceHref}/${list.id}`, list.nama, "ml-3"),
+                        )}
+                      </div>
                     );
                   })}
+                  {space.lists.map((list) =>
+                    listLink(`${spaceHref}/${list.id}`, list.nama, "ml-3"),
+                  )}
                 </div>
               );
             })}

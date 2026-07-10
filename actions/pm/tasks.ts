@@ -157,6 +157,48 @@ export async function updateTaskStatus(taskId: string, status: string) {
   }
 }
 
+// Form tambah Subtask sengaja minimal (cuma judul) - beda dengan createTask
+// yang punya form lengkap (assignee/due date/status/priority). Field lain
+// bisa diisi belakangan lewat halaman/modal Task Detail milik Subtask itu
+// sendiri, sama seperti Task biasa.
+export async function createSubtask(formData: FormData) {
+  await requirePmAccess();
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return redirect("/login");
+
+  const workspaceId = formData.get("workspaceId") as string;
+  const spaceId = formData.get("spaceId") as string;
+  const listId = formData.get("listId") as string;
+  const parentTaskId = formData.get("parentTaskId") as string;
+  const base = pathBase(workspaceId, spaceId, listId);
+
+  const judul = (formData.get("judul") as string)?.trim();
+  if (!judul) {
+    return redirect(
+      `${base}/${parentTaskId}?error=${encodeURIComponent("Judul Subtask wajib diisi")}`,
+    );
+  }
+
+  const { error } = await supabase.from("pm_tasks").insert({
+    list_id: listId,
+    parent_task_id: parentTaskId,
+    judul,
+    status: "to_do",
+    created_by: user.id,
+  });
+
+  if (error) {
+    return redirect(`${base}/${parentTaskId}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`${base}/${parentTaskId}`);
+}
+
 export async function deleteTask(formData: FormData) {
   await requirePmAccess();
 

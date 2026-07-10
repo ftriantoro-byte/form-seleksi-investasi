@@ -65,7 +65,7 @@ export default async function ListDetailPage({
 
   const { data: list } = await supabase
     .from("pm_lists")
-    .select("id, nama, deskripsi, space_id")
+    .select("id, nama, deskripsi, space_id, folder_id")
     .eq("id", listId)
     .single();
 
@@ -101,14 +101,18 @@ export default async function ListDetailPage({
   const emailByUserIdRecord = Object.fromEntries(emailByUserId);
 
   const listBase = `/pm/${workspaceId}/${spaceId}/${listId}`;
+  const parentPath = list.folder_id
+    ? `/pm/${workspaceId}/${spaceId}/folder/${list.folder_id}`
+    : `/pm/${workspaceId}/${spaceId}`;
+  const parentLabel = list.folder_id ? "Kembali ke Folder" : "Kembali ke Space";
 
   return (
     <FormPageShell maxWidth="max-w-4xl">
       <FormPageHeader
         title={list.nama}
         subtitle={list.deskripsi ?? undefined}
-        backHref={`/pm/${workspaceId}/${spaceId}`}
-        backLabel="Kembali ke Space"
+        backHref={parentPath}
+        backLabel={parentLabel}
       />
 
       {error && (
@@ -347,6 +351,7 @@ export default async function ListDetailPage({
           <input type="hidden" name="workspaceId" value={workspaceId} />
           <input type="hidden" name="spaceId" value={spaceId} />
           <input type="hidden" name="listId" value={listId} />
+          {list.folder_id && <input type="hidden" name="folderId" value={list.folder_id} />}
           <FormField label="Nama List" name="nama" defaultValue={list.nama} />
           <div>
             <label className="block text-[13px] font-medium text-zinc-500">
@@ -371,6 +376,7 @@ export default async function ListDetailPage({
           <input type="hidden" name="workspaceId" value={workspaceId} />
           <input type="hidden" name="spaceId" value={spaceId} />
           <input type="hidden" name="listId" value={listId} />
+          {list.folder_id && <input type="hidden" name="folderId" value={list.folder_id} />}
           <button
             type="submit"
             className="text-[13px] font-medium text-red-500 transition-colors hover:text-red-700"
