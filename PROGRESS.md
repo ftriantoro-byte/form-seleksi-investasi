@@ -111,3 +111,45 @@ Belum diuji eksplisit (gap kecil, bukan blocker): jalur "Hentikan proses" (evalu
 - "PARKIR - minta perbaikan proposal, evaluasi ulang maksimal 1 kali": teks rekomendasi ini persis dari PANDUAN.md, tapi **mekanisme evaluasi ulang/revisi proposal belum ada** (tidak ada counter, tidak ada alur resubmit). Jika dibutuhkan, ini scope tambahan di luar checklist asli — tanyakan ke user dulu sebelum membangunnya.
 - Sanity-check manual (di luar aplikasi, tanpa DB): ambang batas rekomendasi 4.1 dicoba di titik batas (4.00, 3.99, 3.00, 2.99, 2.00, 1.99) — hasil sesuai spesifikasi.
 - **Pelajaran deploy Vercel (tahap 5.3):** deployment pertama gagal dengan `Invalid supabaseUrl` walau env var sudah diisi, karena toggle **"Sensitive"** aktif pada `NEXT_PUBLIC_SUPABASE_URL`/`NEXT_PUBLIC_SUPABASE_ANON_KEY`. Variable `NEXT_PUBLIC_*` harus **tidak** ditandai Sensitive (nilainya memang didesain publik/terlihat di browser) — kalau ditandai Sensitive, Next.js gagal meng-inline nilainya saat build. Solusi: hapus & buat ulang variable dengan toggle Sensitive OFF, lalu redeploy. **Catat ini di DEPLOYMENT.md untuk form-form berikutnya** supaya tidak terulang.
+
+---
+
+## MODUL MANAJEMEN PROYEK (PM) — akses terbatas ±3 orang
+
+> Modul KEDUA, terpisah total dari modul form Seleksi Investasi/Quick Screen di atas: tabel relasional sendiri (prefix `pm_`), akses dibatasi lewat `pm_members`, UI di `components/pm/`. Spesifikasi fitur & skema lengkap ada di [PM-MODULE-SPEC.md](PM-MODULE-SPEC.md) — sumber kebenaran. Aturan main & alur kerja ada di [PROMPT-GABUNG-PM.md](PROMPT-GABUNG-PM.md). **JANGAN** mengubah tabel/RLS/kode modul form yang sudah ada di atas kecuali diminta eksplisit.
+
+### FASE A — Inti
+
+- [x] A.1 Skema database inti (`pm_workspaces`, `pm_workspace_members`, `pm_members`, `pm_spaces`, `pm_lists`, `pm_tasks`) + RLS — **dijalankan & diverifikasi** di project Supabase asli (3 migration lewat SQL Editor, admin PM pertama di-bootstrap manual ke `pm_members`); regresi nol dikonfirmasi: landing page & dashboard modul form (Seleksi Investasi + Quick Screen Proyek) tetap tampil normal tanpa error setelah migration
+- [ ] A.2 Nav & akses: menu modul PM di dashboard cuma muncul untuk user yang ada di `pm_members`
+- [ ] A.3 CRUD Workspace/Space/List (role admin/member, tanpa Guest)
+- [ ] A.4 CRUD Task (assignee, due date, status, priority) + Comment + Checklist
+- [ ] A.5 List View (tabel) + Board View (Kanban drag-and-drop)
+- [ ] A.6 Task Detail (modal/panel: comment, checklist)
+- [ ] A.7 Notifikasi in-app sederhana
+
+### FASE B — Lengkapi Fitur Kerja
+
+- [ ] B.1 Folder & Subtask
+- [ ] B.2 Calendar View & Gantt View + Task Dependency
+- [ ] B.3 Real-time sync via Supabase Realtime (Postgres Changes)
+- [ ] B.4 Sistem @mention (user & task)
+- [ ] B.5 Docs (editor teks tertaut ke Task) — kolaborasi real-time (CRDT/Yjs via Broadcast)
+- [ ] B.6 Custom fields & custom status per List
+- [ ] B.7 Dashboard: tab Progres Task, Workload, Resume
+- [ ] B.8 Search cepat (Command+K)
+
+### FASE C — Kolaborasi Tambahan
+
+- [ ] C.1 Automasi sederhana (Trigger-Condition-Action, per List)
+- [ ] C.2 Template List (simpan & instansiasi ulang)
+- [ ] C.3 Whiteboard + konversi sticky note jadi Task
+- [ ] C.4 Notulensi Meeting (editor real-time sama dengan Docs + action item → Task)
+- [ ] C.5 Time tracking manual (catat menit per Task)
+- [ ] C.6 File attachment via Supabase Storage
+- [ ] C.7 Ganti password, rename Workspace/Space/List
+
+### FASE D — Penutup
+
+- [ ] D.1 Testing menyeluruh: satu alur pemakaian nyata memakai semua fitur sekaligus, TERMASUK memastikan modul form yang sudah ada tetap jalan normal tanpa regresi
+- [ ] D.2 Deploy — push ke repo & Vercel project yang sama, tidak ada setup baru
