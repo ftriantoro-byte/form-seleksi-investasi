@@ -1,9 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requirePmAccess } from "@/lib/pm/access";
 import { listSchema } from "@/lib/pm/schema";
+
+// Lihat catatan PM_LAYOUT_PATH di actions/pm/workspaces.ts.
+const PM_LAYOUT_PATH = "/pm";
 
 export async function createList(formData: FormData) {
   await requirePmAccess();
@@ -30,6 +34,7 @@ export async function createList(formData: FormData) {
     return redirect(`/pm/${workspaceId}/${spaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}/${spaceId}`);
 }
 
@@ -57,6 +62,7 @@ export async function renameList(formData: FormData) {
     return redirect(`/pm/${workspaceId}/${spaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}/${spaceId}`);
 }
 
@@ -74,5 +80,6 @@ export async function deleteList(formData: FormData) {
     return redirect(`/pm/${workspaceId}/${spaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}/${spaceId}`);
 }

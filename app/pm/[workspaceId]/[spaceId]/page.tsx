@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getPmMembership } from "@/lib/pm/access";
 import { renameSpace, deleteSpace } from "@/actions/pm/spaces";
 import { createList } from "@/actions/pm/lists";
 import { FormPageShell } from "@/components/ui/FormPageShell";
@@ -16,18 +15,7 @@ export default async function SpaceDetailPage({
 }) {
   const { workspaceId, spaceId } = await params;
   const { error } = await searchParams;
-  const pmRole = await getPmMembership();
-
-  if (!pmRole) {
-    return (
-      <FormPageShell maxWidth="max-w-xl">
-        <p className="text-[15px] text-zinc-500">
-          Anda tidak memiliki akses ke modul Manajemen Proyek.
-        </p>
-      </FormPageShell>
-    );
-  }
-
+  // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
   const { data: space } = await supabase

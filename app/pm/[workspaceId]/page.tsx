@@ -24,17 +24,8 @@ export default async function WorkspaceDetailPage({
 }) {
   const { workspaceId } = await params;
   const { error } = await searchParams;
+  // Akses modul PM sudah dicek di app/pm/layout.tsx - pmRole di sini pasti terisi.
   const pmRole = await getPmMembership();
-
-  if (!pmRole) {
-    return (
-      <FormPageShell maxWidth="max-w-xl">
-        <p className="text-[15px] text-zinc-500">
-          Anda tidak memiliki akses ke modul Manajemen Proyek.
-        </p>
-      </FormPageShell>
-    );
-  }
 
   const supabase = await createClient();
 

@@ -1,9 +1,13 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requirePmAccess } from "@/lib/pm/access";
 import { spaceSchema } from "@/lib/pm/schema";
+
+// Lihat catatan PM_LAYOUT_PATH di actions/pm/workspaces.ts.
+const PM_LAYOUT_PATH = "/pm";
 
 export async function createSpace(formData: FormData) {
   await requirePmAccess();
@@ -29,6 +33,7 @@ export async function createSpace(formData: FormData) {
     return redirect(`/pm/${workspaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}`);
 }
 
@@ -55,6 +60,7 @@ export async function renameSpace(formData: FormData) {
     return redirect(`/pm/${workspaceId}/${spaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}/${spaceId}`);
 }
 
@@ -71,5 +77,6 @@ export async function deleteSpace(formData: FormData) {
     return redirect(`/pm/${workspaceId}/${spaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}`);
 }

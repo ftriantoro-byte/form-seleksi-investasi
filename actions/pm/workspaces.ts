@@ -1,9 +1,16 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requirePmAdmin } from "@/lib/pm/access";
 import { workspaceSchema } from "@/lib/pm/schema";
+
+// app/pm/layout.tsx bertanggung jawab atas pohon navigasi sidebar (Workspace/
+// Space/List) - Next.js tidak otomatis refetch data layout saat navigasi
+// antar halaman di bawahnya, jadi tiap mutasi Workspace/Space/List/anggota
+// harus revalidate path ini agar sidebar ikut ter-update.
+const PM_LAYOUT_PATH = "/pm";
 
 export async function createWorkspace(formData: FormData) {
   await requirePmAdmin();
@@ -37,6 +44,7 @@ export async function createWorkspace(formData: FormData) {
     );
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspace.id}`);
 }
 
@@ -65,6 +73,7 @@ export async function renameWorkspace(formData: FormData) {
     return redirect(`/pm/${workspaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}`);
 }
 
@@ -80,6 +89,7 @@ export async function deleteWorkspace(formData: FormData) {
     return redirect(`/pm/${workspaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect("/pm");
 }
 
@@ -98,6 +108,7 @@ export async function addWorkspaceMember(formData: FormData) {
     return redirect(`/pm/${workspaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}`);
 }
 
@@ -118,5 +129,6 @@ export async function removeWorkspaceMember(formData: FormData) {
     return redirect(`/pm/${workspaceId}?error=${encodeURIComponent(error.message)}`);
   }
 
+  revalidatePath(PM_LAYOUT_PATH, "layout");
   redirect(`/pm/${workspaceId}`);
 }
