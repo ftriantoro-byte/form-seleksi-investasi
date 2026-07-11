@@ -87,6 +87,12 @@ export default async function WorkspaceDetailPage({
         >
           Template List →
         </Link>
+        <Link
+          href={`/pm/${workspaceId}/meetings`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-4 py-1.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+        >
+          Notulensi Meeting →
+        </Link>
       </div>
 
       {error && (

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 import { createClient } from "@/lib/supabase/client";
 import { saveDocState } from "@/actions/pm/docs";
+import { saveMeetingState } from "@/actions/pm/meetings";
 import { hexToUint8Array, uint8ArrayToBase64, base64ToUint8Array } from "@/lib/pm/yjs-encoding";
 
 // Diff sederhana: cari prefix & suffix sama, sisanya di tengah dianggap
@@ -38,20 +39,27 @@ function computeInitialText(initialStateHex: string | null): string {
   }
 }
 
-// Doc kolaboratif tertaut ke Task (B.5) - dipakai juga untuk Notulensi
-// Meeting nanti (C.4, "editor kolaboratif real-time yang SAMA dengan Docs",
-// PM-MODULE-SPEC.md §4), makanya props-nya generik (docId + initialStateHex,
-// bukan taskId). Sinkron live pakai Supabase Realtime Broadcast (bukan
-// Postgres Changes - lihat PM-MODULE-SPEC.md §5); state Yjs penuh disimpan
-// ke DB berkala (debounce 1.5 detik) lewat Server Action supaya Doc tidak
-// hilang saat semua orang keluar.
+// Doc kolaboratif tertaut ke Task (B.5), dipakai ulang juga untuk isi
+// Notulensi Meeting (C.4, "editor kolaboratif real-time yang SAMA dengan
+// Docs", PM-MODULE-SPEC.md §4) - makanya props-nya generik (docId +
+// initialStateHex, bukan taskId), dan `kind` menentukan Server Action mana
+// yang dipanggil untuk persistensi (pm_docs.crdt_state vs
+// pm_meetings.crdt_state - dua kolom beda tabel, isi textnya sendiri tidak
+// pernah dicampur karena docId beda & nama channel Broadcast ikut disertakan
+// `kind` supaya namespace-nya terpisah). Sinkron live pakai Supabase Realtime
+// Broadcast (bukan Postgres Changes - lihat PM-MODULE-SPEC.md §5); state Yjs
+// penuh disimpan ke DB berkala (debounce 1.5 detik) lewat Server Action
+// supaya isi tidak hilang saat semua orang keluar.
 export function PmCollaborativeDoc({
   docId,
   initialStateHex,
+  kind = "doc",
 }: {
   docId: string;
   initialStateHex: string | null;
+  kind?: "doc" | "meeting";
 }) {
+  const saveState = kind === "meeting" ? saveMeetingState : saveDocState;
   const [text, setText] = useState(() => computeInitialText(initialStateHex));
   const ydocRef = useRef<Y.Doc | null>(null);
   const ytextRef = useRef<Y.Text | null>(null);
@@ -91,7 +99,7 @@ export function PmCollaborativeDoc({
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       saveTimerRef.current = setTimeout(() => {
         const fullState = Y.encodeStateAsUpdate(ydoc);
-        saveDocState(docId, uint8ArrayToBase64(fullState)).catch(() => {
+        saveState(docId, uint8ArrayToBase64(fullState)).catch(() => {
           // persistensi berkala best-effort - sinkron live tetap jalan via Broadcast
         });
       }, 1500);
@@ -105,7 +113,7 @@ export function PmCollaborativeDoc({
       if (cancelled) return;
       if (session) supabase.realtime.setAuth(session.access_token);
 
-      const channel = supabase.channel(`pm-doc-${docId}`);
+      const channel = supabase.channel(`pm-${kind}-${docId}`);
       channelRef.current = channel;
       channel.on("broadcast", { event: "yjs-update" }, ({ payload }) => {
         const update = base64ToUint8Array(payload.update as string);

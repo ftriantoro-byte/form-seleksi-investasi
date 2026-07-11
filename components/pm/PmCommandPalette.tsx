@@ -9,6 +9,7 @@ const TYPE_LABEL: Record<PmSearchResult["type"], string> = {
   space: "Space",
   list: "List",
   task: "Task",
+  meeting: "Meeting",
 };
 
 export function PmCommandPalette() {
@@ -85,7 +86,7 @@ export function PmCommandPalette() {
               ref={inputRef}
               value={query}
               onChange={(e) => handleQueryChange(e.target.value)}
-              placeholder="Cari Workspace, Space, List, Task..."
+              placeholder="Cari Workspace, Space, List, Task, Meeting..."
               className="w-full rounded-t-3xl border-b border-zinc-100 px-5 py-4 text-[15px] text-zinc-900 outline-none placeholder:text-zinc-400"
             />
             <div className="max-h-80 overflow-y-auto p-2">

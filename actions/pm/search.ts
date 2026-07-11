@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePmAccess } from "@/lib/pm/access";
 
 export type PmSearchResult = {
-  type: "workspace" | "space" | "list" | "task";
+  type: "workspace" | "space" | "list" | "task" | "meeting";
   label: string;
   href: string;
 };
@@ -21,7 +21,7 @@ export async function searchPm(query: string): Promise<PmSearchResult[]> {
   const supabase = await createClient();
   const like = `%${trimmed}%`;
 
-  const [{ data: workspaces }, { data: spaces }, { data: lists }, { data: tasks }] =
+  const [{ data: workspaces }, { data: spaces }, { data: lists }, { data: tasks }, { data: meetings }] =
     await Promise.all([
       supabase.from("pm_workspaces").select("id, nama").ilike("nama", like).limit(5),
       supabase
@@ -39,6 +39,11 @@ export async function searchPm(query: string): Promise<PmSearchResult[]> {
         .select("id, judul, list_id, pm_lists(space_id, pm_spaces(workspace_id))")
         .ilike("judul", like)
         .limit(8),
+      supabase
+        .from("pm_meetings")
+        .select("id, judul, workspace_id")
+        .ilike("judul", like)
+        .limit(5),
     ]);
 
   const results: PmSearchResult[] = [];
@@ -71,6 +76,14 @@ export async function searchPm(query: string): Promise<PmSearchResult[]> {
       type: "task",
       label: t.judul,
       href: `/pm/${list.pm_spaces.workspace_id}/${list.space_id}/${t.list_id}/${t.id}`,
+    });
+  }
+
+  for (const m of meetings ?? []) {
+    results.push({
+      type: "meeting",
+      label: m.judul,
+      href: `/pm/${m.workspace_id}/meetings/${m.id}`,
     });
   }
 

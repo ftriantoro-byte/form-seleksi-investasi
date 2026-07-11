@@ -65,3 +65,14 @@ export const whiteboardSchema = z.object({
 });
 
 export const STICKY_COLOR_VALUES = ["yellow", "pink", "blue", "green"] as const;
+
+export const meetingSchema = z.object({
+  judul: z.string().min(1, "Judul Meeting wajib diisi"),
+  meetingDate: z.string().optional().or(z.literal("")),
+});
+
+export const actionItemSchema = z.object({
+  deskripsi: z.string().min(1, "Deskripsi Action Item wajib diisi"),
+  assigneeId: z.string().optional().or(z.literal("")),
+  dueDate: z.string().optional().or(z.literal("")),
+});
