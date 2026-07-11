@@ -13,6 +13,8 @@ import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { FormField } from "@/components/ui/FormField";
 import { PmBoardView } from "@/components/pm/PmBoardView";
+import { PmCalendarView } from "@/components/pm/PmCalendarView";
+import { PmGanttView } from "@/components/pm/PmGanttView";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 
@@ -22,8 +24,12 @@ type PmTaskRow = {
   status: string;
   priority: string | null;
   assignee_id: string | null;
+  start_date: string | null;
   due_date: string | null;
 };
+
+const VIEW_VALUES = ["list", "board", "calendar", "gantt"] as const;
+type PmView = (typeof VIEW_VALUES)[number];
 
 const SORT_VALUES = ["created_at", "judul", "due_date"] as const;
 const SORT_LABEL: Record<string, string> = {
@@ -44,6 +50,7 @@ export default async function ListDetailPage({
     assignee?: string;
     priority?: string;
     sort?: string;
+    month?: string;
   }>;
 }) {
   const { workspaceId, spaceId, listId } = await params;
@@ -54,11 +61,17 @@ export default async function ListDetailPage({
     assignee: assigneeFilter,
     priority: priorityFilter,
     sort: sortParam,
+    month: monthParam,
   } = await searchParams;
-  const view = viewParam === "board" ? "board" : "list";
+  const view: PmView = VIEW_VALUES.includes(viewParam as PmView) ? (viewParam as PmView) : "list";
   const sort = SORT_VALUES.includes(sortParam as (typeof SORT_VALUES)[number])
     ? (sortParam as (typeof SORT_VALUES)[number])
     : "created_at";
+  const now = new Date();
+  const month =
+    monthParam && /^\d{4}-\d{2}$/.test(monthParam)
+      ? monthParam
+      : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
@@ -81,7 +94,7 @@ export default async function ListDetailPage({
 
   let taskQuery = supabase
     .from("pm_tasks")
-    .select("id, judul, status, priority, assignee_id, due_date")
+    .select("id, judul, status, priority, assignee_id, start_date, due_date")
     .eq("list_id", listId);
 
   if (statusFilter) taskQuery = taskQuery.eq("status", statusFilter);
@@ -139,11 +152,28 @@ export default async function ListDetailPage({
           >
             Board
           </Link>
+          <Link
+            href={{ pathname: listBase, query: { view: "calendar", month } }}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+              view === "calendar" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+            }`}
+          >
+            Calendar
+          </Link>
+          <Link
+            href={{ pathname: listBase, query: { view: "gantt" } }}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+              view === "gantt" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+            }`}
+          >
+            Gantt
+          </Link>
         </div>
       </div>
 
       <form className="mt-4 flex flex-wrap items-center gap-3">
         <input type="hidden" name="view" value={view} />
+        {view === "calendar" && <input type="hidden" name="month" value={month} />}
         <select
           name="status"
           defaultValue={statusFilter ?? ""}
@@ -200,7 +230,7 @@ export default async function ListDetailPage({
           Terapkan
         </button>
         <Link
-          href={{ pathname: listBase, query: { view } }}
+          href={{ pathname: listBase, query: view === "calendar" ? { view, month } : { view } }}
           className="text-[13px] text-zinc-400 transition-colors hover:text-zinc-700"
         >
           Reset filter
@@ -210,6 +240,19 @@ export default async function ListDetailPage({
       <div className="mt-4">
         {view === "board" ? (
           <PmBoardView tasks={tasks} emailByUserId={emailByUserIdRecord} listBase={listBase} />
+        ) : view === "calendar" ? (
+          <PmCalendarView
+            tasks={tasks}
+            listBase={listBase}
+            month={month}
+            baseQuery={{
+              ...(statusFilter ? { status: statusFilter } : {}),
+              ...(assigneeFilter ? { assignee: assigneeFilter } : {}),
+              ...(priorityFilter ? { priority: priorityFilter } : {}),
+            }}
+          />
+        ) : view === "gantt" ? (
+          <PmGanttView tasks={tasks} listBase={listBase} />
         ) : (
           <div className="overflow-hidden rounded-3xl border border-black/[0.04] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
             <div className="overflow-x-auto">
@@ -300,6 +343,8 @@ export default async function ListDetailPage({
               ))}
             </select>
           </div>
+
+          <FormField label="Tanggal Mulai (opsional)" name="startDate" type="date" required={false} />
 
           <FormField label="Due Date" name="dueDate" type="date" required={false} />
 

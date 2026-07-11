@@ -29,6 +29,7 @@ export const taskSchema = z.object({
   status: z.enum(TASK_STATUS_VALUES),
   priority: z.enum(TASK_PRIORITY_VALUES).optional().or(z.literal("")),
   assigneeId: z.string().optional().or(z.literal("")),
+  startDate: z.string().optional().or(z.literal("")),
   dueDate: z.string().optional().or(z.literal("")),
 });
 

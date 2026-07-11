@@ -31,6 +31,7 @@ export async function createTask(formData: FormData) {
     status: formData.get("status"),
     priority: formData.get("priority") || "",
     assigneeId: formData.get("assigneeId") || "",
+    startDate: formData.get("startDate") || "",
     dueDate: formData.get("dueDate") || "",
   });
 
@@ -39,7 +40,7 @@ export async function createTask(formData: FormData) {
     return redirect(`${base}?error=${encodeURIComponent(pesan)}`);
   }
 
-  const { judul, deskripsi, status, priority, assigneeId, dueDate } = parsed.data;
+  const { judul, deskripsi, status, priority, assigneeId, startDate, dueDate } = parsed.data;
 
   const { data: task, error } = await supabase
     .from("pm_tasks")
@@ -50,6 +51,7 @@ export async function createTask(formData: FormData) {
       status,
       priority: priority || null,
       assignee_id: assigneeId || null,
+      start_date: startDate || null,
       due_date: dueDate || null,
       created_by: user.id,
     })
@@ -92,6 +94,7 @@ export async function updateTask(formData: FormData) {
     status: formData.get("status"),
     priority: formData.get("priority") || "",
     assigneeId: formData.get("assigneeId") || "",
+    startDate: formData.get("startDate") || "",
     dueDate: formData.get("dueDate") || "",
   });
 
@@ -100,7 +103,7 @@ export async function updateTask(formData: FormData) {
     return redirect(`${base}/${taskId}?error=${encodeURIComponent(pesan)}`);
   }
 
-  const { judul, deskripsi, status, priority, assigneeId, dueDate } = parsed.data;
+  const { judul, deskripsi, status, priority, assigneeId, startDate, dueDate } = parsed.data;
 
   const { data: existing } = await supabase
     .from("pm_tasks")
@@ -116,6 +119,7 @@ export async function updateTask(formData: FormData) {
       status,
       priority: priority || null,
       assignee_id: assigneeId || null,
+      start_date: startDate || null,
       due_date: dueDate || null,
     })
     .eq("id", taskId);

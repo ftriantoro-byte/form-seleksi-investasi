@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { updateTask, deleteTask, createSubtask } from "@/actions/pm/tasks";
 import { createComment, deleteComment } from "@/actions/pm/comments";
+import { addDependency, removeDependency } from "@/actions/pm/dependencies";
 import {
   createChecklistItem,
   toggleChecklistItem,
@@ -21,6 +22,7 @@ type PmTaskDetail = {
   status: string;
   priority: string | null;
   assignee_id: string | null;
+  start_date: string | null;
   due_date: string | null;
   parent_task_id: string | null;
 };
@@ -43,6 +45,10 @@ type PmSubtaskRow = {
   judul: string;
   status: string;
 };
+
+type PmOtherTaskRow = { id: string; judul: string };
+type PmDependencyRow = { id: string; depends_on_task_id: string };
+type PmDependentRow = { id: string; task_id: string };
 
 // Dipakai dari dua tempat: halaman penuh [taskId]/page.tsx (navigasi
 // langsung/refresh/link) dan modal @modal/(.)[taskId]/page.tsx (dibuka dari
@@ -71,7 +77,9 @@ export async function PmTaskDetailContent({
 
   const { data: taskRaw } = await supabase
     .from("pm_tasks")
-    .select("id, list_id, judul, deskripsi, status, priority, assignee_id, due_date, parent_task_id")
+    .select(
+      "id, list_id, judul, deskripsi, status, priority, assignee_id, start_date, due_date, parent_task_id",
+    )
     .eq("id", taskId)
     .single();
 
@@ -85,28 +93,44 @@ export async function PmTaskDetailContent({
     );
   }
 
-  const [{ data: anggotaRaw }, { data: checklistRaw }, { data: commentsRaw }, { data: subtasksRaw }, { data: parentRaw }] =
-    await Promise.all([
-      supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
-      supabase
-        .from("pm_checklist_items")
-        .select("id, konten, selesai")
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("pm_comments")
-        .select("id, konten, created_by, created_at")
-        .eq("task_id", taskId)
-        .order("created_at", { ascending: true }),
-      supabase
-        .from("pm_tasks")
-        .select("id, judul, status")
-        .eq("parent_task_id", taskId)
-        .order("created_at", { ascending: true }),
-      task.parent_task_id
-        ? supabase.from("pm_tasks").select("id, judul").eq("id", task.parent_task_id).single()
-        : Promise.resolve({ data: null }),
-    ]);
+  const [
+    { data: anggotaRaw },
+    { data: checklistRaw },
+    { data: commentsRaw },
+    { data: subtasksRaw },
+    { data: parentRaw },
+    { data: otherTasksRaw },
+    { data: dependenciesRaw },
+    { data: dependentsRaw },
+  ] = await Promise.all([
+    supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
+    supabase
+      .from("pm_checklist_items")
+      .select("id, konten, selesai")
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("pm_comments")
+      .select("id, konten, created_by, created_at")
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("pm_tasks")
+      .select("id, judul, status")
+      .eq("parent_task_id", taskId)
+      .order("created_at", { ascending: true }),
+    task.parent_task_id
+      ? supabase.from("pm_tasks").select("id, judul").eq("id", task.parent_task_id).single()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("pm_tasks")
+      .select("id, judul")
+      .eq("list_id", listId)
+      .neq("id", taskId)
+      .order("judul", { ascending: true }),
+    supabase.from("pm_task_dependencies").select("id, depends_on_task_id").eq("task_id", taskId),
+    supabase.from("pm_task_dependencies").select("id, task_id").eq("depends_on_task_id", taskId),
+  ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
@@ -114,6 +138,13 @@ export async function PmTaskDetailContent({
   const comments = (commentsRaw ?? []) as PmCommentRow[];
   const subtasks = (subtasksRaw ?? []) as PmSubtaskRow[];
   const parentTask = parentRaw as { id: string; judul: string } | null;
+  const otherTasks = (otherTasksRaw ?? []) as PmOtherTaskRow[];
+  const judulByTaskId = new Map(otherTasks.map((t) => [t.id, t.judul]));
+  const dependencies = (dependenciesRaw ?? []) as PmDependencyRow[];
+  const dependents = (dependentsRaw ?? []) as PmDependentRow[];
+  const dependencyCandidates = otherTasks.filter(
+    (t) => !dependencies.some((d) => d.depends_on_task_id === t.id),
+  );
 
   const hiddenFields = (
     <>
@@ -179,6 +210,14 @@ export async function PmTaskDetailContent({
               ))}
             </select>
           </div>
+
+          <FormField
+            label="Tanggal Mulai (opsional)"
+            name="startDate"
+            type="date"
+            defaultValue={task.start_date ?? ""}
+            required={false}
+          />
 
           <FormField
             label="Due Date"
@@ -337,6 +376,92 @@ export async function PmTaskDetailContent({
             Tambah
           </button>
         </form>
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Dependency</h3>
+
+        <p className="mt-4 text-[13px] font-medium text-zinc-500">Menunggu Task lain</p>
+        <ul className="mt-2 space-y-1.5">
+          {dependencies.map((dep) => (
+            <li
+              key={dep.id}
+              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
+            >
+              <Link
+                href={`${listBase}/${dep.depends_on_task_id}`}
+                className="truncate text-[14px] text-zinc-700 hover:underline"
+              >
+                {judulByTaskId.get(dep.depends_on_task_id) ?? "Task"}
+              </Link>
+              <form action={removeDependency}>
+                {hiddenFields}
+                <input type="hidden" name="dependencyId" value={dep.id} />
+                <button
+                  type="submit"
+                  className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
+                >
+                  Hapus
+                </button>
+              </form>
+            </li>
+          ))}
+          {dependencies.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Tidak menunggu Task lain.</li>
+          )}
+        </ul>
+
+        {dependencyCandidates.length > 0 && (
+          <form action={addDependency} className="mt-3 flex items-center gap-3">
+            {hiddenFields}
+            <select
+              name="dependsOnTaskId"
+              className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              {dependencyCandidates.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.judul}
+                </option>
+              ))}
+            </select>
+            <button
+              type="submit"
+              className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              Tambah
+            </button>
+          </form>
+        )}
+
+        <p className="mt-6 text-[13px] font-medium text-zinc-500">Diperlukan oleh</p>
+        <ul className="mt-2 space-y-1.5">
+          {dependents.map((dep) => (
+            <li
+              key={dep.id}
+              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
+            >
+              <Link
+                href={`${listBase}/${dep.task_id}`}
+                className="truncate text-[14px] text-zinc-700 hover:underline"
+              >
+                {judulByTaskId.get(dep.task_id) ?? "Task"}
+              </Link>
+              <form action={removeDependency}>
+                {hiddenFields}
+                <input type="hidden" name="dependencyId" value={dep.id} />
+                <button
+                  type="submit"
+                  className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
+                >
+                  Hapus
+                </button>
+              </form>
+            </li>
+          ))}
+          {dependents.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Tidak ada Task yang menunggu ini.</li>
+          )}
+        </ul>
       </div>
 
       <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
