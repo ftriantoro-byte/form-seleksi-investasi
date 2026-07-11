@@ -12,6 +12,7 @@ import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
 import { TASK_STATUS_LABEL, TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { FormField } from "@/components/ui/FormField";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
+import { PmCollaborativeDoc } from "@/components/pm/PmCollaborativeDoc";
 import { renderMentionText } from "@/lib/pm/mentions";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
@@ -147,6 +148,36 @@ export async function PmTaskDetailContent({
   const dependencyCandidates = otherTasks.filter(
     (t) => !dependencies.some((d) => d.depends_on_task_id === t.id),
   );
+
+  // Doc kolaboratif 1:1 per Task, dibuat lazy saat pertama kali dibuka
+  // (bukan trigger DB - supaya tidak semua Task otomatis punya baris Doc
+  // yang tidak pernah dipakai). task_id unique di pm_docs, jadi race antar
+  // 2 client yang sama-sama pertama kali buka ditangani dengan re-select
+  // kalau insert gagal.
+  let doc: { id: string; crdt_state: string | null } | null = null;
+  const { data: existingDoc } = await supabase
+    .from("pm_docs")
+    .select("id, crdt_state")
+    .eq("task_id", taskId)
+    .maybeSingle();
+  doc = existingDoc;
+  if (!doc && user) {
+    const { data: insertedDoc } = await supabase
+      .from("pm_docs")
+      .insert({ task_id: taskId, created_by: user.id })
+      .select("id, crdt_state")
+      .single();
+    if (insertedDoc) {
+      doc = insertedDoc;
+    } else {
+      const { data: retryDoc } = await supabase
+        .from("pm_docs")
+        .select("id, crdt_state")
+        .eq("task_id", taskId)
+        .maybeSingle();
+      doc = retryDoc;
+    }
+  }
 
   const hiddenFields = (
     <>
@@ -287,6 +318,20 @@ export async function PmTaskDetailContent({
             Hapus Task ini
           </button>
         </form>
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Docs</h3>
+        <p className="mt-1 text-[13px] text-zinc-400">
+          Catatan bebas, bisa diedit bersamaan secara real-time.
+        </p>
+        <div className="mt-4">
+          {doc ? (
+            <PmCollaborativeDoc docId={doc.id} initialStateHex={doc.crdt_state} />
+          ) : (
+            <p className="text-[14px] text-zinc-400">Doc belum bisa dimuat.</p>
+          )}
+        </div>
       </div>
 
       <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
