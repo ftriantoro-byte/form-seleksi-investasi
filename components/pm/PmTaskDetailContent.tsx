@@ -9,6 +9,7 @@ import {
   deleteChecklistItem,
 } from "@/actions/pm/checklist";
 import { createTimeEntry, deleteTimeEntry } from "@/actions/pm/timeEntries";
+import { uploadAttachment, downloadAttachment, deleteAttachment } from "@/actions/pm/attachments";
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
 import { TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
@@ -62,6 +63,12 @@ type PmTimeEntryRow = {
   menit: number;
   catatan: string | null;
   tanggal: string;
+};
+type PmAttachmentRow = {
+  id: string;
+  file_name: string;
+  size_bytes: number;
+  created_by: string;
 };
 
 // Dipakai dari dua tempat: halaman penuh [taskId]/page.tsx (navigasi
@@ -120,6 +127,7 @@ export async function PmTaskDetailContent({
     { data: fieldDefinitionsRaw },
     { data: fieldValuesRaw },
     { data: timeEntriesRaw },
+    { data: attachmentsRaw },
   ] = await Promise.all([
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
     supabase
@@ -163,6 +171,11 @@ export async function PmTaskDetailContent({
       .select("id, user_id, menit, catatan, tanggal")
       .eq("task_id", taskId)
       .order("tanggal", { ascending: false }),
+    supabase
+      .from("pm_attachments")
+      .select("id, file_name, size_bytes, created_by")
+      .eq("task_id", taskId)
+      .order("created_at", { ascending: false }),
   ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
@@ -190,6 +203,11 @@ export async function PmTaskDetailContent({
   const totalMenit = timeEntries.reduce((sum, entry) => sum + entry.menit, 0);
   const formatMenit = (menit: number) =>
     menit >= 60 ? `${Math.floor(menit / 60)}j ${menit % 60}m` : `${menit}m`;
+  const attachments = (attachmentsRaw ?? []) as PmAttachmentRow[];
+  const formatUkuran = (bytes: number) =>
+    bytes >= 1024 * 1024
+      ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+      : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
   // Doc kolaboratif 1:1 per Task, dibuat lazy saat pertama kali dibuka
   // (bukan trigger DB - supaya tidak semua Task otomatis punya baris Doc
@@ -556,6 +574,64 @@ export async function PmTaskDetailContent({
             Catat
           </button>
         </form>
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Lampiran</h3>
+        <ul className="mt-4 space-y-1.5">
+          {attachments.map((att) => (
+            <li
+              key={att.id}
+              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-[14px] text-zinc-700">{att.file_name}</p>
+                <p className="text-[12px] text-zinc-400">
+                  {formatUkuran(att.size_bytes)} · {emailByUserId.get(att.created_by) ?? "Pengguna"}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <form action={downloadAttachment}>
+                  {hiddenFields}
+                  <input type="hidden" name="attachmentId" value={att.id} />
+                  <button type="submit" className="text-[12px] font-medium text-zinc-600 hover:underline">
+                    Unduh
+                  </button>
+                </form>
+                <form action={deleteAttachment}>
+                  {hiddenFields}
+                  <input type="hidden" name="attachmentId" value={att.id} />
+                  <button
+                    type="submit"
+                    className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
+                  >
+                    Hapus
+                  </button>
+                </form>
+              </div>
+            </li>
+          ))}
+          {attachments.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Belum ada lampiran.</li>
+          )}
+        </ul>
+
+        <form action={uploadAttachment} className="mt-4 flex flex-wrap items-center gap-3">
+          {hiddenFields}
+          <input
+            type="file"
+            name="file"
+            required
+            className="flex-1 text-[13px] text-zinc-600 file:mr-3 file:rounded-full file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-[13px] file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
+          />
+          <button
+            type="submit"
+            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          >
+            Unggah
+          </button>
+        </form>
+        <p className="mt-2 text-[12px] text-zinc-400">Maksimal 10 MB per file.</p>
       </div>
 
       <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
