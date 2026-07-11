@@ -43,22 +43,35 @@ export function PmCalendarView({
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
 
   const monthLabel = firstOfMonth.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
+  const now = new Date();
+  const todayMonth = formatMonth(now.getFullYear(), now.getMonth() + 1);
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Link
+            href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: prevMonth } }}
+            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+            aria-label="Bulan sebelumnya"
+          >
+            ‹
+          </Link>
+          <span className="text-[14px] font-semibold text-zinc-900">{monthLabel}</span>
+          <Link
+            href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: nextMonth } }}
+            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+            aria-label="Bulan berikutnya"
+          >
+            ›
+          </Link>
+        </div>
         <Link
-          href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: prevMonth } }}
-          className="text-[13px] text-zinc-500 transition-colors hover:text-zinc-900"
+          href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: todayMonth } }}
+          className="text-[12px] font-medium text-blue-600 hover:underline"
         >
-          ← Sebelumnya
-        </Link>
-        <span className="text-[14px] font-semibold text-zinc-900">{monthLabel}</span>
-        <Link
-          href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: nextMonth } }}
-          className="text-[13px] text-zinc-500 transition-colors hover:text-zinc-900"
-        >
-          Berikutnya →
+          Hari ini
         </Link>
       </div>
 
@@ -75,12 +88,19 @@ export function PmCalendarView({
           if (day === null) return <div key={`empty-${i}`} />;
           const dateStr = `${year}-${String(monthNum).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
           const dayTasks = tasksByDate.get(dateStr) ?? [];
+          const isToday = dateStr === todayStr;
           return (
             <div
               key={dateStr}
               className="min-h-[84px] rounded-xl border border-black/[0.04] bg-white p-1.5"
             >
-              <div className="text-[11px] text-zinc-400">{day}</div>
+              <div
+                className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[11px] ${
+                  isToday ? "bg-blue-600 font-semibold text-white" : "text-zinc-400"
+                }`}
+              >
+                {day}
+              </div>
               <div className="mt-1 space-y-1">
                 {dayTasks.slice(0, 3).map((t) => (
                   <Link

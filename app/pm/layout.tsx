@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { logout } from "@/actions/auth";
 import { getPmMembership } from "@/lib/pm/access";
 import { getPmMobileMode } from "@/lib/pm/preferences";
 import { createClient } from "@/lib/supabase/server";
@@ -49,10 +50,21 @@ export default async function PmLayout({ children }: { children: React.ReactNode
           <div className="ml-auto flex items-center gap-2.5">
             <PmCommandPalette />
             <PmNotificationBell unreadCount={unreadCount ?? 0} />
-            <Link href="/akun" className="text-[12px] text-zinc-500 hover:text-zinc-900">
+            <Link
+              href="/akun"
+              className="rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-200"
+            >
               Akun
             </Link>
             <PmModeToggle mobileMode={mobileMode} />
+            <form action={logout}>
+              <button
+                type="submit"
+                className="rounded-full bg-zinc-900 px-4 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-zinc-700"
+              >
+                Keluar
+              </button>
+            </form>
           </div>
         </div>
         {children}
@@ -134,10 +146,21 @@ export default async function PmLayout({ children }: { children: React.ReactNode
           <div className="ml-auto flex items-center gap-2.5">
             <PmCommandPalette />
             <PmNotificationBell unreadCount={unreadCount ?? 0} />
-            <Link href="/akun" className="text-[12px] text-zinc-500 hover:text-zinc-900">
+            <Link
+              href="/akun"
+              className="rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-200"
+            >
               Akun
             </Link>
             <PmModeToggle mobileMode={mobileMode} />
+            <form action={logout}>
+              <button
+                type="submit"
+                className="rounded-full bg-zinc-900 px-4 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-zinc-700"
+              >
+                Keluar
+              </button>
+            </form>
           </div>
         </div>
         {children}
