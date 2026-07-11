@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PmSidebar } from "@/components/pm/PmSidebar";
 import { PmModeToggle } from "@/components/pm/PmModeToggle";
 import { PmNotificationBell } from "@/components/pm/PmNotificationBell";
+import { PmCommandPalette } from "@/components/pm/PmCommandPalette";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 
 type PmList = { id: string; nama: string };
@@ -43,6 +44,7 @@ export default async function PmLayout({ children }: { children: React.ReactNode
     return (
       <div className="min-h-screen bg-[#fbfbfd]">
         <div className="flex items-center justify-end gap-3 px-6 pt-5 sm:px-10">
+          <PmCommandPalette />
           <PmNotificationBell unreadCount={unreadCount ?? 0} />
           <PmModeToggle mobileMode={mobileMode} />
         </div>
@@ -121,6 +123,7 @@ export default async function PmLayout({ children }: { children: React.ReactNode
       <PmSidebar workspaces={workspaces} />
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="flex items-center justify-end gap-3 px-6 pt-5 sm:px-10">
+          <PmCommandPalette />
           <PmNotificationBell unreadCount={unreadCount ?? 0} />
           <PmModeToggle mobileMode={mobileMode} />
         </div>
