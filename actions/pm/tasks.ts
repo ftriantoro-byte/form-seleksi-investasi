@@ -137,6 +137,29 @@ export async function updateTask(formData: FormData) {
     });
   }
 
+  // Simpan nilai Custom Field (B.6) yang dikirim bersama form Detail Task -
+  // satu tombol Simpan untuk semuanya, bukan form terpisah per field.
+  const { data: fieldDefinitions } = await supabase
+    .from("pm_custom_field_definitions")
+    .select("id")
+    .eq("list_id", listId);
+
+  for (const def of fieldDefinitions ?? []) {
+    const raw = formData.get(`customField_${def.id}`);
+    if (raw === null) continue;
+    const rawStr = raw as string;
+    // Checkbox custom field dipasangkan dengan hidden input fallback "off"
+    // di form (lihat PmTaskDetailContent) supaya status tidak tercentang
+    // tetap terkirim - "on"/"off" cuma muncul dari pasangan itu.
+    const value = rawStr === "" ? null : rawStr === "on" ? "true" : rawStr === "off" ? "false" : rawStr;
+    await supabase
+      .from("pm_custom_field_values")
+      .upsert(
+        { task_id: taskId, field_definition_id: def.id, value },
+        { onConflict: "task_id,field_definition_id" },
+      );
+  }
+
   redirect(`${base}/${taskId}`);
 }
 

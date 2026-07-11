@@ -5,11 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateTaskStatus } from "@/actions/pm/tasks";
 import { TASK_STATUS_VALUES } from "@/lib/pm/schema";
-import {
-  TASK_STATUS_LABEL,
-  TASK_PRIORITY_LABEL,
-  TASK_PRIORITY_BADGE_KELAS,
-} from "@/lib/pm/labels";
+import { TASK_PRIORITY_LABEL, TASK_PRIORITY_BADGE_KELAS } from "@/lib/pm/labels";
 
 type PmTaskRow = {
   id: string;
@@ -24,10 +20,12 @@ export function PmBoardView({
   tasks,
   emailByUserId,
   listBase,
+  statusLabels,
 }: {
   tasks: PmTaskRow[];
   emailByUserId: Record<string, string>;
   listBase: string;
+  statusLabels: Record<string, string>;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -63,7 +61,7 @@ export function PmBoardView({
             }`}
           >
             <div className="mb-2 flex items-center gap-1.5 px-1 text-[13px] font-semibold text-zinc-600">
-              {TASK_STATUS_LABEL[status]}
+              {statusLabels[status]}
               <span className="text-zinc-400">{tasksInColumn.length}</span>
             </div>
             <div className="flex flex-col gap-2">

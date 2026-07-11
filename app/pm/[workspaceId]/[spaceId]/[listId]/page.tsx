@@ -1,14 +1,20 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { renameList, deleteList } from "@/actions/pm/lists";
+import { renameList, deleteList, updateStatusLabels } from "@/actions/pm/lists";
 import { createTask } from "@/actions/pm/tasks";
-import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
+import { createFieldDefinition, deleteFieldDefinition } from "@/actions/pm/customFields";
 import {
-  TASK_STATUS_LABEL,
+  TASK_STATUS_VALUES,
+  TASK_PRIORITY_VALUES,
+  CUSTOM_FIELD_TYPE_VALUES,
+  CUSTOM_FIELD_TYPE_LABEL,
+} from "@/lib/pm/schema";
+import {
   TASK_STATUS_BADGE_KELAS,
   TASK_PRIORITY_LABEL,
   TASK_PRIORITY_BADGE_KELAS,
 } from "@/lib/pm/labels";
+import { mergeStatusLabels } from "@/lib/pm/statusLabels";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { FormField } from "@/components/ui/FormField";
@@ -18,6 +24,12 @@ import { PmGanttView } from "@/components/pm/PmGanttView";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
+type PmFieldDefinition = {
+  id: string;
+  nama: string;
+  type: string;
+  opsi: string[] | null;
+};
 
 type PmTaskRow = {
   id: string;
@@ -79,7 +91,7 @@ export default async function ListDetailPage({
 
   const { data: list } = await supabase
     .from("pm_lists")
-    .select("id, nama, deskripsi, space_id, folder_id")
+    .select("id, nama, deskripsi, space_id, folder_id, custom_status_labels")
     .eq("id", listId)
     .single();
 
@@ -93,6 +105,8 @@ export default async function ListDetailPage({
     );
   }
 
+  const statusLabels = mergeStatusLabels(list.custom_status_labels);
+
   let taskQuery = supabase
     .from("pm_tasks")
     .select("id, judul, status, priority, assignee_id, start_date, due_date")
@@ -104,15 +118,22 @@ export default async function ListDetailPage({
 
   taskQuery = taskQuery.order(sort, { ascending: true, nullsFirst: false });
 
-  const [{ data: tasksRaw }, { data: anggotaRaw }] = await Promise.all([
-    taskQuery,
-    supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
-  ]);
+  const [{ data: tasksRaw }, { data: anggotaRaw }, { data: fieldDefinitionsRaw }] =
+    await Promise.all([
+      taskQuery,
+      supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
+      supabase
+        .from("pm_custom_field_definitions")
+        .select("id, nama, type, opsi")
+        .eq("list_id", listId)
+        .order("urutan", { ascending: true }),
+    ]);
 
   const tasks = (tasksRaw ?? []) as PmTaskRow[];
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
   const emailByUserIdRecord = Object.fromEntries(emailByUserId);
+  const fieldDefinitions = (fieldDefinitionsRaw ?? []) as PmFieldDefinition[];
 
   const listBase = `/pm/${workspaceId}/${spaceId}/${listId}`;
   const parentPath = list.folder_id
@@ -187,7 +208,7 @@ export default async function ListDetailPage({
           <option value="">Semua status</option>
           {TASK_STATUS_VALUES.map((value) => (
             <option key={value} value={value}>
-              {TASK_STATUS_LABEL[value]}
+              {statusLabels[value]}
             </option>
           ))}
         </select>
@@ -244,7 +265,12 @@ export default async function ListDetailPage({
 
       <div className="mt-4">
         {view === "board" ? (
-          <PmBoardView tasks={tasks} emailByUserId={emailByUserIdRecord} listBase={listBase} />
+          <PmBoardView
+            tasks={tasks}
+            emailByUserId={emailByUserIdRecord}
+            listBase={listBase}
+            statusLabels={statusLabels}
+          />
         ) : view === "calendar" ? (
           <PmCalendarView
             tasks={tasks}
@@ -292,7 +318,7 @@ export default async function ListDetailPage({
                             TASK_STATUS_BADGE_KELAS[task.status] ?? "bg-zinc-100 text-zinc-500"
                           }`}
                         >
-                          {TASK_STATUS_LABEL[task.status] ?? task.status}
+                          {statusLabels[task.status] ?? task.status}
                         </span>
                       </td>
                       <td className="px-3 py-3.5">
@@ -362,7 +388,7 @@ export default async function ListDetailPage({
             >
               {TASK_STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {TASK_STATUS_LABEL[value]}
+                  {statusLabels[value]}
                 </option>
               ))}
             </select>
@@ -390,6 +416,102 @@ export default async function ListDetailPage({
               className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
             >
               Buat Task
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Kelola Status</h3>
+        <p className="mt-1 text-[13px] text-zinc-400">
+          Ganti label tampilan 4 status baku khusus untuk List ini (kosongkan untuk pakai label
+          default).
+        </p>
+        <form action={updateStatusLabels} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="hidden" name="workspaceId" value={workspaceId} />
+          <input type="hidden" name="spaceId" value={spaceId} />
+          <input type="hidden" name="listId" value={listId} />
+          {TASK_STATUS_VALUES.map((value) => (
+            <FormField
+              key={value}
+              label={`Label untuk "${statusLabels[value]}"`}
+              name={`label_${value}`}
+              defaultValue={list.custom_status_labels?.[value] ?? ""}
+              required={false}
+            />
+          ))}
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              Simpan Label Status
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Custom Field</h3>
+        <ul className="mt-4 space-y-1.5">
+          {fieldDefinitions.map((def) => (
+            <li
+              key={def.id}
+              className="flex items-center justify-between gap-2 rounded-xl bg-zinc-50 px-4 py-2.5 text-[14px] text-zinc-700"
+            >
+              <span>
+                {def.nama}{" "}
+                <span className="text-zinc-400">({CUSTOM_FIELD_TYPE_LABEL[def.type as (typeof CUSTOM_FIELD_TYPE_VALUES)[number]] ?? def.type})</span>
+              </span>
+              <form action={deleteFieldDefinition}>
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                <input type="hidden" name="fieldDefinitionId" value={def.id} />
+                <button
+                  type="submit"
+                  className="text-[12px] text-zinc-400 transition-colors hover:text-red-600"
+                >
+                  Hapus
+                </button>
+              </form>
+            </li>
+          ))}
+          {fieldDefinitions.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Belum ada Custom Field.</li>
+          )}
+        </ul>
+
+        <form action={createFieldDefinition} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <input type="hidden" name="workspaceId" value={workspaceId} />
+          <input type="hidden" name="spaceId" value={spaceId} />
+          <input type="hidden" name="listId" value={listId} />
+          <FormField label="Nama Field" name="nama" />
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">Tipe</label>
+            <select
+              name="type"
+              defaultValue="text"
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              {CUSTOM_FIELD_TYPE_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {CUSTOM_FIELD_TYPE_LABEL[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <FormField
+            label="Opsi (pisah koma, khusus tipe Pilihan)"
+            name="opsi"
+            required={false}
+          />
+          <div className="sm:col-span-3">
+            <button
+              type="submit"
+              className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              Tambah Custom Field
             </button>
           </div>
         </form>

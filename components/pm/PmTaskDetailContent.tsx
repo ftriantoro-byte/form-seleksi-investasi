@@ -9,7 +9,8 @@ import {
   deleteChecklistItem,
 } from "@/actions/pm/checklist";
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
-import { TASK_STATUS_LABEL, TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
+import { TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
+import { mergeStatusLabels } from "@/lib/pm/statusLabels";
 import { FormField } from "@/components/ui/FormField";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 import { PmCollaborativeDoc } from "@/components/pm/PmCollaborativeDoc";
@@ -52,6 +53,8 @@ type PmSubtaskRow = {
 type PmOtherTaskRow = { id: string; judul: string };
 type PmDependencyRow = { id: string; depends_on_task_id: string };
 type PmDependentRow = { id: string; task_id: string };
+type PmFieldDefinition = { id: string; nama: string; type: string; opsi: string[] | null };
+type PmFieldValueRow = { field_definition_id: string; value: string | null };
 
 // Dipakai dari dua tempat: halaman penuh [taskId]/page.tsx (navigasi
 // langsung/refresh/link) dan modal @modal/(.)[taskId]/page.tsx (dibuka dari
@@ -105,6 +108,9 @@ export async function PmTaskDetailContent({
     { data: otherTasksRaw },
     { data: dependenciesRaw },
     { data: dependentsRaw },
+    { data: listRaw },
+    { data: fieldDefinitionsRaw },
+    { data: fieldValuesRaw },
   ] = await Promise.all([
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
     supabase
@@ -133,6 +139,16 @@ export async function PmTaskDetailContent({
       .order("judul", { ascending: true }),
     supabase.from("pm_task_dependencies").select("id, depends_on_task_id").eq("task_id", taskId),
     supabase.from("pm_task_dependencies").select("id, task_id").eq("depends_on_task_id", taskId),
+    supabase.from("pm_lists").select("custom_status_labels").eq("id", listId).single(),
+    supabase
+      .from("pm_custom_field_definitions")
+      .select("id, nama, type, opsi")
+      .eq("list_id", listId)
+      .order("urutan", { ascending: true }),
+    supabase
+      .from("pm_custom_field_values")
+      .select("field_definition_id, value")
+      .eq("task_id", taskId),
   ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
@@ -147,6 +163,14 @@ export async function PmTaskDetailContent({
   const dependents = (dependentsRaw ?? []) as PmDependentRow[];
   const dependencyCandidates = otherTasks.filter(
     (t) => !dependencies.some((d) => d.depends_on_task_id === t.id),
+  );
+  const statusLabels = mergeStatusLabels(
+    (listRaw as { custom_status_labels: Record<string, string> | null } | null)
+      ?.custom_status_labels,
+  );
+  const fieldDefinitions = (fieldDefinitionsRaw ?? []) as PmFieldDefinition[];
+  const fieldValueByDefId = new Map(
+    ((fieldValuesRaw ?? []) as PmFieldValueRow[]).map((v) => [v.field_definition_id, v.value]),
   );
 
   // Doc kolaboratif 1:1 per Task, dibuat lazy saat pertama kali dibuka
@@ -277,7 +301,7 @@ export async function PmTaskDetailContent({
             >
               {TASK_STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {TASK_STATUS_LABEL[value]}
+                  {statusLabels[value]}
                 </option>
               ))}
             </select>
@@ -298,6 +322,47 @@ export async function PmTaskDetailContent({
               ))}
             </select>
           </div>
+
+          {fieldDefinitions.map((def) => {
+            const currentValue = fieldValueByDefId.get(def.id) ?? "";
+            const fieldName = `customField_${def.id}`;
+            return (
+              <div key={def.id}>
+                <label className="block text-[13px] font-medium text-zinc-500">{def.nama}</label>
+                {def.type === "checkbox" ? (
+                  <div className="mt-2.5">
+                    <input type="hidden" name={fieldName} value="off" />
+                    <input
+                      type="checkbox"
+                      name={fieldName}
+                      defaultChecked={currentValue === "true"}
+                      className="h-4 w-4 rounded border-zinc-300"
+                    />
+                  </div>
+                ) : def.type === "select" ? (
+                  <select
+                    name={fieldName}
+                    defaultValue={currentValue}
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                  >
+                    <option value="">- Belum dipilih -</option>
+                    {(def.opsi ?? []).map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <input
+                    type={def.type === "number" ? "number" : def.type === "date" ? "date" : "text"}
+                    name={fieldName}
+                    defaultValue={currentValue}
+                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                  />
+                )}
+              </div>
+            );
+          })}
 
           <div className="sm:col-span-2">
             <button
@@ -407,7 +472,7 @@ export async function PmTaskDetailContent({
                   TASK_STATUS_BADGE_KELAS[sub.status] ?? "bg-zinc-100 text-zinc-500"
                 }`}
               >
-                {TASK_STATUS_LABEL[sub.status] ?? sub.status}
+                {statusLabels[sub.status] ?? sub.status}
               </span>
             </li>
           ))}

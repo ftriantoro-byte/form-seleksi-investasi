@@ -40,3 +40,18 @@ export const commentSchema = z.object({
 export const checklistItemSchema = z.object({
   konten: z.string().min(1, "Item checklist tidak boleh kosong"),
 });
+
+export const CUSTOM_FIELD_TYPE_VALUES = ["text", "number", "date", "checkbox", "select"] as const;
+export const CUSTOM_FIELD_TYPE_LABEL: Record<(typeof CUSTOM_FIELD_TYPE_VALUES)[number], string> = {
+  text: "Teks",
+  number: "Angka",
+  date: "Tanggal",
+  checkbox: "Checkbox",
+  select: "Pilihan",
+};
+
+export const customFieldDefinitionSchema = z.object({
+  nama: z.string().min(1, "Nama Custom Field wajib diisi"),
+  type: z.enum(CUSTOM_FIELD_TYPE_VALUES),
+  opsi: z.string().optional(), // dipisah koma di form, cuma dipakai kalau type = 'select'
+});
