@@ -12,6 +12,7 @@ import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
 import { TASK_STATUS_LABEL, TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { FormField } from "@/components/ui/FormField";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
+import { renderMentionText } from "@/lib/pm/mentions";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 
@@ -495,7 +496,14 @@ export async function PmTaskDetailContent({
                   </form>
                 )}
               </div>
-              <p className="mt-1 text-[14px] text-zinc-600">{comment.konten}</p>
+              <p className="mt-1 text-[14px] text-zinc-600">
+                {renderMentionText(
+                  comment.konten,
+                  anggota.map((a) => a.email),
+                  otherTasks,
+                  listBase,
+                )}
+              </p>
             </li>
           ))}
           {comments.length === 0 && (
@@ -505,12 +513,14 @@ export async function PmTaskDetailContent({
 
         <form action={createComment} className="mt-4 flex items-start gap-3">
           {hiddenFields}
-          <textarea
-            name="konten"
-            rows={2}
-            placeholder="Tulis komentar..."
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-          />
+          <div className="flex-1">
+            <textarea
+              name="konten"
+              rows={2}
+              placeholder="Tulis komentar... (@email untuk mention, #[Judul Task] untuk tautkan Task)"
+              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            />
+          </div>
           <button
             type="submit"
             className="rounded-full bg-zinc-900 px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"

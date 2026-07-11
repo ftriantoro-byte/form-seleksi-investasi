@@ -4,7 +4,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requirePmAccess } from "@/lib/pm/access";
 import { commentSchema } from "@/lib/pm/schema";
-import { notifyTaskCommented } from "@/lib/pm/notifications";
+import { notifyTaskCommented, notifyMentions } from "@/lib/pm/notifications";
+import { extractMentionedEmails } from "@/lib/pm/mentions";
 
 function taskPath(workspaceId: string, spaceId: string, listId: string, taskId: string) {
   return `/pm/${workspaceId}/${spaceId}/${listId}/${taskId}`;
@@ -52,6 +53,25 @@ export async function createComment(formData: FormData) {
   if (task) {
     await notifyTaskCommented(supabase, {
       assigneeId: task.assignee_id,
+      actorId: user.id,
+      taskId,
+      judul: task.judul,
+    });
+
+    const { data: anggotaRaw } = await supabase.rpc("pm_workspace_member_profiles", {
+      p_workspace_id: workspaceId,
+    });
+    const anggota = (anggotaRaw ?? []) as { user_id: string; email: string }[];
+    const mentionedEmails = extractMentionedEmails(
+      parsed.data.konten,
+      anggota.map((a) => a.email),
+    );
+    const mentionedUserIds = anggota
+      .filter((a) => mentionedEmails.includes(a.email))
+      .map((a) => a.user_id);
+
+    await notifyMentions(supabase, {
+      mentionedUserIds,
       actorId: user.id,
       taskId,
       judul: task.judul,

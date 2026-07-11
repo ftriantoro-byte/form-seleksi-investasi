@@ -36,3 +36,21 @@ export async function notifyTaskCommented(
     pesan: `Ada komentar baru di Task "${judul}".`,
   });
 }
+
+export async function notifyMentions(
+  supabase: SupabaseServerClient,
+  params: { mentionedUserIds: string[]; actorId: string; taskId: string; judul: string },
+) {
+  const { mentionedUserIds, actorId, taskId, judul } = params;
+  const targets = mentionedUserIds.filter((id) => id !== actorId);
+  if (targets.length === 0) return;
+
+  await supabase.from("pm_notifications").insert(
+    targets.map((userId) => ({
+      user_id: userId,
+      type: "mention" as const,
+      task_id: taskId,
+      pesan: `Anda di-mention di komentar Task "${judul}".`,
+    })),
+  );
+}
