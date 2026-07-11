@@ -59,3 +59,9 @@ export const customFieldDefinitionSchema = z.object({
 export const templateSchema = z.object({
   nama: z.string().min(1, "Nama Template wajib diisi"),
 });
+
+export const whiteboardSchema = z.object({
+  nama: z.string().min(1, "Nama Whiteboard wajib diisi"),
+});
+
+export const STICKY_COLOR_VALUES = ["yellow", "pink", "blue", "green"] as const;

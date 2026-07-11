@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { renameSpace, deleteSpace } from "@/actions/pm/spaces";
 import { createFolder } from "@/actions/pm/folders";
 import { createList } from "@/actions/pm/lists";
+import { createWhiteboard } from "@/actions/pm/whiteboards";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { FormField } from "@/components/ui/FormField";
@@ -35,7 +36,7 @@ export default async function SpaceDetailPage({
     );
   }
 
-  const [{ data: folders }, { data: lists }] = await Promise.all([
+  const [{ data: folders }, { data: lists }, { data: whiteboards }] = await Promise.all([
     supabase
       .from("pm_folders")
       .select("id, nama, deskripsi")
@@ -49,6 +50,11 @@ export default async function SpaceDetailPage({
       .eq("space_id", spaceId)
       .is("folder_id", null)
       .order("urutan", { ascending: true }),
+    supabase
+      .from("pm_whiteboards")
+      .select("id, nama")
+      .eq("space_id", spaceId)
+      .order("created_at", { ascending: true }),
   ]);
 
   return (
@@ -111,6 +117,30 @@ export default async function SpaceDetailPage({
             className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
           >
             Buat List
+          </button>
+        </form>
+      </div>
+
+      <h2 className="mt-10 text-[15px] font-semibold text-zinc-900">Whiteboard</h2>
+      <div className="mt-3">
+        <PmEntityGrid
+          items={whiteboards ?? []}
+          hrefBase={(id) => `/pm/${workspaceId}/${spaceId}/whiteboard/${id}`}
+          emptyLabel="Belum ada Whiteboard."
+        />
+      </div>
+
+      <div className="mt-6 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Buat Whiteboard baru</h3>
+        <form action={createWhiteboard} className="mt-4 grid grid-cols-1 gap-4">
+          <input type="hidden" name="workspaceId" value={workspaceId} />
+          <input type="hidden" name="spaceId" value={spaceId} />
+          <FormField label="Nama Whiteboard" name="nama" />
+          <button
+            type="submit"
+            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          >
+            Buat Whiteboard
           </button>
         </form>
       </div>
