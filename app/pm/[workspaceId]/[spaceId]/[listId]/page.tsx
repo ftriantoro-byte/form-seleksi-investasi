@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { renameList, deleteList, updateStatusLabels } from "@/actions/pm/lists";
 import { createTask } from "@/actions/pm/tasks";
 import { createFieldDefinition, deleteFieldDefinition } from "@/actions/pm/customFields";
+import { createAutomation, toggleAutomation, deleteAutomation } from "@/actions/pm/automations";
 import {
   TASK_STATUS_VALUES,
   TASK_PRIORITY_VALUES,
@@ -29,6 +30,16 @@ type PmFieldDefinition = {
   nama: string;
   type: string;
   opsi: string[] | null;
+};
+
+type PmAutomation = {
+  id: string;
+  nama: string;
+  trigger_status: string;
+  condition_priority: string | null;
+  action_type: string;
+  action_value: string | null;
+  aktif: boolean;
 };
 
 type PmTaskRow = {
@@ -118,7 +129,7 @@ export default async function ListDetailPage({
 
   taskQuery = taskQuery.order(sort, { ascending: true, nullsFirst: false });
 
-  const [{ data: tasksRaw }, { data: anggotaRaw }, { data: fieldDefinitionsRaw }] =
+  const [{ data: tasksRaw }, { data: anggotaRaw }, { data: fieldDefinitionsRaw }, { data: automationsRaw }] =
     await Promise.all([
       taskQuery,
       supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
@@ -127,6 +138,11 @@ export default async function ListDetailPage({
         .select("id, nama, type, opsi")
         .eq("list_id", listId)
         .order("urutan", { ascending: true }),
+      supabase
+        .from("pm_automations")
+        .select("id, nama, trigger_status, condition_priority, action_type, action_value, aktif")
+        .eq("list_id", listId)
+        .order("created_at", { ascending: true }),
     ]);
 
   const tasks = (tasksRaw ?? []) as PmTaskRow[];
@@ -134,6 +150,7 @@ export default async function ListDetailPage({
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
   const emailByUserIdRecord = Object.fromEntries(emailByUserId);
   const fieldDefinitions = (fieldDefinitionsRaw ?? []) as PmFieldDefinition[];
+  const automations = (automationsRaw ?? []) as PmAutomation[];
 
   const listBase = `/pm/${workspaceId}/${spaceId}/${listId}`;
   const parentPath = list.folder_id
@@ -512,6 +529,184 @@ export default async function ListDetailPage({
               className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
             >
               Tambah Custom Field
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Automasi</h3>
+        <p className="mt-1 text-[13px] text-zinc-400">
+          Saat Task pindah ke status tertentu (dengan syarat priority opsional), lakukan aksi
+          otomatis.
+        </p>
+        <ul className="mt-4 space-y-2">
+          {automations.map((auto) => (
+            <li
+              key={auto.id}
+              className={`rounded-xl px-4 py-3 text-[13px] ${auto.aktif ? "bg-zinc-50" : "bg-zinc-50/50 text-zinc-400"}`}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-medium text-zinc-800">{auto.nama}</span>
+                <div className="flex shrink-0 items-center gap-3">
+                  <form action={toggleAutomation}>
+                    <input type="hidden" name="workspaceId" value={workspaceId} />
+                    <input type="hidden" name="spaceId" value={spaceId} />
+                    <input type="hidden" name="listId" value={listId} />
+                    <input type="hidden" name="automationId" value={auto.id} />
+                    <button type="submit" className="text-zinc-400 hover:text-zinc-700">
+                      {auto.aktif ? "Nonaktifkan" : "Aktifkan"}
+                    </button>
+                  </form>
+                  <form action={deleteAutomation}>
+                    <input type="hidden" name="workspaceId" value={workspaceId} />
+                    <input type="hidden" name="spaceId" value={spaceId} />
+                    <input type="hidden" name="listId" value={listId} />
+                    <input type="hidden" name="automationId" value={auto.id} />
+                    <button type="submit" className="text-zinc-400 hover:text-red-600">
+                      Hapus
+                    </button>
+                  </form>
+                </div>
+              </div>
+              <p className="mt-1 text-zinc-500">
+                Saat status → <strong>{statusLabels[auto.trigger_status]}</strong>
+                {auto.condition_priority && (
+                  <>
+                    {" "}
+                    dan priority = <strong>{TASK_PRIORITY_LABEL[auto.condition_priority]}</strong>
+                  </>
+                )}
+                {" → "}
+                {auto.action_type === "set_status" &&
+                  `ubah status ke ${statusLabels[auto.action_value ?? ""] ?? auto.action_value}`}
+                {auto.action_type === "set_assignee" &&
+                  `assign ke ${auto.action_value ? (emailByUserId.get(auto.action_value) ?? auto.action_value) : "kosongkan assignee"}`}
+                {auto.action_type === "set_priority" &&
+                  `set priority ke ${auto.action_value ? TASK_PRIORITY_LABEL[auto.action_value] : "kosong"}`}
+              </p>
+            </li>
+          ))}
+          {automations.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Belum ada Automasi.</li>
+          )}
+        </ul>
+
+        <form action={createAutomation} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <input type="hidden" name="workspaceId" value={workspaceId} />
+          <input type="hidden" name="spaceId" value={spaceId} />
+          <input type="hidden" name="listId" value={listId} />
+          <div className="sm:col-span-2">
+            <FormField label="Nama Automasi" name="nama" />
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">
+              Trigger: saat status jadi
+            </label>
+            <select
+              name="triggerStatus"
+              defaultValue="to_do"
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              {TASK_STATUS_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {statusLabels[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">
+              Condition: priority (opsional)
+            </label>
+            <select
+              name="conditionPriority"
+              defaultValue=""
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              <option value="">- Tanpa syarat -</option>
+              {TASK_PRIORITY_VALUES.map((value) => (
+                <option key={value} value={value}>
+                  {TASK_PRIORITY_LABEL[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">Action</label>
+            <select
+              name="actionType"
+              defaultValue="set_status"
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            >
+              <option value="set_status">Ubah status ke...</option>
+              <option value="set_assignee">Assign ke...</option>
+              <option value="set_priority">Set priority ke...</option>
+            </select>
+          </div>
+
+          <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label className="block text-[13px] font-medium text-zinc-500">
+                Nilai untuk &quot;Ubah status&quot;
+              </label>
+              <select
+                name="actionStatusValue"
+                defaultValue="to_do"
+                className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+              >
+                {TASK_STATUS_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {statusLabels[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-zinc-500">
+                Nilai untuk &quot;Assign&quot;
+              </label>
+              <select
+                name="actionAssigneeValue"
+                defaultValue=""
+                className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+              >
+                <option value="">- Kosongkan assignee -</option>
+                {anggota.map((a) => (
+                  <option key={a.user_id} value={a.user_id}>
+                    {a.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[13px] font-medium text-zinc-500">
+                Nilai untuk &quot;Set priority&quot;
+              </label>
+              <select
+                name="actionPriorityValue"
+                defaultValue=""
+                className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+              >
+                <option value="">- Tidak ada -</option>
+                {TASK_PRIORITY_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {TASK_PRIORITY_LABEL[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="sm:col-span-2">
+            <button
+              type="submit"
+              className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              Tambah Automasi
             </button>
           </div>
         </form>

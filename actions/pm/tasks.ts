@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requirePmAccess } from "@/lib/pm/access";
 import { taskSchema } from "@/lib/pm/schema";
 import { notifyTaskAssigned } from "@/lib/pm/notifications";
+import { runAutomations } from "@/lib/pm/automations";
 
 function pathBase(workspaceId: string, spaceId: string, listId: string) {
   return `/pm/${workspaceId}/${spaceId}/${listId}`;
@@ -107,7 +108,7 @@ export async function updateTask(formData: FormData) {
 
   const { data: existing } = await supabase
     .from("pm_tasks")
-    .select("assignee_id")
+    .select("assignee_id, status")
     .eq("id", taskId)
     .single();
 
@@ -134,6 +135,15 @@ export async function updateTask(formData: FormData) {
       actorId: user.id,
       taskId,
       judul,
+    });
+  }
+
+  if (status !== existing?.status) {
+    await runAutomations(supabase, {
+      listId,
+      taskId,
+      newStatus: status,
+      taskPriority: priority || null,
     });
   }
 
@@ -174,6 +184,12 @@ export async function updateTaskStatus(taskId: string, status: string) {
   }
 
   const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("pm_tasks")
+    .select("list_id, priority")
+    .eq("id", taskId)
+    .single();
+
   const { error } = await supabase
     .from("pm_tasks")
     .update({ status: parsedStatus.data })
@@ -181,6 +197,15 @@ export async function updateTaskStatus(taskId: string, status: string) {
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  if (existing) {
+    await runAutomations(supabase, {
+      listId: existing.list_id,
+      taskId,
+      newStatus: parsedStatus.data,
+      taskPriority: existing.priority,
+    });
   }
 }
 
