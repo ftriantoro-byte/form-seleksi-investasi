@@ -55,3 +55,7 @@ export const customFieldDefinitionSchema = z.object({
   type: z.enum(CUSTOM_FIELD_TYPE_VALUES),
   opsi: z.string().optional(), // dipisah koma di form, cuma dipakai kalau type = 'select'
 });
+
+export const templateSchema = z.object({
+  nama: z.string().min(1, "Nama Template wajib diisi"),
+});

@@ -74,12 +74,20 @@ export default async function WorkspaceDetailPage({
         backLabel="Semua Workspace"
       />
 
-      <Link
-        href={`/pm/${workspaceId}/dashboard`}
-        className="mb-6 inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-4 py-1.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-      >
-        Lihat Dashboard →
-      </Link>
+      <div className="mb-6 flex flex-wrap gap-3">
+        <Link
+          href={`/pm/${workspaceId}/dashboard`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-4 py-1.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+        >
+          Lihat Dashboard →
+        </Link>
+        <Link
+          href={`/pm/${workspaceId}/templates`}
+          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-4 py-1.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+        >
+          Template List →
+        </Link>
+      </div>
 
       {error && (
         <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">

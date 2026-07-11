@@ -4,6 +4,7 @@ import { renameList, deleteList, updateStatusLabels } from "@/actions/pm/lists";
 import { createTask } from "@/actions/pm/tasks";
 import { createFieldDefinition, deleteFieldDefinition } from "@/actions/pm/customFields";
 import { createAutomation, toggleAutomation, deleteAutomation } from "@/actions/pm/automations";
+import { saveListAsTemplate } from "@/actions/pm/templates";
 import {
   TASK_STATUS_VALUES,
   TASK_PRIORITY_VALUES,
@@ -709,6 +710,27 @@ export default async function ListDetailPage({
               Tambah Automasi
             </button>
           </div>
+        </form>
+      </div>
+
+      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <h3 className="text-[14px] font-semibold text-zinc-900">Simpan sebagai Template</h3>
+        <p className="mt-1 text-[13px] text-zinc-400">
+          Simpan label status & Custom Field List ini supaya bisa dipakai ulang untuk List baru.
+        </p>
+        <form action={saveListAsTemplate} className="mt-4 flex flex-wrap items-end gap-4">
+          <input type="hidden" name="workspaceId" value={workspaceId} />
+          <input type="hidden" name="spaceId" value={spaceId} />
+          <input type="hidden" name="listId" value={listId} />
+          <div className="flex-1 min-w-[200px]">
+            <FormField label="Nama Template" name="nama" defaultValue={list.nama} />
+          </div>
+          <button
+            type="submit"
+            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          >
+            Simpan sebagai Template
+          </button>
         </form>
       </div>
 
