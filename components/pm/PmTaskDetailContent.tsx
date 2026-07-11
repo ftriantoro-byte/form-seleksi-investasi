@@ -11,7 +11,7 @@ import {
 import { createTimeEntry, deleteTimeEntry } from "@/actions/pm/timeEntries";
 import { uploadAttachment, downloadAttachment, deleteAttachment } from "@/actions/pm/attachments";
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
-import { TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
+import { TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
 import { FormField } from "@/components/ui/FormField";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
@@ -250,6 +250,12 @@ export async function PmTaskDetailContent({
 
   const listBase = `/pm/${workspaceId}/${spaceId}/${listId}`;
 
+  const sectionCls = "mt-5 border-t border-zinc-100 pt-5";
+  const headingCls = "text-[13px] font-semibold text-zinc-900";
+  const compactInputCls =
+    "mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10";
+  const compactLabelCls = "block text-[11px] font-medium text-zinc-500";
+
   return (
     <>
       <PmRealtimeRefresher
@@ -261,7 +267,7 @@ export async function PmTaskDetailContent({
         ]}
       />
       {parentTask && (
-        <p className="mb-3 text-[13px] text-zinc-400">
+        <p className="mb-2 text-[13px] text-zinc-400">
           Subtask dari{" "}
           <Link href={`${listBase}/${parentTask.id}`} className="text-zinc-600 hover:underline">
             {parentTask.judul}
@@ -270,39 +276,71 @@ export async function PmTaskDetailContent({
       )}
 
       {error && (
-        <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">
-          {error}
-        </p>
+        <p className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-600">{error}</p>
       )}
 
-      <div className="rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Detail Task</h3>
-        <form action={updateTask} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div className="rounded-2xl border border-zinc-100 bg-white p-5 sm:p-6">
+        {/* Detail Task */}
+        <form action={updateTask} className="grid grid-cols-1 gap-3">
           {hiddenFields}
 
-          <div className="sm:col-span-2">
-            <FormField label="Judul Task" name="judul" defaultValue={task.judul} />
-          </div>
+          <FormField label="Judul Task" name="judul" defaultValue={task.judul} />
 
-          <div className="sm:col-span-2">
-            <label className="block text-[13px] font-medium text-zinc-500">
-              Deskripsi (opsional)
-            </label>
+          <div>
+            <label className={compactLabelCls}>Deskripsi (opsional)</label>
             <textarea
               name="deskripsi"
-              rows={3}
+              rows={2}
               defaultValue={task.deskripsi ?? ""}
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none transition-all duration-150 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+              className={compactInputCls}
             />
           </div>
 
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Assignee</label>
-            <select
-              name="assigneeId"
-              defaultValue={task.assignee_id ?? ""}
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <label className={compactLabelCls}>Status</label>
+              <select name="status" defaultValue={task.status} className={compactInputCls}>
+                {TASK_STATUS_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {statusLabels[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={compactLabelCls}>Priority</label>
+              <select name="priority" defaultValue={task.priority ?? ""} className={compactInputCls}>
+                <option value="">- Tidak ada -</option>
+                {TASK_PRIORITY_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {TASK_PRIORITY_LABEL[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={compactLabelCls}>Start Date</label>
+              <input
+                type="date"
+                name="startDate"
+                defaultValue={task.start_date ?? ""}
+                className={compactInputCls}
+              />
+            </div>
+            <div>
+              <label className={compactLabelCls}>Due Date</label>
+              <input
+                type="date"
+                name="dueDate"
+                defaultValue={task.due_date ?? ""}
+                className={compactInputCls}
+              />
+            </div>
+          </div>
+
+          <div className="sm:w-1/2">
+            <label className={compactLabelCls}>Assignee</label>
+            <select name="assigneeId" defaultValue={task.assignee_id ?? ""} className={compactInputCls}>
               <option value="">- Belum ditentukan -</option>
               {anggota.map((a) => (
                 <option key={a.user_id} value={a.user_id}>
@@ -312,507 +350,458 @@ export async function PmTaskDetailContent({
             </select>
           </div>
 
-          <FormField
-            label="Tanggal Mulai (opsional)"
-            name="startDate"
-            type="date"
-            defaultValue={task.start_date ?? ""}
-            required={false}
-          />
-
-          <FormField
-            label="Due Date"
-            name="dueDate"
-            type="date"
-            defaultValue={task.due_date ?? ""}
-            required={false}
-          />
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Status</label>
-            <select
-              name="status"
-              defaultValue={task.status}
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              {TASK_STATUS_VALUES.map((value) => (
-                <option key={value} value={value}>
-                  {statusLabels[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Priority</label>
-            <select
-              name="priority"
-              defaultValue={task.priority ?? ""}
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="">- Tidak ada -</option>
-              {TASK_PRIORITY_VALUES.map((value) => (
-                <option key={value} value={value}>
-                  {TASK_PRIORITY_LABEL[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {fieldDefinitions.map((def) => {
-            const currentValue = fieldValueByDefId.get(def.id) ?? "";
-            const fieldName = `customField_${def.id}`;
-            return (
-              <div key={def.id}>
-                <label className="block text-[13px] font-medium text-zinc-500">{def.nama}</label>
-                {def.type === "checkbox" ? (
-                  <div className="mt-2.5">
-                    <input type="hidden" name={fieldName} value="off" />
-                    <input
-                      type="checkbox"
-                      name={fieldName}
-                      defaultChecked={currentValue === "true"}
-                      className="h-4 w-4 rounded border-zinc-300"
-                    />
+          {fieldDefinitions.length > 0 && (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {fieldDefinitions.map((def) => {
+                const currentValue = fieldValueByDefId.get(def.id) ?? "";
+                const fieldName = `customField_${def.id}`;
+                return (
+                  <div key={def.id}>
+                    <label className={compactLabelCls}>{def.nama}</label>
+                    {def.type === "checkbox" ? (
+                      <div className="mt-1.5">
+                        <input type="hidden" name={fieldName} value="off" />
+                        <input
+                          type="checkbox"
+                          name={fieldName}
+                          defaultChecked={currentValue === "true"}
+                          className="h-4 w-4 rounded border-zinc-300"
+                        />
+                      </div>
+                    ) : def.type === "select" ? (
+                      <select name={fieldName} defaultValue={currentValue} className={compactInputCls}>
+                        <option value="">- Belum dipilih -</option>
+                        {(def.opsi ?? []).map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={def.type === "number" ? "number" : def.type === "date" ? "date" : "text"}
+                        name={fieldName}
+                        defaultValue={currentValue}
+                        className={compactInputCls}
+                      />
+                    )}
                   </div>
-                ) : def.type === "select" ? (
-                  <select
-                    name={fieldName}
-                    defaultValue={currentValue}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-                  >
-                    <option value="">- Belum dipilih -</option>
-                    {(def.opsi ?? []).map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type={def.type === "number" ? "number" : def.type === "date" ? "date" : "text"}
-                    name={fieldName}
-                    defaultValue={currentValue}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-                  />
-                )}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          )}
 
-          <div className="sm:col-span-2">
+          <div className="flex items-center gap-4">
             <button
               type="submit"
-              className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
+              className="w-fit rounded-full bg-zinc-900 px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
             >
               Simpan Perubahan
             </button>
           </div>
         </form>
 
-        <form action={deleteTask} className="mt-4">
+        <form action={deleteTask} className="mt-2">
           {hiddenFields}
           <button
             type="submit"
-            className="text-[13px] font-medium text-red-500 transition-colors hover:text-red-700"
+            className="text-[12px] font-medium text-red-500 transition-colors hover:text-red-700"
           >
             Hapus Task ini
           </button>
         </form>
-      </div>
 
-      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Docs</h3>
-        <p className="mt-1 text-[13px] text-zinc-400">
-          Catatan bebas, bisa diedit bersamaan secara real-time.
-        </p>
-        <div className="mt-4">
-          {doc ? (
-            <PmCollaborativeDoc docId={doc.id} initialStateHex={doc.crdt_state} />
-          ) : (
-            <p className="text-[14px] text-zinc-400">Doc belum bisa dimuat.</p>
-          )}
+        {/* Docs */}
+        <div className={sectionCls}>
+          <h3 className={headingCls}>Docs</h3>
+          <div className="mt-2">
+            {doc ? (
+              <PmCollaborativeDoc docId={doc.id} initialStateHex={doc.crdt_state} />
+            ) : (
+              <p className="text-[13px] text-zinc-400">Doc belum bisa dimuat.</p>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Checklist</h3>
-        <ul className="mt-4 space-y-1.5">
-          {checklist.map((item) => (
-            <li key={item.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50">
-              <form action={toggleChecklistItem}>
-                {hiddenFields}
-                <input type="hidden" name="itemId" value={item.id} />
-                <button
-                  type="submit"
-                  aria-label={item.selesai ? "Tandai belum selesai" : "Tandai selesai"}
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[11px] transition-colors ${
-                    item.selesai
-                      ? "border-zinc-900 bg-zinc-900 text-white"
-                      : "border-zinc-300 text-transparent hover:border-zinc-400"
+        {/* Checklist */}
+        <div className={sectionCls}>
+          <h3 className={headingCls}>Checklist</h3>
+          <ul className="mt-2 space-y-1">
+            {checklist.map((item) => (
+              <li key={item.id} className="flex items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-zinc-50">
+                <form action={toggleChecklistItem}>
+                  {hiddenFields}
+                  <input type="hidden" name="itemId" value={item.id} />
+                  <button
+                    type="submit"
+                    aria-label={item.selesai ? "Tandai belum selesai" : "Tandai selesai"}
+                    className={`flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full border text-[10px] transition-colors ${
+                      item.selesai
+                        ? "border-zinc-900 bg-zinc-900 text-white"
+                        : "border-zinc-300 text-transparent hover:border-zinc-400"
+                    }`}
+                  >
+                    ✓
+                  </button>
+                </form>
+                <span
+                  className={`flex-1 text-[13px] ${
+                    item.selesai ? "text-zinc-400 line-through" : "text-zinc-700"
                   }`}
                 >
-                  ✓
-                </button>
-              </form>
-              <span
-                className={`flex-1 text-[14px] ${
-                  item.selesai ? "text-zinc-400 line-through" : "text-zinc-700"
-                }`}
-              >
-                {item.konten}
-              </span>
-              <form action={deleteChecklistItem}>
-                {hiddenFields}
-                <input type="hidden" name="itemId" value={item.id} />
-                <button
-                  type="submit"
-                  className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
-                >
-                  Hapus
-                </button>
-              </form>
-            </li>
-          ))}
-          {checklist.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada item checklist.</li>
-          )}
-        </ul>
-
-        <form action={createChecklistItem} className="mt-4 flex items-center gap-3">
-          {hiddenFields}
-          <input
-            name="konten"
-            placeholder="Tambah item checklist..."
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Tambah
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <div className="flex items-center justify-between">
-          <h3 className="text-[14px] font-semibold text-zinc-900">Waktu Kerja</h3>
-          {totalMenit > 0 && (
-            <span className="text-[13px] font-medium text-zinc-500">
-              Total {formatMenit(totalMenit)}
-            </span>
-          )}
-        </div>
-        <ul className="mt-4 space-y-1.5">
-          {timeEntries.map((entry) => (
-            <li
-              key={entry.id}
-              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
-            >
-              <div className="min-w-0">
-                <span className="text-[14px] text-zinc-700">
-                  {formatMenit(entry.menit)} · {emailByUserId.get(entry.user_id) ?? "Pengguna"} ·{" "}
-                  {entry.tanggal}
+                  {item.konten}
                 </span>
-                {entry.catatan && (
-                  <p className="truncate text-[12px] text-zinc-400">{entry.catatan}</p>
-                )}
-              </div>
-              {user && entry.user_id === user.id && (
-                <form action={deleteTimeEntry}>
+                <form action={deleteChecklistItem}>
                   {hiddenFields}
-                  <input type="hidden" name="entryId" value={entry.id} />
+                  <input type="hidden" name="itemId" value={item.id} />
                   <button
                     type="submit"
-                    className="shrink-0 text-[12px] text-zinc-300 transition-colors hover:text-red-600"
+                    className="text-[11px] text-zinc-300 transition-colors hover:text-red-600"
                   >
                     Hapus
                   </button>
                 </form>
-              )}
-            </li>
-          ))}
-          {timeEntries.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada waktu kerja tercatat.</li>
-          )}
-        </ul>
+              </li>
+            ))}
+            {checklist.length === 0 && (
+              <li className="text-[13px] text-zinc-400">Belum ada item checklist.</li>
+            )}
+          </ul>
 
-        <form action={createTimeEntry} className="mt-4 flex flex-wrap items-end gap-3">
-          {hiddenFields}
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Menit</label>
-            <input
-              type="number"
-              name="menit"
-              min={1}
-              required
-              className="mt-1.5 w-24 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            />
-          </div>
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Tanggal</label>
-            <input
-              type="date"
-              name="tanggal"
-              className="mt-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            />
-          </div>
-          <div className="min-w-[160px] flex-1">
-            <label className="block text-[13px] font-medium text-zinc-500">
-              Catatan (opsional)
-            </label>
-            <input
-              name="catatan"
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Catat
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Lampiran</h3>
-        <ul className="mt-4 space-y-1.5">
-          {attachments.map((att) => (
-            <li
-              key={att.id}
-              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
-            >
-              <div className="min-w-0">
-                <p className="truncate text-[14px] text-zinc-700">{att.file_name}</p>
-                <p className="text-[12px] text-zinc-400">
-                  {formatUkuran(att.size_bytes)} · {emailByUserId.get(att.created_by) ?? "Pengguna"}
-                </p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <form action={downloadAttachment}>
-                  {hiddenFields}
-                  <input type="hidden" name="attachmentId" value={att.id} />
-                  <button type="submit" className="text-[12px] font-medium text-zinc-600 hover:underline">
-                    Unduh
-                  </button>
-                </form>
-                <form action={deleteAttachment}>
-                  {hiddenFields}
-                  <input type="hidden" name="attachmentId" value={att.id} />
-                  <button
-                    type="submit"
-                    className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
-                  >
-                    Hapus
-                  </button>
-                </form>
-              </div>
-            </li>
-          ))}
-          {attachments.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada lampiran.</li>
-          )}
-        </ul>
-
-        <form action={uploadAttachment} className="mt-4 flex flex-wrap items-center gap-3">
-          {hiddenFields}
-          <input
-            type="file"
-            name="file"
-            required
-            className="flex-1 text-[13px] text-zinc-600 file:mr-3 file:rounded-full file:border-0 file:bg-zinc-100 file:px-4 file:py-2 file:text-[13px] file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Unggah
-          </button>
-        </form>
-        <p className="mt-2 text-[12px] text-zinc-400">Maksimal 10 MB per file.</p>
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Subtask</h3>
-        <ul className="mt-4 space-y-1.5">
-          {subtasks.map((sub) => (
-            <li key={sub.id} className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50">
-              <Link href={`${listBase}/${sub.id}`} className="truncate text-[14px] text-zinc-700 hover:underline">
-                {sub.judul}
-              </Link>
-              <span
-                className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                  TASK_STATUS_BADGE_KELAS[sub.status] ?? "bg-zinc-100 text-zinc-500"
-                }`}
-              >
-                {statusLabels[sub.status] ?? sub.status}
-              </span>
-            </li>
-          ))}
-          {subtasks.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada Subtask.</li>
-          )}
-        </ul>
-
-        <form action={createSubtask} className="mt-4 flex items-center gap-3">
-          {hiddenFields}
-          <input type="hidden" name="parentTaskId" value={taskId} />
-          <input
-            name="judul"
-            placeholder="Tambah Subtask..."
-            className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-          />
-          <button
-            type="submit"
-            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Tambah
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Dependency</h3>
-
-        <p className="mt-4 text-[13px] font-medium text-zinc-500">Menunggu Task lain</p>
-        <ul className="mt-2 space-y-1.5">
-          {dependencies.map((dep) => (
-            <li
-              key={dep.id}
-              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
-            >
-              <Link
-                href={`${listBase}/${dep.depends_on_task_id}`}
-                className="truncate text-[14px] text-zinc-700 hover:underline"
-              >
-                {judulByTaskId.get(dep.depends_on_task_id) ?? "Task"}
-              </Link>
-              <form action={removeDependency}>
-                {hiddenFields}
-                <input type="hidden" name="dependencyId" value={dep.id} />
-                <button
-                  type="submit"
-                  className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
-                >
-                  Hapus
-                </button>
-              </form>
-            </li>
-          ))}
-          {dependencies.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Tidak menunggu Task lain.</li>
-          )}
-        </ul>
-
-        {dependencyCandidates.length > 0 && (
-          <form action={addDependency} className="mt-3 flex items-center gap-3">
+          <form action={createChecklistItem} className="mt-2 flex items-center gap-2">
             {hiddenFields}
-            <select
-              name="dependsOnTaskId"
-              className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              {dependencyCandidates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.judul}
-                </option>
-              ))}
-            </select>
+            <input
+              name="konten"
+              placeholder="Tambah item checklist..."
+              className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+            />
             <button
               type="submit"
-              className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+              className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
             >
               Tambah
             </button>
           </form>
-        )}
+        </div>
 
-        <p className="mt-6 text-[13px] font-medium text-zinc-500">Diperlukan oleh</p>
-        <ul className="mt-2 space-y-1.5">
-          {dependents.map((dep) => (
-            <li
-              key={dep.id}
-              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
-            >
-              <Link
-                href={`${listBase}/${dep.task_id}`}
-                className="truncate text-[14px] text-zinc-700 hover:underline"
+        {/* Waktu Kerja */}
+        <div className={sectionCls}>
+          <div className="flex items-center justify-between">
+            <h3 className={headingCls}>Waktu Kerja</h3>
+            {totalMenit > 0 && (
+              <span className="text-[12px] font-medium text-zinc-500">
+                Total {formatMenit(totalMenit)}
+              </span>
+            )}
+          </div>
+          <ul className="mt-2 space-y-1">
+            {timeEntries.map((entry) => (
+              <li
+                key={entry.id}
+                className="flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 hover:bg-zinc-50"
               >
-                {judulByTaskId.get(dep.task_id) ?? "Task"}
-              </Link>
-              <form action={removeDependency}>
-                {hiddenFields}
-                <input type="hidden" name="dependencyId" value={dep.id} />
-                <button
-                  type="submit"
-                  className="text-[12px] text-zinc-300 transition-colors hover:text-red-600"
-                >
-                  Hapus
-                </button>
-              </form>
-            </li>
-          ))}
-          {dependents.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Tidak ada Task yang menunggu ini.</li>
-          )}
-        </ul>
-      </div>
-
-      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Komentar</h3>
-        <ul className="mt-4 space-y-3">
-          {comments.map((comment) => (
-            <li key={comment.id} className="rounded-xl bg-zinc-50 px-4 py-3">
-              <div className="flex items-center justify-between">
-                <span className="text-[13px] font-medium text-zinc-700">
-                  {emailByUserId.get(comment.created_by) ?? "Pengguna"}
-                </span>
-                {user && comment.created_by === user.id && (
-                  <form action={deleteComment}>
+                <div className="min-w-0">
+                  <span className="text-[13px] text-zinc-700">
+                    {formatMenit(entry.menit)} · {emailByUserId.get(entry.user_id) ?? "Pengguna"} ·{" "}
+                    {entry.tanggal}
+                  </span>
+                  {entry.catatan && (
+                    <p className="truncate text-[11px] text-zinc-400">{entry.catatan}</p>
+                  )}
+                </div>
+                {user && entry.user_id === user.id && (
+                  <form action={deleteTimeEntry}>
                     {hiddenFields}
-                    <input type="hidden" name="commentId" value={comment.id} />
+                    <input type="hidden" name="entryId" value={entry.id} />
                     <button
                       type="submit"
-                      className="text-[12px] text-zinc-400 transition-colors hover:text-red-600"
+                      className="shrink-0 text-[11px] text-zinc-300 transition-colors hover:text-red-600"
                     >
                       Hapus
                     </button>
                   </form>
                 )}
-              </div>
-              <p className="mt-1 text-[14px] text-zinc-600">
-                {renderMentionText(
-                  comment.konten,
-                  anggota.map((a) => a.email),
-                  otherTasks,
-                  listBase,
-                )}
-              </p>
-            </li>
-          ))}
-          {comments.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada komentar.</li>
-          )}
-        </ul>
+              </li>
+            ))}
+            {timeEntries.length === 0 && (
+              <li className="text-[13px] text-zinc-400">Belum ada waktu kerja tercatat.</li>
+            )}
+          </ul>
 
-        <form action={createComment} className="mt-4 flex items-start gap-3">
-          {hiddenFields}
-          <div className="flex-1">
-            <textarea
-              name="konten"
-              rows={2}
-              placeholder="Tulis komentar... (@email untuk mention, #[Judul Task] untuk tautkan Task)"
-              className="w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+          <form action={createTimeEntry} className="mt-2 flex flex-wrap items-end gap-2">
+            {hiddenFields}
+            <div>
+              <label className={compactLabelCls}>Menit</label>
+              <input
+                type="number"
+                name="menit"
+                min={1}
+                required
+                className="mt-1 w-20 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+            </div>
+            <div>
+              <label className={compactLabelCls}>Tanggal</label>
+              <input
+                type="date"
+                name="tanggal"
+                className="mt-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+            </div>
+            <div className="min-w-[140px] flex-1">
+              <label className={compactLabelCls}>Catatan (opsional)</label>
+              <input
+                name="catatan"
+                className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              Catat
+            </button>
+          </form>
+        </div>
+
+        {/* Lampiran */}
+        <div className={sectionCls}>
+          <h3 className={headingCls}>Lampiran</h3>
+          <ul className="mt-2 space-y-1">
+            {attachments.map((att) => (
+              <li
+                key={att.id}
+                className="flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 hover:bg-zinc-50"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[13px] text-zinc-700">{att.file_name}</p>
+                  <p className="text-[11px] text-zinc-400">
+                    {formatUkuran(att.size_bytes)} · {emailByUserId.get(att.created_by) ?? "Pengguna"}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <form action={downloadAttachment}>
+                    {hiddenFields}
+                    <input type="hidden" name="attachmentId" value={att.id} />
+                    <button type="submit" className="text-[11px] font-medium text-zinc-600 hover:underline">
+                      Unduh
+                    </button>
+                  </form>
+                  <form action={deleteAttachment}>
+                    {hiddenFields}
+                    <input type="hidden" name="attachmentId" value={att.id} />
+                    <button
+                      type="submit"
+                      className="text-[11px] text-zinc-300 transition-colors hover:text-red-600"
+                    >
+                      Hapus
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+            {attachments.length === 0 && (
+              <li className="text-[13px] text-zinc-400">Belum ada lampiran.</li>
+            )}
+          </ul>
+
+          <form action={uploadAttachment} className="mt-2 flex flex-wrap items-center gap-2">
+            {hiddenFields}
+            <input
+              type="file"
+              name="file"
+              required
+              className="flex-1 text-[12px] text-zinc-600 file:mr-2 file:rounded-full file:border-0 file:bg-zinc-100 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-zinc-700 hover:file:bg-zinc-200"
             />
-          </div>
-          <button
-            type="submit"
-            className="rounded-full bg-zinc-900 px-4 py-2.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
-          >
-            Kirim
-          </button>
-        </form>
+            <button
+              type="submit"
+              className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              Unggah
+            </button>
+          </form>
+          <p className="mt-1.5 text-[11px] text-zinc-400">Maksimal 10 MB per file.</p>
+        </div>
+
+        {/* Subtask */}
+        <div className={sectionCls}>
+          <h3 className={headingCls}>Subtask</h3>
+          <ul className="mt-2 space-y-1">
+            {subtasks.map((sub) => (
+              <li key={sub.id} className="flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 hover:bg-zinc-50">
+                <Link href={`${listBase}/${sub.id}`} className="truncate text-[13px] text-zinc-700 hover:underline">
+                  {sub.judul}
+                </Link>
+                <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-semibold text-zinc-500">
+                  {statusLabels[sub.status] ?? sub.status}
+                </span>
+              </li>
+            ))}
+            {subtasks.length === 0 && (
+              <li className="text-[13px] text-zinc-400">Belum ada Subtask.</li>
+            )}
+          </ul>
+
+          <form action={createSubtask} className="mt-2 flex items-center gap-2">
+            {hiddenFields}
+            <input type="hidden" name="parentTaskId" value={taskId} />
+            <input
+              name="judul"
+              placeholder="Tambah Subtask..."
+              className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+            />
+            <button
+              type="submit"
+              className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+            >
+              Tambah
+            </button>
+          </form>
+        </div>
+
+        {/* Dependency */}
+        <div className={sectionCls}>
+          <h3 className={headingCls}>Dependency</h3>
+
+          <p className="mt-2 text-[12px] font-medium text-zinc-500">Menunggu Task lain</p>
+          <ul className="mt-1 space-y-1">
+            {dependencies.map((dep) => (
+              <li
+                key={dep.id}
+                className="flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 hover:bg-zinc-50"
+              >
+                <Link
+                  href={`${listBase}/${dep.depends_on_task_id}`}
+                  className="truncate text-[13px] text-zinc-700 hover:underline"
+                >
+                  {judulByTaskId.get(dep.depends_on_task_id) ?? "Task"}
+                </Link>
+                <form action={removeDependency}>
+                  {hiddenFields}
+                  <input type="hidden" name="dependencyId" value={dep.id} />
+                  <button
+                    type="submit"
+                    className="text-[11px] text-zinc-300 transition-colors hover:text-red-600"
+                  >
+                    Hapus
+                  </button>
+                </form>
+              </li>
+            ))}
+            {dependencies.length === 0 && (
+              <li className="text-[13px] text-zinc-400">Tidak menunggu Task lain.</li>
+            )}
+          </ul>
+
+          {dependencyCandidates.length > 0 && (
+            <form action={addDependency} className="mt-2 flex items-center gap-2">
+              {hiddenFields}
+              <select
+                name="dependsOnTaskId"
+                className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              >
+                {dependencyCandidates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.judul}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+              >
+                Tambah
+              </button>
+            </form>
+          )}
+
+          <p className="mt-3 text-[12px] font-medium text-zinc-500">Diperlukan oleh</p>
+          <ul className="mt-1 space-y-1">
+            {dependents.map((dep) => (
+              <li
+                key={dep.id}
+                className="flex items-center justify-between gap-2 rounded-lg px-1.5 py-1 hover:bg-zinc-50"
+              >
+                <Link
+                  href={`${listBase}/${dep.task_id}`}
+                  className="truncate text-[13px] text-zinc-700 hover:underline"
+                >
+                  {judulByTaskId.get(dep.task_id) ?? "Task"}
+                </Link>
+                <form action={removeDependency}>
+                  {hiddenFields}
+                  <input type="hidden" name="dependencyId" value={dep.id} />
+                  <button
+                    type="submit"
+                    className="text-[11px] text-zinc-300 transition-colors hover:text-red-600"
+                  >
+                    Hapus
+                  </button>
+                </form>
+              </li>
+            ))}
+            {dependents.length === 0 && (
+              <li className="text-[13px] text-zinc-400">Tidak ada Task yang menunggu ini.</li>
+            )}
+          </ul>
+        </div>
+
+        {/* Komentar */}
+        <div className={sectionCls}>
+          <h3 className={headingCls}>Komentar</h3>
+          <ul className="mt-2 space-y-2">
+            {comments.map((comment) => (
+              <li key={comment.id} className="rounded-lg bg-zinc-50 px-3 py-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[12px] font-medium text-zinc-700">
+                    {emailByUserId.get(comment.created_by) ?? "Pengguna"}
+                  </span>
+                  {user && comment.created_by === user.id && (
+                    <form action={deleteComment}>
+                      {hiddenFields}
+                      <input type="hidden" name="commentId" value={comment.id} />
+                      <button
+                        type="submit"
+                        className="text-[11px] text-zinc-400 transition-colors hover:text-red-600"
+                      >
+                        Hapus
+                      </button>
+                    </form>
+                  )}
+                </div>
+                <p className="mt-0.5 text-[13px] text-zinc-600">
+                  {renderMentionText(
+                    comment.konten,
+                    anggota.map((a) => a.email),
+                    otherTasks,
+                    listBase,
+                  )}
+                </p>
+              </li>
+            ))}
+            {comments.length === 0 && (
+              <li className="text-[13px] text-zinc-400">Belum ada komentar.</li>
+            )}
+          </ul>
+
+          <form action={createComment} className="mt-2 flex items-start gap-2">
+            {hiddenFields}
+            <div className="flex-1">
+              <textarea
+                name="konten"
+                rows={2}
+                placeholder="Tulis komentar... (@email untuk mention, #[Judul Task] untuk tautkan Task)"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+            </div>
+            <button
+              type="submit"
+              className="rounded-full bg-zinc-900 px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-zinc-700"
+            >
+              Kirim
+            </button>
+          </form>
+        </div>
       </div>
     </>
   );

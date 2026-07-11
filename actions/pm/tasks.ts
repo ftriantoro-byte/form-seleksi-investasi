@@ -209,6 +209,42 @@ export async function updateTaskStatus(taskId: string, status: string) {
   }
 }
 
+// Dipanggil langsung dari tabel List (edit inline, tanpa buka Task Detail) -
+// pola sama seperti updateTaskStatus. Priority/Due Date tidak memicu
+// runAutomations (trigger automasi cuma bereaksi ke perubahan status).
+export async function updateTaskPriority(taskId: string, priority: string) {
+  await requirePmAccess();
+
+  const parsed = taskSchema.shape.priority.safeParse(priority);
+  if (!parsed.success) {
+    throw new Error("Priority tidak valid.");
+  }
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pm_tasks")
+    .update({ priority: parsed.data || null })
+    .eq("id", taskId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+export async function updateTaskDueDate(taskId: string, dueDate: string) {
+  await requirePmAccess();
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pm_tasks")
+    .update({ due_date: dueDate || null })
+    .eq("id", taskId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 // Form tambah Subtask sengaja minimal (cuma judul) - beda dengan createTask
 // yang punya form lengkap (assignee/due date/status/priority). Field lain
 // bisa diisi belakangan lewat halaman/modal Task Detail milik Subtask itu

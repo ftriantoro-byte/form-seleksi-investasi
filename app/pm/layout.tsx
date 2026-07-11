@@ -44,13 +44,16 @@ export default async function PmLayout({ children }: { children: React.ReactNode
   if (mobileMode) {
     return (
       <div className="min-h-screen bg-[#fbfbfd]">
-        <div className="flex items-center justify-end gap-3 px-6 pt-5 sm:px-10">
-          <PmCommandPalette />
-          <PmNotificationBell unreadCount={unreadCount ?? 0} />
-          <Link href="/akun" className="text-[13px] text-zinc-500 hover:text-zinc-900">
-            Akun
-          </Link>
-          <PmModeToggle mobileMode={mobileMode} />
+        <div className="flex items-center justify-between gap-3 border-b border-black/[0.04] bg-white px-4 py-2.5 sm:px-6">
+          {user?.email && <span className="truncate text-[12px] text-zinc-400">{user.email}</span>}
+          <div className="ml-auto flex items-center gap-2.5">
+            <PmCommandPalette />
+            <PmNotificationBell unreadCount={unreadCount ?? 0} />
+            <Link href="/akun" className="text-[12px] text-zinc-500 hover:text-zinc-900">
+              Akun
+            </Link>
+            <PmModeToggle mobileMode={mobileMode} />
+          </div>
         </div>
         {children}
       </div>
@@ -126,13 +129,16 @@ export default async function PmLayout({ children }: { children: React.ReactNode
     <div className="flex min-h-screen bg-[#fbfbfd]">
       <PmSidebar workspaces={workspaces} />
       <div className="min-w-0 flex-1 overflow-y-auto">
-        <div className="flex items-center justify-end gap-3 px-6 pt-5 sm:px-10">
-          <PmCommandPalette />
-          <PmNotificationBell unreadCount={unreadCount ?? 0} />
-          <Link href="/akun" className="text-[13px] text-zinc-500 hover:text-zinc-900">
-            Akun
-          </Link>
-          <PmModeToggle mobileMode={mobileMode} />
+        <div className="flex items-center justify-between gap-3 border-b border-black/[0.04] bg-white px-6 py-2.5 sm:px-10">
+          {user?.email && <span className="truncate text-[12px] text-zinc-400">{user.email}</span>}
+          <div className="ml-auto flex items-center gap-2.5">
+            <PmCommandPalette />
+            <PmNotificationBell unreadCount={unreadCount ?? 0} />
+            <Link href="/akun" className="text-[12px] text-zinc-500 hover:text-zinc-900">
+              Akun
+            </Link>
+            <PmModeToggle mobileMode={mobileMode} />
+          </div>
         </div>
         {children}
       </div>

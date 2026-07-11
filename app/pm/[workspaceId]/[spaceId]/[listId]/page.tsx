@@ -11,19 +11,15 @@ import {
   CUSTOM_FIELD_TYPE_VALUES,
   CUSTOM_FIELD_TYPE_LABEL,
 } from "@/lib/pm/schema";
-import {
-  TASK_STATUS_BADGE_KELAS,
-  TASK_PRIORITY_LABEL,
-  TASK_PRIORITY_BADGE_KELAS,
-} from "@/lib/pm/labels";
+import { TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
-import { FormField } from "@/components/ui/FormField";
 import { PmBoardView } from "@/components/pm/PmBoardView";
 import { PmCalendarView } from "@/components/pm/PmCalendarView";
 import { PmGanttView } from "@/components/pm/PmGanttView";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
+import { PmTaskListInline } from "@/components/pm/PmTaskListInline";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 type PmFieldDefinition = {
@@ -178,7 +174,368 @@ export default async function ListDetailPage({
         </p>
       )}
 
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <details className="group relative">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+              ⚙ Status
+            </summary>
+            <div className="absolute left-0 top-full z-20 mt-2 w-80 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+              <p className="text-[12px] text-zinc-400">
+                Ganti label tampilan 4 status baku (kosongkan untuk pakai label default).
+              </p>
+              <form action={updateStatusLabels} className="mt-3 grid grid-cols-1 gap-2.5">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                {TASK_STATUS_VALUES.map((value) => (
+                  <div key={value}>
+                    <label className="block text-[11px] font-medium text-zinc-500">
+                      Label untuk &quot;{statusLabels[value]}&quot;
+                    </label>
+                    <input
+                      name={`label_${value}`}
+                      defaultValue={list.custom_status_labels?.[value] ?? ""}
+                      className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                    />
+                  </div>
+                ))}
+                <button
+                  type="submit"
+                  className="mt-1 w-fit rounded-full bg-zinc-900 px-4 py-1.5 text-[12px] font-medium text-white hover:bg-zinc-700"
+                >
+                  Simpan Label Status
+                </button>
+              </form>
+
+              <p className="mt-4 border-t border-zinc-100 pt-3 text-[12px] font-medium text-zinc-500">
+                Custom Field
+              </p>
+              <ul className="mt-2 space-y-1">
+                {fieldDefinitions.map((def) => (
+                  <li
+                    key={def.id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-zinc-50 px-2.5 py-1.5 text-[12px] text-zinc-700"
+                  >
+                    <span className="truncate">
+                      {def.nama}{" "}
+                      <span className="text-zinc-400">
+                        (
+                        {CUSTOM_FIELD_TYPE_LABEL[
+                          def.type as (typeof CUSTOM_FIELD_TYPE_VALUES)[number]
+                        ] ?? def.type}
+                        )
+                      </span>
+                    </span>
+                    <form action={deleteFieldDefinition}>
+                      <input type="hidden" name="workspaceId" value={workspaceId} />
+                      <input type="hidden" name="spaceId" value={spaceId} />
+                      <input type="hidden" name="listId" value={listId} />
+                      <input type="hidden" name="fieldDefinitionId" value={def.id} />
+                      <button
+                        type="submit"
+                        className="shrink-0 text-[11px] text-zinc-400 hover:text-red-600"
+                      >
+                        Hapus
+                      </button>
+                    </form>
+                  </li>
+                ))}
+                {fieldDefinitions.length === 0 && (
+                  <li className="text-[12px] text-zinc-400">Belum ada Custom Field.</li>
+                )}
+              </ul>
+              <form action={createFieldDefinition} className="mt-2 grid grid-cols-1 gap-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                <input
+                  name="nama"
+                  placeholder="Nama Field"
+                  required
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <select
+                  name="type"
+                  defaultValue="text"
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                >
+                  {CUSTOM_FIELD_TYPE_VALUES.map((value) => (
+                    <option key={value} value={value}>
+                      {CUSTOM_FIELD_TYPE_LABEL[value]}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  name="opsi"
+                  placeholder="Opsi (pisah koma, khusus Pilihan)"
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <button
+                  type="submit"
+                  className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+                >
+                  Tambah Custom Field
+                </button>
+              </form>
+            </div>
+          </details>
+
+          <details className="group relative">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+              ⚡ Automasi
+            </summary>
+            <div className="absolute left-0 top-full z-20 mt-2 w-96 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+              <p className="text-[12px] text-zinc-400">
+                Saat Task pindah ke status tertentu (dengan syarat priority opsional), lakukan aksi
+                otomatis.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {automations.map((auto) => (
+                  <li
+                    key={auto.id}
+                    className={`rounded-lg px-2.5 py-2 text-[12px] ${auto.aktif ? "bg-zinc-50" : "bg-zinc-50/50 text-zinc-400"}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-medium text-zinc-800">{auto.nama}</span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <form action={toggleAutomation}>
+                          <input type="hidden" name="workspaceId" value={workspaceId} />
+                          <input type="hidden" name="spaceId" value={spaceId} />
+                          <input type="hidden" name="listId" value={listId} />
+                          <input type="hidden" name="automationId" value={auto.id} />
+                          <button type="submit" className="text-zinc-400 hover:text-zinc-700">
+                            {auto.aktif ? "Nonaktifkan" : "Aktifkan"}
+                          </button>
+                        </form>
+                        <form action={deleteAutomation}>
+                          <input type="hidden" name="workspaceId" value={workspaceId} />
+                          <input type="hidden" name="spaceId" value={spaceId} />
+                          <input type="hidden" name="listId" value={listId} />
+                          <input type="hidden" name="automationId" value={auto.id} />
+                          <button type="submit" className="text-zinc-400 hover:text-red-600">
+                            Hapus
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                    <p className="mt-1 text-zinc-500">
+                      Saat status → <strong>{statusLabels[auto.trigger_status]}</strong>
+                      {auto.condition_priority && (
+                        <>
+                          {" "}
+                          dan priority = <strong>{TASK_PRIORITY_LABEL[auto.condition_priority]}</strong>
+                        </>
+                      )}
+                      {" → "}
+                      {auto.action_type === "set_status" &&
+                        `ubah status ke ${statusLabels[auto.action_value ?? ""] ?? auto.action_value}`}
+                      {auto.action_type === "set_assignee" &&
+                        `assign ke ${auto.action_value ? (emailByUserId.get(auto.action_value) ?? auto.action_value) : "kosongkan assignee"}`}
+                      {auto.action_type === "set_priority" &&
+                        `set priority ke ${auto.action_value ? TASK_PRIORITY_LABEL[auto.action_value] : "kosong"}`}
+                    </p>
+                  </li>
+                ))}
+                {automations.length === 0 && (
+                  <li className="text-[12px] text-zinc-400">Belum ada Automasi.</li>
+                )}
+              </ul>
+
+              <form action={createAutomation} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                <input
+                  name="nama"
+                  placeholder="Nama Automasi"
+                  required
+                  className="sm:col-span-2 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500">
+                    Trigger: status jadi
+                  </label>
+                  <select
+                    name="triggerStatus"
+                    defaultValue="to_do"
+                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    {TASK_STATUS_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {statusLabels[value]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500">
+                    Condition: priority
+                  </label>
+                  <select
+                    name="conditionPriority"
+                    defaultValue=""
+                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    <option value="">- Tanpa syarat -</option>
+                    {TASK_PRIORITY_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {TASK_PRIORITY_LABEL[value]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-medium text-zinc-500">Action</label>
+                  <select
+                    name="actionType"
+                    defaultValue="set_status"
+                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    <option value="set_status">Ubah status ke...</option>
+                    <option value="set_assignee">Assign ke...</option>
+                    <option value="set_priority">Set priority ke...</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500">
+                    Nilai &quot;Ubah status&quot;
+                  </label>
+                  <select
+                    name="actionStatusValue"
+                    defaultValue="to_do"
+                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    {TASK_STATUS_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {statusLabels[value]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-zinc-500">
+                    Nilai &quot;Assign&quot;
+                  </label>
+                  <select
+                    name="actionAssigneeValue"
+                    defaultValue=""
+                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    <option value="">- Kosongkan -</option>
+                    {anggota.map((a) => (
+                      <option key={a.user_id} value={a.user_id}>
+                        {a.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-medium text-zinc-500">
+                    Nilai &quot;Set priority&quot;
+                  </label>
+                  <select
+                    name="actionPriorityValue"
+                    defaultValue=""
+                    className="mt-1 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                  >
+                    <option value="">- Tidak ada -</option>
+                    {TASK_PRIORITY_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {TASK_PRIORITY_LABEL[value]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+                  >
+                    Tambah Automasi
+                  </button>
+                </div>
+              </form>
+            </div>
+          </details>
+
+          <details className="group relative">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+              💾 Simpan sbg Template
+            </summary>
+            <div className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+              <p className="text-[12px] text-zinc-400">
+                Simpan label status &amp; Custom Field List ini supaya bisa dipakai ulang.
+              </p>
+              <form action={saveListAsTemplate} className="mt-2 flex flex-col gap-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                <input
+                  name="nama"
+                  defaultValue={list.nama}
+                  required
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <button
+                  type="submit"
+                  className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+                >
+                  Simpan sebagai Template
+                </button>
+              </form>
+            </div>
+          </details>
+
+          <details className="group relative">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+              ⚙️ Pengaturan
+            </summary>
+            <div className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+              <form action={renameList} className="grid grid-cols-1 gap-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                {list.folder_id && <input type="hidden" name="folderId" value={list.folder_id} />}
+                <label className="block text-[11px] font-medium text-zinc-500">Nama List</label>
+                <input
+                  name="nama"
+                  defaultValue={list.nama}
+                  required
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <label className="block text-[11px] font-medium text-zinc-500">
+                  Deskripsi (opsional)
+                </label>
+                <textarea
+                  name="deskripsi"
+                  rows={2}
+                  defaultValue={list.deskripsi ?? ""}
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <button
+                  type="submit"
+                  className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+                >
+                  Simpan Perubahan
+                </button>
+              </form>
+              <form action={deleteList} className="mt-2 border-t border-zinc-100 pt-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                {list.folder_id && <input type="hidden" name="folderId" value={list.folder_id} />}
+                <button
+                  type="submit"
+                  className="text-[12px] font-medium text-red-500 hover:text-red-700"
+                >
+                  Hapus List ini
+                </button>
+              </form>
+            </div>
+          </details>
+        </div>
+
         <div className="inline-flex rounded-full bg-zinc-100 p-1">
           <Link
             href={{ pathname: listBase, query: { view: "list" } }}
@@ -303,477 +660,50 @@ export default async function ListDetailPage({
         ) : view === "gantt" ? (
           <PmGanttView tasks={tasks} listBase={listBase} />
         ) : (
-          <div className="overflow-hidden rounded-3xl border border-black/[0.04] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[640px] text-left text-[13px]">
-                <thead>
-                  <tr className="border-b border-zinc-100 text-zinc-400">
-                    <th className="px-6 py-3.5 font-medium">Task</th>
-                    <th className="px-3 py-3.5 font-medium">Assignee</th>
-                    <th className="px-3 py-3.5 font-medium">Due Date</th>
-                    <th className="px-3 py-3.5 font-medium">Status</th>
-                    <th className="px-3 py-3.5 font-medium">Priority</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {tasks.map((task) => (
-                    <tr
-                      key={task.id}
-                      className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
-                    >
-                      <td className="px-6 py-3.5 font-medium text-zinc-800">
-                        <Link href={`${listBase}/${task.id}`} className="hover:underline">
-                          {task.judul}
-                        </Link>
-                      </td>
-                      <td className="px-3 py-3.5 text-zinc-500">
-                        {task.assignee_id ? (emailByUserId.get(task.assignee_id) ?? "-") : "-"}
-                      </td>
-                      <td className="px-3 py-3.5 text-zinc-500">{task.due_date ?? "-"}</td>
-                      <td className="px-3 py-3.5">
-                        <span
-                          className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                            TASK_STATUS_BADGE_KELAS[task.status] ?? "bg-zinc-100 text-zinc-500"
-                          }`}
-                        >
-                          {statusLabels[task.status] ?? task.status}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3.5">
-                        {task.priority && (
-                          <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-                              TASK_PRIORITY_BADGE_KELAS[task.priority] ?? "bg-zinc-100 text-zinc-500"
-                            }`}
-                          >
-                            {TASK_PRIORITY_LABEL[task.priority] ?? task.priority}
-                          </span>
-                        )}
-                      </td>
+          <>
+            <form action={createTask} className="mb-3 flex items-center gap-2">
+              <input type="hidden" name="workspaceId" value={workspaceId} />
+              <input type="hidden" name="spaceId" value={spaceId} />
+              <input type="hidden" name="listId" value={listId} />
+              <input type="hidden" name="status" value="to_do" />
+              <input
+                name="judul"
+                required
+                placeholder="Tambah task baru..."
+                className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+              />
+              <button
+                type="submit"
+                className="rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
+              >
+                Tambah
+              </button>
+            </form>
+            <div className="overflow-hidden rounded-2xl border border-black/[0.04] bg-white">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[560px] text-left text-[13px]">
+                  <thead>
+                    <tr className="border-b border-zinc-100 text-zinc-400">
+                      <th className="px-4 py-2 font-medium">Task</th>
+                      <th className="px-2 py-2 font-medium">Assignee</th>
+                      <th className="px-2 py-2 font-medium">Due Date</th>
+                      <th className="px-2 py-2 font-medium">Status</th>
+                      <th className="px-2 py-2 font-medium">Priority</th>
                     </tr>
-                  ))}
-                  {tasks.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-10 text-center text-zinc-400">
-                        Belum ada Task.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <PmTaskListInline
+                    tasks={tasks}
+                    emailByUserId={emailByUserIdRecord}
+                    listBase={listBase}
+                    statusLabels={statusLabels}
+                  />
+                </table>
+              </div>
             </div>
-          </div>
+          </>
         )}
       </div>
 
-      <div className="mt-6 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Buat Task baru</h3>
-        <form action={createTask} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="listId" value={listId} />
-
-          <div className="sm:col-span-2">
-            <FormField label="Judul Task" name="judul" />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Assignee</label>
-            <select
-              name="assigneeId"
-              defaultValue=""
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="">- Belum ditentukan -</option>
-              {anggota.map((a) => (
-                <option key={a.user_id} value={a.user_id}>
-                  {a.email}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <FormField label="Tanggal Mulai (opsional)" name="startDate" type="date" required={false} />
-
-          <FormField label="Due Date" name="dueDate" type="date" required={false} />
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Status</label>
-            <select
-              name="status"
-              defaultValue="to_do"
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              {TASK_STATUS_VALUES.map((value) => (
-                <option key={value} value={value}>
-                  {statusLabels[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Priority</label>
-            <select
-              name="priority"
-              defaultValue=""
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="">- Tidak ada -</option>
-              {TASK_PRIORITY_VALUES.map((value) => (
-                <option key={value} value={value}>
-                  {TASK_PRIORITY_LABEL[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
-            >
-              Buat Task
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Kelola Status</h3>
-        <p className="mt-1 text-[13px] text-zinc-400">
-          Ganti label tampilan 4 status baku khusus untuk List ini (kosongkan untuk pakai label
-          default).
-        </p>
-        <form action={updateStatusLabels} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="listId" value={listId} />
-          {TASK_STATUS_VALUES.map((value) => (
-            <FormField
-              key={value}
-              label={`Label untuk "${statusLabels[value]}"`}
-              name={`label_${value}`}
-              defaultValue={list.custom_status_labels?.[value] ?? ""}
-              required={false}
-            />
-          ))}
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-            >
-              Simpan Label Status
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Custom Field</h3>
-        <ul className="mt-4 space-y-1.5">
-          {fieldDefinitions.map((def) => (
-            <li
-              key={def.id}
-              className="flex items-center justify-between gap-2 rounded-xl bg-zinc-50 px-4 py-2.5 text-[14px] text-zinc-700"
-            >
-              <span>
-                {def.nama}{" "}
-                <span className="text-zinc-400">({CUSTOM_FIELD_TYPE_LABEL[def.type as (typeof CUSTOM_FIELD_TYPE_VALUES)[number]] ?? def.type})</span>
-              </span>
-              <form action={deleteFieldDefinition}>
-                <input type="hidden" name="workspaceId" value={workspaceId} />
-                <input type="hidden" name="spaceId" value={spaceId} />
-                <input type="hidden" name="listId" value={listId} />
-                <input type="hidden" name="fieldDefinitionId" value={def.id} />
-                <button
-                  type="submit"
-                  className="text-[12px] text-zinc-400 transition-colors hover:text-red-600"
-                >
-                  Hapus
-                </button>
-              </form>
-            </li>
-          ))}
-          {fieldDefinitions.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada Custom Field.</li>
-          )}
-        </ul>
-
-        <form action={createFieldDefinition} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="listId" value={listId} />
-          <FormField label="Nama Field" name="nama" />
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Tipe</label>
-            <select
-              name="type"
-              defaultValue="text"
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              {CUSTOM_FIELD_TYPE_VALUES.map((value) => (
-                <option key={value} value={value}>
-                  {CUSTOM_FIELD_TYPE_LABEL[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <FormField
-            label="Opsi (pisah koma, khusus tipe Pilihan)"
-            name="opsi"
-            required={false}
-          />
-          <div className="sm:col-span-3">
-            <button
-              type="submit"
-              className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-            >
-              Tambah Custom Field
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Automasi</h3>
-        <p className="mt-1 text-[13px] text-zinc-400">
-          Saat Task pindah ke status tertentu (dengan syarat priority opsional), lakukan aksi
-          otomatis.
-        </p>
-        <ul className="mt-4 space-y-2">
-          {automations.map((auto) => (
-            <li
-              key={auto.id}
-              className={`rounded-xl px-4 py-3 text-[13px] ${auto.aktif ? "bg-zinc-50" : "bg-zinc-50/50 text-zinc-400"}`}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className="font-medium text-zinc-800">{auto.nama}</span>
-                <div className="flex shrink-0 items-center gap-3">
-                  <form action={toggleAutomation}>
-                    <input type="hidden" name="workspaceId" value={workspaceId} />
-                    <input type="hidden" name="spaceId" value={spaceId} />
-                    <input type="hidden" name="listId" value={listId} />
-                    <input type="hidden" name="automationId" value={auto.id} />
-                    <button type="submit" className="text-zinc-400 hover:text-zinc-700">
-                      {auto.aktif ? "Nonaktifkan" : "Aktifkan"}
-                    </button>
-                  </form>
-                  <form action={deleteAutomation}>
-                    <input type="hidden" name="workspaceId" value={workspaceId} />
-                    <input type="hidden" name="spaceId" value={spaceId} />
-                    <input type="hidden" name="listId" value={listId} />
-                    <input type="hidden" name="automationId" value={auto.id} />
-                    <button type="submit" className="text-zinc-400 hover:text-red-600">
-                      Hapus
-                    </button>
-                  </form>
-                </div>
-              </div>
-              <p className="mt-1 text-zinc-500">
-                Saat status → <strong>{statusLabels[auto.trigger_status]}</strong>
-                {auto.condition_priority && (
-                  <>
-                    {" "}
-                    dan priority = <strong>{TASK_PRIORITY_LABEL[auto.condition_priority]}</strong>
-                  </>
-                )}
-                {" → "}
-                {auto.action_type === "set_status" &&
-                  `ubah status ke ${statusLabels[auto.action_value ?? ""] ?? auto.action_value}`}
-                {auto.action_type === "set_assignee" &&
-                  `assign ke ${auto.action_value ? (emailByUserId.get(auto.action_value) ?? auto.action_value) : "kosongkan assignee"}`}
-                {auto.action_type === "set_priority" &&
-                  `set priority ke ${auto.action_value ? TASK_PRIORITY_LABEL[auto.action_value] : "kosong"}`}
-              </p>
-            </li>
-          ))}
-          {automations.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada Automasi.</li>
-          )}
-        </ul>
-
-        <form action={createAutomation} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="listId" value={listId} />
-          <div className="sm:col-span-2">
-            <FormField label="Nama Automasi" name="nama" />
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">
-              Trigger: saat status jadi
-            </label>
-            <select
-              name="triggerStatus"
-              defaultValue="to_do"
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              {TASK_STATUS_VALUES.map((value) => (
-                <option key={value} value={value}>
-                  {statusLabels[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">
-              Condition: priority (opsional)
-            </label>
-            <select
-              name="conditionPriority"
-              defaultValue=""
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="">- Tanpa syarat -</option>
-              {TASK_PRIORITY_VALUES.map((value) => (
-                <option key={value} value={value}>
-                  {TASK_PRIORITY_LABEL[value]}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">Action</label>
-            <select
-              name="actionType"
-              defaultValue="set_status"
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              <option value="set_status">Ubah status ke...</option>
-              <option value="set_assignee">Assign ke...</option>
-              <option value="set_priority">Set priority ke...</option>
-            </select>
-          </div>
-
-          <div className="sm:col-span-2 grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div>
-              <label className="block text-[13px] font-medium text-zinc-500">
-                Nilai untuk &quot;Ubah status&quot;
-              </label>
-              <select
-                name="actionStatusValue"
-                defaultValue="to_do"
-                className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-              >
-                {TASK_STATUS_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {statusLabels[value]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[13px] font-medium text-zinc-500">
-                Nilai untuk &quot;Assign&quot;
-              </label>
-              <select
-                name="actionAssigneeValue"
-                defaultValue=""
-                className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-              >
-                <option value="">- Kosongkan assignee -</option>
-                {anggota.map((a) => (
-                  <option key={a.user_id} value={a.user_id}>
-                    {a.email}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-[13px] font-medium text-zinc-500">
-                Nilai untuk &quot;Set priority&quot;
-              </label>
-              <select
-                name="actionPriorityValue"
-                defaultValue=""
-                className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-              >
-                <option value="">- Tidak ada -</option>
-                {TASK_PRIORITY_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {TASK_PRIORITY_LABEL[value]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-            >
-              Tambah Automasi
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Simpan sebagai Template</h3>
-        <p className="mt-1 text-[13px] text-zinc-400">
-          Simpan label status & Custom Field List ini supaya bisa dipakai ulang untuk List baru.
-        </p>
-        <form action={saveListAsTemplate} className="mt-4 flex flex-wrap items-end gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="listId" value={listId} />
-          <div className="flex-1 min-w-[200px]">
-            <FormField label="Nama Template" name="nama" defaultValue={list.nama} />
-          </div>
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Simpan sebagai Template
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Pengaturan List</h3>
-        <form action={renameList} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="listId" value={listId} />
-          {list.folder_id && <input type="hidden" name="folderId" value={list.folder_id} />}
-          <FormField label="Nama List" name="nama" defaultValue={list.nama} />
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">
-              Deskripsi (opsional)
-            </label>
-            <textarea
-              name="deskripsi"
-              rows={2}
-              defaultValue={list.deskripsi ?? ""}
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none transition-all duration-150 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Simpan Perubahan
-          </button>
-        </form>
-
-        <form action={deleteList} className="mt-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="listId" value={listId} />
-          {list.folder_id && <input type="hidden" name="folderId" value={list.folder_id} />}
-          <button
-            type="submit"
-            className="text-[13px] font-medium text-red-500 transition-colors hover:text-red-700"
-          >
-            Hapus List ini
-          </button>
-        </form>
-      </div>
     </FormPageShell>
   );
 }
