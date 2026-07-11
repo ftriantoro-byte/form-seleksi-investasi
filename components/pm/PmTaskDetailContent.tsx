@@ -11,6 +11,7 @@ import {
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
 import { TASK_STATUS_LABEL, TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { FormField } from "@/components/ui/FormField";
+import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 
@@ -159,6 +160,14 @@ export async function PmTaskDetailContent({
 
   return (
     <>
+      <PmRealtimeRefresher
+        channelName={`pm-task-${taskId}`}
+        subscriptions={[
+          { table: "pm_tasks", filter: `id=eq.${taskId}` },
+          { table: "pm_comments", filter: `task_id=eq.${taskId}` },
+          { table: "pm_checklist_items", filter: `task_id=eq.${taskId}` },
+        ]}
+      />
       {parentTask && (
         <p className="mb-3 text-[13px] text-zinc-400">
           Subtask dari{" "}

@@ -15,6 +15,7 @@ import { FormField } from "@/components/ui/FormField";
 import { PmBoardView } from "@/components/pm/PmBoardView";
 import { PmCalendarView } from "@/components/pm/PmCalendarView";
 import { PmGanttView } from "@/components/pm/PmGanttView";
+import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 
@@ -121,6 +122,10 @@ export default async function ListDetailPage({
 
   return (
     <FormPageShell maxWidth="max-w-4xl">
+      <PmRealtimeRefresher
+        channelName={`pm-list-${listId}`}
+        subscriptions={[{ table: "pm_tasks", filter: `list_id=eq.${listId}` }]}
+      />
       <FormPageHeader
         title={list.nama}
         subtitle={list.deskripsi ?? undefined}
