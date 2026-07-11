@@ -72,13 +72,13 @@ export function PmSidebar({ workspaces }: { workspaces: PmWorkspace[] }) {
                       <div key={folder.id} className="ml-3">
                         {listLink(folderHref, `📁 ${folder.nama}`, "")}
                         {folder.lists.map((list) =>
-                          listLink(`${spaceHref}/${list.id}`, list.nama, "ml-3"),
+                          listLink(`${spaceHref}/${list.id}`, `# ${list.nama}`, "ml-3"),
                         )}
                       </div>
                     );
                   })}
                   {space.lists.map((list) =>
-                    listLink(`${spaceHref}/${list.id}`, list.nama, "ml-3"),
+                    listLink(`${spaceHref}/${list.id}`, `# ${list.nama}`, "ml-3"),
                   )}
                 </div>
               );
