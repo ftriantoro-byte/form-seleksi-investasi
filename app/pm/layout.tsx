@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getPmMembership } from "@/lib/pm/access";
 import { getPmMobileMode } from "@/lib/pm/preferences";
 import { createClient } from "@/lib/supabase/server";
@@ -46,6 +47,9 @@ export default async function PmLayout({ children }: { children: React.ReactNode
         <div className="flex items-center justify-end gap-3 px-6 pt-5 sm:px-10">
           <PmCommandPalette />
           <PmNotificationBell unreadCount={unreadCount ?? 0} />
+          <Link href="/akun" className="text-[13px] text-zinc-500 hover:text-zinc-900">
+            Akun
+          </Link>
           <PmModeToggle mobileMode={mobileMode} />
         </div>
         {children}
@@ -125,6 +129,9 @@ export default async function PmLayout({ children }: { children: React.ReactNode
         <div className="flex items-center justify-end gap-3 px-6 pt-5 sm:px-10">
           <PmCommandPalette />
           <PmNotificationBell unreadCount={unreadCount ?? 0} />
+          <Link href="/akun" className="text-[13px] text-zinc-500 hover:text-zinc-900">
+            Akun
+          </Link>
           <PmModeToggle mobileMode={mobileMode} />
         </div>
         {children}
