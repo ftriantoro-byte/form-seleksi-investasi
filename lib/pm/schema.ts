@@ -76,3 +76,9 @@ export const actionItemSchema = z.object({
   assigneeId: z.string().optional().or(z.literal("")),
   dueDate: z.string().optional().or(z.literal("")),
 });
+
+export const timeEntrySchema = z.object({
+  menit: z.coerce.number({ message: "Menit wajib diisi angka" }).int().min(1, "Menit minimal 1"),
+  catatan: z.string().optional(),
+  tanggal: z.string().optional().or(z.literal("")),
+});

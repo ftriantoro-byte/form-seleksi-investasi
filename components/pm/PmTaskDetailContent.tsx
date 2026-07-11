@@ -8,6 +8,7 @@ import {
   toggleChecklistItem,
   deleteChecklistItem,
 } from "@/actions/pm/checklist";
+import { createTimeEntry, deleteTimeEntry } from "@/actions/pm/timeEntries";
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
 import { TASK_STATUS_BADGE_KELAS, TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
@@ -55,6 +56,13 @@ type PmDependencyRow = { id: string; depends_on_task_id: string };
 type PmDependentRow = { id: string; task_id: string };
 type PmFieldDefinition = { id: string; nama: string; type: string; opsi: string[] | null };
 type PmFieldValueRow = { field_definition_id: string; value: string | null };
+type PmTimeEntryRow = {
+  id: string;
+  user_id: string;
+  menit: number;
+  catatan: string | null;
+  tanggal: string;
+};
 
 // Dipakai dari dua tempat: halaman penuh [taskId]/page.tsx (navigasi
 // langsung/refresh/link) dan modal @modal/(.)[taskId]/page.tsx (dibuka dari
@@ -111,6 +119,7 @@ export async function PmTaskDetailContent({
     { data: listRaw },
     { data: fieldDefinitionsRaw },
     { data: fieldValuesRaw },
+    { data: timeEntriesRaw },
   ] = await Promise.all([
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
     supabase
@@ -149,6 +158,11 @@ export async function PmTaskDetailContent({
       .from("pm_custom_field_values")
       .select("field_definition_id, value")
       .eq("task_id", taskId),
+    supabase
+      .from("pm_time_entries")
+      .select("id, user_id, menit, catatan, tanggal")
+      .eq("task_id", taskId)
+      .order("tanggal", { ascending: false }),
   ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
@@ -172,6 +186,10 @@ export async function PmTaskDetailContent({
   const fieldValueByDefId = new Map(
     ((fieldValuesRaw ?? []) as PmFieldValueRow[]).map((v) => [v.field_definition_id, v.value]),
   );
+  const timeEntries = (timeEntriesRaw ?? []) as PmTimeEntryRow[];
+  const totalMenit = timeEntries.reduce((sum, entry) => sum + entry.menit, 0);
+  const formatMenit = (menit: number) =>
+    menit >= 60 ? `${Math.floor(menit / 60)}j ${menit % 60}m` : `${menit}m`;
 
   // Doc kolaboratif 1:1 per Task, dibuat lazy saat pertama kali dibuka
   // (bukan trigger DB - supaya tidak semua Task otomatis punya baris Doc
@@ -455,6 +473,87 @@ export async function PmTaskDetailContent({
             className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
           >
             Tambah
+          </button>
+        </form>
+      </div>
+
+      <div className="mt-8 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
+        <div className="flex items-center justify-between">
+          <h3 className="text-[14px] font-semibold text-zinc-900">Waktu Kerja</h3>
+          {totalMenit > 0 && (
+            <span className="text-[13px] font-medium text-zinc-500">
+              Total {formatMenit(totalMenit)}
+            </span>
+          )}
+        </div>
+        <ul className="mt-4 space-y-1.5">
+          {timeEntries.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex items-center justify-between gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-50"
+            >
+              <div className="min-w-0">
+                <span className="text-[14px] text-zinc-700">
+                  {formatMenit(entry.menit)} · {emailByUserId.get(entry.user_id) ?? "Pengguna"} ·{" "}
+                  {entry.tanggal}
+                </span>
+                {entry.catatan && (
+                  <p className="truncate text-[12px] text-zinc-400">{entry.catatan}</p>
+                )}
+              </div>
+              {user && entry.user_id === user.id && (
+                <form action={deleteTimeEntry}>
+                  {hiddenFields}
+                  <input type="hidden" name="entryId" value={entry.id} />
+                  <button
+                    type="submit"
+                    className="shrink-0 text-[12px] text-zinc-300 transition-colors hover:text-red-600"
+                  >
+                    Hapus
+                  </button>
+                </form>
+              )}
+            </li>
+          ))}
+          {timeEntries.length === 0 && (
+            <li className="text-[14px] text-zinc-400">Belum ada waktu kerja tercatat.</li>
+          )}
+        </ul>
+
+        <form action={createTimeEntry} className="mt-4 flex flex-wrap items-end gap-3">
+          {hiddenFields}
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">Menit</label>
+            <input
+              type="number"
+              name="menit"
+              min={1}
+              required
+              className="mt-1.5 w-24 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            />
+          </div>
+          <div>
+            <label className="block text-[13px] font-medium text-zinc-500">Tanggal</label>
+            <input
+              type="date"
+              name="tanggal"
+              className="mt-1.5 rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            />
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <label className="block text-[13px] font-medium text-zinc-500">
+              Catatan (opsional)
+            </label>
+            <input
+              name="catatan"
+              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-full bg-zinc-100 px-4 py-2.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          >
+            Catat
           </button>
         </form>
       </div>
