@@ -5,8 +5,8 @@ import { createList } from "@/actions/pm/lists";
 import { createWhiteboard } from "@/actions/pm/whiteboards";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
-import { FormField } from "@/components/ui/FormField";
 import { PmEntityGrid } from "@/components/pm/PmEntityGrid";
+import { PmQuickAddForm } from "@/components/pm/PmQuickAddForm";
 
 export default async function SpaceDetailPage({
   params,
@@ -66,6 +66,52 @@ export default async function SpaceDetailPage({
         backLabel="Kembali ke Workspace"
       />
 
+      <div className="mb-4">
+        <details className="group relative">
+          <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200">
+            ⚙️ Pengaturan Space
+          </summary>
+          <div className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+            <form action={renameSpace} className="grid grid-cols-1 gap-2">
+              <input type="hidden" name="workspaceId" value={workspaceId} />
+              <input type="hidden" name="spaceId" value={spaceId} />
+              <label className="block text-[11px] font-medium text-zinc-500">Nama Space</label>
+              <input
+                name="nama"
+                defaultValue={space.nama}
+                required
+                className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+              <label className="block text-[11px] font-medium text-zinc-500">
+                Deskripsi (opsional)
+              </label>
+              <textarea
+                name="deskripsi"
+                rows={2}
+                defaultValue={space.deskripsi ?? ""}
+                className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+              <button
+                type="submit"
+                className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+              >
+                Simpan Perubahan
+              </button>
+            </form>
+            <form action={deleteSpace} className="mt-2 border-t border-zinc-100 pt-2">
+              <input type="hidden" name="workspaceId" value={workspaceId} />
+              <input type="hidden" name="spaceId" value={spaceId} />
+              <button
+                type="submit"
+                className="text-[12px] font-medium text-red-500 hover:text-red-700"
+              >
+                Hapus Space ini
+              </button>
+            </form>
+          </div>
+        </details>
+      </div>
+
       {error && (
         <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">
           {error}
@@ -74,6 +120,12 @@ export default async function SpaceDetailPage({
 
       <h2 className="text-[15px] font-semibold text-zinc-900">Folder</h2>
       <div className="mt-3">
+        <PmQuickAddForm
+          action={createFolder}
+          hiddenFields={{ workspaceId, spaceId }}
+          placeholder="Buat Folder baru..."
+          submitLabel="Buat"
+        />
         <PmEntityGrid
           items={folders ?? []}
           hrefBase={(id) => `/pm/${workspaceId}/${spaceId}/folder/${id}`}
@@ -81,24 +133,16 @@ export default async function SpaceDetailPage({
         />
       </div>
 
-      <div className="mt-4 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Buat Folder baru</h3>
-        <form action={createFolder} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <FormField label="Nama Folder" name="nama" />
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Buat Folder
-          </button>
-        </form>
-      </div>
-
-      <h2 className="mt-10 text-[15px] font-semibold text-zinc-900">List</h2>
+      <h2 className="mt-8 text-[15px] font-semibold text-zinc-900">List</h2>
       <p className="mt-1 text-[13px] text-zinc-400">List langsung di Space ini (di luar Folder).</p>
       <div className="mt-3">
+        <PmQuickAddForm
+          action={createList}
+          hiddenFields={{ workspaceId, spaceId }}
+          placeholder="Buat List baru..."
+          submitLabel="Buat"
+          primary
+        />
         <PmEntityGrid
           items={lists ?? []}
           hrefBase={(id) => `/pm/${workspaceId}/${spaceId}/${id}`}
@@ -106,80 +150,19 @@ export default async function SpaceDetailPage({
         />
       </div>
 
-      <div className="mt-6 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Buat List baru</h3>
-        <form action={createList} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <FormField label="Nama List" name="nama" />
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
-          >
-            Buat List
-          </button>
-        </form>
-      </div>
-
-      <h2 className="mt-10 text-[15px] font-semibold text-zinc-900">Whiteboard</h2>
+      <h2 className="mt-8 text-[15px] font-semibold text-zinc-900">Whiteboard</h2>
       <div className="mt-3">
+        <PmQuickAddForm
+          action={createWhiteboard}
+          hiddenFields={{ workspaceId, spaceId }}
+          placeholder="Buat Whiteboard baru..."
+          submitLabel="Buat"
+        />
         <PmEntityGrid
           items={whiteboards ?? []}
           hrefBase={(id) => `/pm/${workspaceId}/${spaceId}/whiteboard/${id}`}
           emptyLabel="Belum ada Whiteboard."
         />
-      </div>
-
-      <div className="mt-6 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Buat Whiteboard baru</h3>
-        <form action={createWhiteboard} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <FormField label="Nama Whiteboard" name="nama" />
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Buat Whiteboard
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Pengaturan Space</h3>
-        <form action={renameSpace} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <FormField label="Nama Space" name="nama" defaultValue={space.nama} />
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">
-              Deskripsi (opsional)
-            </label>
-            <textarea
-              name="deskripsi"
-              rows={2}
-              defaultValue={space.deskripsi ?? ""}
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none transition-all duration-150 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Simpan Perubahan
-          </button>
-        </form>
-
-        <form action={deleteSpace} className="mt-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <button
-            type="submit"
-            className="text-[13px] font-medium text-red-500 transition-colors hover:text-red-700"
-          >
-            Hapus Space ini
-          </button>
-        </form>
       </div>
     </FormPageShell>
   );

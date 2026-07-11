@@ -3,8 +3,8 @@ import { renameFolder, deleteFolder } from "@/actions/pm/folders";
 import { createList } from "@/actions/pm/lists";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
-import { FormField } from "@/components/ui/FormField";
 import { PmEntityGrid } from "@/components/pm/PmEntityGrid";
+import { PmQuickAddForm } from "@/components/pm/PmQuickAddForm";
 
 export default async function FolderDetailPage({
   params,
@@ -49,6 +49,54 @@ export default async function FolderDetailPage({
         backLabel="Kembali ke Space"
       />
 
+      <div className="mb-4">
+        <details className="group relative">
+          <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200">
+            ⚙️ Pengaturan Folder
+          </summary>
+          <div className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+            <form action={renameFolder} className="grid grid-cols-1 gap-2">
+              <input type="hidden" name="workspaceId" value={workspaceId} />
+              <input type="hidden" name="spaceId" value={spaceId} />
+              <input type="hidden" name="folderId" value={folderId} />
+              <label className="block text-[11px] font-medium text-zinc-500">Nama Folder</label>
+              <input
+                name="nama"
+                defaultValue={folder.nama}
+                required
+                className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+              <label className="block text-[11px] font-medium text-zinc-500">
+                Deskripsi (opsional)
+              </label>
+              <textarea
+                name="deskripsi"
+                rows={2}
+                defaultValue={folder.deskripsi ?? ""}
+                className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+              />
+              <button
+                type="submit"
+                className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+              >
+                Simpan Perubahan
+              </button>
+            </form>
+            <form action={deleteFolder} className="mt-2 border-t border-zinc-100 pt-2">
+              <input type="hidden" name="workspaceId" value={workspaceId} />
+              <input type="hidden" name="spaceId" value={spaceId} />
+              <input type="hidden" name="folderId" value={folderId} />
+              <button
+                type="submit"
+                className="text-[12px] font-medium text-red-500 hover:text-red-700"
+              >
+                Hapus Folder ini
+              </button>
+            </form>
+          </div>
+        </details>
+      </div>
+
       {error && (
         <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">
           {error}
@@ -57,66 +105,18 @@ export default async function FolderDetailPage({
 
       <h2 className="text-[15px] font-semibold text-zinc-900">List</h2>
       <div className="mt-3">
+        <PmQuickAddForm
+          action={createList}
+          hiddenFields={{ workspaceId, spaceId, folderId }}
+          placeholder="Buat List baru..."
+          submitLabel="Buat"
+          primary
+        />
         <PmEntityGrid
           items={lists ?? []}
           hrefBase={(id) => `/pm/${workspaceId}/${spaceId}/${id}`}
           emptyLabel="Belum ada List di Folder ini."
         />
-      </div>
-
-      <div className="mt-6 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Buat List baru</h3>
-        <form action={createList} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="folderId" value={folderId} />
-          <FormField label="Nama List" name="nama" />
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
-          >
-            Buat List
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Pengaturan Folder</h3>
-        <form action={renameFolder} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="folderId" value={folderId} />
-          <FormField label="Nama Folder" name="nama" defaultValue={folder.nama} />
-          <div>
-            <label className="block text-[13px] font-medium text-zinc-500">
-              Deskripsi (opsional)
-            </label>
-            <textarea
-              name="deskripsi"
-              rows={2}
-              defaultValue={folder.deskripsi ?? ""}
-              className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none transition-all duration-150 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            />
-          </div>
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-          >
-            Simpan Perubahan
-          </button>
-        </form>
-
-        <form action={deleteFolder} className="mt-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <input type="hidden" name="spaceId" value={spaceId} />
-          <input type="hidden" name="folderId" value={folderId} />
-          <button
-            type="submit"
-            className="text-[13px] font-medium text-red-500 transition-colors hover:text-red-700"
-          >
-            Hapus Folder ini
-          </button>
-        </form>
       </div>
     </FormPageShell>
   );

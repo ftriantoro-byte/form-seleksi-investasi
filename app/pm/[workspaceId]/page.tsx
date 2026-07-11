@@ -10,8 +10,8 @@ import {
 import { createSpace } from "@/actions/pm/spaces";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
-import { FormField } from "@/components/ui/FormField";
 import { PmEntityGrid } from "@/components/pm/PmEntityGrid";
+import { PmQuickAddForm } from "@/components/pm/PmQuickAddForm";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 type PmMemberProfile = { user_id: string; email: string; role: "admin" | "member" };
@@ -74,25 +74,124 @@ export default async function WorkspaceDetailPage({
         backLabel="Semua Workspace"
       />
 
-      <div className="mb-6 flex flex-wrap gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
         <Link
           href={`/pm/${workspaceId}/dashboard`}
-          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-4 py-1.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
         >
-          Lihat Dashboard →
+          📊 Dashboard
         </Link>
         <Link
           href={`/pm/${workspaceId}/templates`}
-          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-4 py-1.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
         >
-          Template List →
+          💾 Template
         </Link>
         <Link
           href={`/pm/${workspaceId}/meetings`}
-          className="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-4 py-1.5 text-[13px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+          className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
         >
-          Notulensi Meeting →
+          📝 Meeting
         </Link>
+
+        <details className="group relative">
+          <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200">
+            👥 Anggota
+          </summary>
+          <div className="absolute right-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+            <ul className="space-y-1.5">
+              {anggotaWorkspace.map((a) => (
+                <li
+                  key={a.user_id}
+                  className="flex items-center justify-between rounded-lg bg-zinc-50 px-3 py-1.5 text-[13px] text-zinc-700"
+                >
+                  <span className="truncate">{a.email}</span>
+                  {pmRole === "admin" && (
+                    <form action={removeWorkspaceMember}>
+                      <input type="hidden" name="workspaceId" value={workspaceId} />
+                      <input type="hidden" name="userId" value={a.user_id} />
+                      <button
+                        type="submit"
+                        className="shrink-0 text-[11px] text-zinc-400 hover:text-red-600"
+                      >
+                        Keluarkan
+                      </button>
+                    </form>
+                  )}
+                </li>
+              ))}
+              {anggotaWorkspace.length === 0 && (
+                <li className="text-[12px] text-zinc-400">Belum ada anggota.</li>
+              )}
+            </ul>
+
+            {pmRole === "admin" && kandidatAnggota.length > 0 && (
+              <form action={addWorkspaceMember} className="mt-2 flex items-center gap-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <select
+                  name="userId"
+                  className="min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[12px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                >
+                  {kandidatAnggota.map((a) => (
+                    <option key={a.user_id} value={a.user_id}>
+                      {a.email}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="shrink-0 rounded-full bg-zinc-900 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-zinc-700"
+                >
+                  Tambah
+                </button>
+              </form>
+            )}
+          </div>
+        </details>
+
+        {pmRole === "admin" && (
+          <details className="group relative">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200">
+              ⚙️ Pengaturan
+            </summary>
+            <div className="absolute right-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+              <form action={renameWorkspace} className="grid grid-cols-1 gap-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <label className="block text-[11px] font-medium text-zinc-500">Nama Workspace</label>
+                <input
+                  name="nama"
+                  defaultValue={workspace.nama}
+                  required
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <label className="block text-[11px] font-medium text-zinc-500">
+                  Deskripsi (opsional)
+                </label>
+                <textarea
+                  name="deskripsi"
+                  rows={2}
+                  defaultValue={workspace.deskripsi ?? ""}
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                />
+                <button
+                  type="submit"
+                  className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+                >
+                  Simpan Perubahan
+                </button>
+              </form>
+              <form action={deleteWorkspace} className="mt-2 border-t border-zinc-100 pt-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <button
+                  type="submit"
+                  className="text-[12px] font-medium text-red-500 hover:text-red-700"
+                >
+                  Hapus Workspace ini
+                </button>
+              </form>
+            </div>
+          </details>
+        )}
       </div>
 
       {error && (
@@ -103,114 +202,19 @@ export default async function WorkspaceDetailPage({
 
       <h2 className="text-[15px] font-semibold text-zinc-900">Space</h2>
       <div className="mt-3">
+        <PmQuickAddForm
+          action={createSpace}
+          hiddenFields={{ workspaceId }}
+          placeholder="Buat Space baru..."
+          submitLabel="Buat"
+          primary
+        />
         <PmEntityGrid
           items={spaces ?? []}
           hrefBase={(id) => `/pm/${workspaceId}/${id}`}
           emptyLabel="Belum ada Space."
         />
       </div>
-
-      <div className="mt-6 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Buat Space baru</h3>
-        <form action={createSpace} className="mt-4 grid grid-cols-1 gap-4">
-          <input type="hidden" name="workspaceId" value={workspaceId} />
-          <FormField label="Nama Space" name="nama" />
-          <button
-            type="submit"
-            className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
-          >
-            Buat Space
-          </button>
-        </form>
-      </div>
-
-      <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-        <h3 className="text-[14px] font-semibold text-zinc-900">Anggota Workspace</h3>
-        <ul className="mt-4 space-y-2">
-          {anggotaWorkspace.map((a) => (
-            <li
-              key={a.user_id}
-              className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-2.5 text-[14px] text-zinc-700"
-            >
-              {a.email}
-              {pmRole === "admin" && (
-                <form action={removeWorkspaceMember}>
-                  <input type="hidden" name="workspaceId" value={workspaceId} />
-                  <input type="hidden" name="userId" value={a.user_id} />
-                  <button
-                    type="submit"
-                    className="text-[13px] text-zinc-400 transition-colors hover:text-red-600"
-                  >
-                    Keluarkan
-                  </button>
-                </form>
-              )}
-            </li>
-          ))}
-          {anggotaWorkspace.length === 0 && (
-            <li className="text-[14px] text-zinc-400">Belum ada anggota.</li>
-          )}
-        </ul>
-
-        {pmRole === "admin" && kandidatAnggota.length > 0 && (
-          <form action={addWorkspaceMember} className="mt-4 flex items-center gap-3">
-            <input type="hidden" name="workspaceId" value={workspaceId} />
-            <select
-              name="userId"
-              className="rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[14px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-            >
-              {kandidatAnggota.map((a) => (
-                <option key={a.user_id} value={a.user_id}>
-                  {a.email}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="rounded-full bg-zinc-900 px-5 py-2.5 text-[14px] font-medium text-white transition-colors hover:bg-zinc-700"
-            >
-              Tambah ke Workspace
-            </button>
-          </form>
-        )}
-      </div>
-
-      {pmRole === "admin" && (
-        <div className="mt-10 rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
-          <h3 className="text-[14px] font-semibold text-zinc-900">Pengaturan Workspace</h3>
-          <form action={renameWorkspace} className="mt-4 grid grid-cols-1 gap-4">
-            <input type="hidden" name="workspaceId" value={workspaceId} />
-            <FormField label="Nama Workspace" name="nama" defaultValue={workspace.nama} />
-            <div>
-              <label className="block text-[13px] font-medium text-zinc-500">
-                Deskripsi (opsional)
-              </label>
-              <textarea
-                name="deskripsi"
-                rows={2}
-                defaultValue={workspace.deskripsi ?? ""}
-                className="mt-1.5 w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-[15px] text-zinc-900 shadow-sm outline-none transition-all duration-150 hover:border-zinc-300 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-fit rounded-full bg-zinc-100 px-5 py-2.5 text-[14px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
-            >
-              Simpan Perubahan
-            </button>
-          </form>
-
-          <form action={deleteWorkspace} className="mt-4">
-            <input type="hidden" name="workspaceId" value={workspaceId} />
-            <button
-              type="submit"
-              className="text-[13px] font-medium text-red-500 transition-colors hover:text-red-700"
-            >
-              Hapus Workspace ini
-            </button>
-          </form>
-        </div>
-      )}
     </FormPageShell>
   );
 }

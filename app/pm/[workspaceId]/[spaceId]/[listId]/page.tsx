@@ -463,7 +463,7 @@ export default async function ListDetailPage({
             <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
               💾 Simpan sbg Template
             </summary>
-            <div className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+            <div className="absolute right-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
               <p className="text-[12px] text-zinc-400">
                 Simpan label status &amp; Custom Field List ini supaya bisa dipakai ulang.
               </p>
@@ -491,7 +491,7 @@ export default async function ListDetailPage({
             <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
               ⚙️ Pengaturan
             </summary>
-            <div className="absolute left-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
+            <div className="absolute right-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
               <form action={renameList} className="grid grid-cols-1 gap-2">
                 <input type="hidden" name="workspaceId" value={workspaceId} />
                 <input type="hidden" name="spaceId" value={spaceId} />
