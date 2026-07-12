@@ -132,6 +132,7 @@ export async function PmTaskDetailContent({
     { data: fieldValuesRaw },
     { data: timeEntriesRaw },
     { data: attachmentsRaw },
+    { data: existingDocRaw },
   ] = await Promise.all([
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
     supabase
@@ -180,6 +181,12 @@ export async function PmTaskDetailContent({
       .select("id, file_name, size_bytes, created_by")
       .eq("task_id", taskId)
       .order("created_at", { ascending: false }),
+    // Digabung ke batch paralel ini (bukan query terpisah SETELAH batch
+    // selesai seperti sebelumnya) - SELECT-nya sendiri tidak bergantung ke
+    // hasil query manapun di atas, cuma taskId. INSERT fallback di bawah
+    // (kalau Doc belum pernah ada) tetap query terpisah karena baru
+    // diketahui perlu tidaknya setelah SELECT ini selesai.
+    supabase.from("pm_docs").select("id, crdt_state").eq("task_id", taskId).maybeSingle(),
   ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
@@ -217,14 +224,10 @@ export async function PmTaskDetailContent({
   // (bukan trigger DB - supaya tidak semua Task otomatis punya baris Doc
   // yang tidak pernah dipakai). task_id unique di pm_docs, jadi race antar
   // 2 client yang sama-sama pertama kali buka ditangani dengan re-select
-  // kalau insert gagal.
-  let doc: { id: string; crdt_state: string | null } | null = null;
-  const { data: existingDoc } = await supabase
-    .from("pm_docs")
-    .select("id, crdt_state")
-    .eq("task_id", taskId)
-    .maybeSingle();
-  doc = existingDoc;
+  // kalau insert gagal. SELECT-nya sudah ikut batch Promise.all di atas
+  // (existingDocRaw) - di sini cuma jalur INSERT fallback yang genuinely
+  // baru diketahui perlu-tidaknya setelah tahu hasil SELECT tsb.
+  let doc: { id: string; crdt_state: string | null } | null = existingDocRaw;
   if (!doc && user) {
     const { data: insertedDoc } = await supabase
       .from("pm_docs")

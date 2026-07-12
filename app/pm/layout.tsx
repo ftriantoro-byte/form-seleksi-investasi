@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { logout } from "@/actions/auth";
-import { getPmMembership } from "@/lib/pm/access";
 import { getPmMobileMode } from "@/lib/pm/preferences";
 import { createClient } from "@/lib/supabase/server";
 import { PmSidebar } from "@/components/pm/PmSidebar";
@@ -15,9 +14,17 @@ type PmSpace = { id: string; nama: string; folders: PmFolder[]; lists: PmList[] 
 type PmWorkspace = { id: string; nama: string; spaces: PmSpace[] };
 
 export default async function PmLayout({ children }: { children: React.ReactNode }) {
-  const pmRole = await getPmMembership();
+  // getUser() dipanggil SEKALI di sini (bukan lewat getPmMembership() yang
+  // manggil lagi secara terpisah) - layout ini jalan di SETIAP navigasi/
+  // router.refresh() di seluruh modul PM, jadi memangkas 1 auth round-trip
+  // di sini kerasa dampaknya lintas semua halaman, bukan cuma satu.
+  const mobileMode = await getPmMobileMode();
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  if (!pmRole) {
+  if (!user) {
     return (
       <FormPageShell maxWidth="max-w-xl">
         <p className="text-[15px] text-zinc-500">
@@ -27,20 +34,24 @@ export default async function PmLayout({ children }: { children: React.ReactNode
     );
   }
 
-  const mobileMode = await getPmMobileMode();
-  const supabase = await createClient();
+  const [{ data: memberRow }, { count: unreadCount }] = await Promise.all([
+    supabase.from("pm_members").select("role").eq("user_id", user.id).single(),
+    supabase
+      .from("pm_notifications")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("dibaca", false),
+  ]);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { count: unreadCount } = user
-    ? await supabase
-        .from("pm_notifications")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("dibaca", false)
-    : { count: 0 };
+  if (!memberRow?.role) {
+    return (
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
+          Anda tidak memiliki akses ke modul Manajemen Proyek.
+        </p>
+      </FormPageShell>
+    );
+  }
 
   if (mobileMode) {
     return (
@@ -72,46 +83,44 @@ export default async function PmLayout({ children }: { children: React.ReactNode
     );
   }
 
-  // Diambil sebagai 4 query datar (bukan nested select) - pm_lists punya DUA
-  // FK (space_id, folder_id) sehingga filter "List langsung di Space vs di
-  // dalam Folder" lebih jelas dirakit di sini daripada lewat sintaks embedded
-  // select PostgREST. Wajar untuk skala ~3 orang (jumlah baris kecil).
+  // Workspace+Space digabung jadi SATU query lewat nested select PostgREST
+  // (tidak ambigu - pm_spaces cuma py 1 FK ke pm_workspaces) supaya cuma 1
+  // round-trip, bukan 2 berurutan. Folder+List TETAP 2 query terpisah
+  // (bukan nested) karena pm_lists punya DUA FK (space_id, folder_id) -
+  // filter "List langsung di Space vs di dalam Folder" lebih jelas dirakit
+  // di sini daripada lewat sintaks embedded select yang butuh disambiguasi.
   const { data: workspacesRaw } = await supabase
     .from("pm_workspaces")
-    .select("id, nama")
-    .order("created_at", { ascending: true });
-  const workspaceRows = workspacesRaw ?? [];
-  const workspaceIds = workspaceRows.map((w) => w.id);
+    .select("id, nama, pm_spaces(id, nama, workspace_id)")
+    .order("created_at", { ascending: true })
+    .order("created_at", { referencedTable: "pm_spaces", ascending: true });
 
-  let spaceRows: { id: string; nama: string; workspace_id: string }[] = [];
+  const workspaceRows = (workspacesRaw ?? []) as {
+    id: string;
+    nama: string;
+    pm_spaces: { id: string; nama: string; workspace_id: string }[];
+  }[];
+  const spaceRows = workspaceRows.flatMap((w) => w.pm_spaces ?? []);
+  const spaceIds = spaceRows.map((s) => s.id);
+
   let folderRows: { id: string; nama: string; space_id: string }[] = [];
   let listRows: { id: string; nama: string; space_id: string; folder_id: string | null }[] = [];
 
-  if (workspaceIds.length > 0) {
-    const { data: spacesRaw } = await supabase
-      .from("pm_spaces")
-      .select("id, nama, workspace_id")
-      .in("workspace_id", workspaceIds)
-      .order("created_at", { ascending: true });
-    spaceRows = spacesRaw ?? [];
-    const spaceIds = spaceRows.map((s) => s.id);
-
-    if (spaceIds.length > 0) {
-      const [{ data: foldersRaw }, { data: listsRaw }] = await Promise.all([
-        supabase
-          .from("pm_folders")
-          .select("id, nama, space_id")
-          .in("space_id", spaceIds)
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("pm_lists")
-          .select("id, nama, space_id, folder_id")
-          .in("space_id", spaceIds)
-          .order("urutan", { ascending: true }),
-      ]);
-      folderRows = foldersRaw ?? [];
-      listRows = listsRaw ?? [];
-    }
+  if (spaceIds.length > 0) {
+    const [{ data: foldersRaw }, { data: listsRaw }] = await Promise.all([
+      supabase
+        .from("pm_folders")
+        .select("id, nama, space_id")
+        .in("space_id", spaceIds)
+        .order("created_at", { ascending: true }),
+      supabase
+        .from("pm_lists")
+        .select("id, nama, space_id, folder_id")
+        .in("space_id", spaceIds)
+        .order("urutan", { ascending: true }),
+    ]);
+    folderRows = foldersRaw ?? [];
+    listRows = listsRaw ?? [];
   }
 
   const workspaces: PmWorkspace[] = workspaceRows.map((ws) => ({
