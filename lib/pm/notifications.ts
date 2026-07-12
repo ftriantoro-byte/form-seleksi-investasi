@@ -7,34 +7,44 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // Task / kirim komentar) - makanya error dari insert ini tidak dicek/redirect
 // seperti mutasi utama lain di modul PM.
 
+// Task multi-assignee - dipanggil dengan daftar user_id yang BARU
+// ditambahkan sebagai assignee (bukan seluruh assignee saat ini), supaya
+// orang yang sudah lama jadi assignee tidak dapat notifikasi ulang tiap
+// Task diedit.
 export async function notifyTaskAssigned(
   supabase: SupabaseServerClient,
-  params: { assigneeId: string | null; actorId: string; taskId: string; judul: string },
+  params: { assigneeIds: string[]; actorId: string; taskId: string; judul: string },
 ) {
-  const { assigneeId, actorId, taskId, judul } = params;
-  if (!assigneeId || assigneeId === actorId) return;
+  const { assigneeIds, actorId, taskId, judul } = params;
+  const targets = assigneeIds.filter((id) => id !== actorId);
+  if (targets.length === 0) return;
 
-  await supabase.from("pm_notifications").insert({
-    user_id: assigneeId,
-    type: "task_assigned",
-    task_id: taskId,
-    pesan: `Anda ditugaskan ke Task "${judul}".`,
-  });
+  await supabase.from("pm_notifications").insert(
+    targets.map((userId) => ({
+      user_id: userId,
+      type: "task_assigned" as const,
+      task_id: taskId,
+      pesan: `Anda ditugaskan ke Task "${judul}".`,
+    })),
+  );
 }
 
 export async function notifyTaskCommented(
   supabase: SupabaseServerClient,
-  params: { assigneeId: string | null; actorId: string; taskId: string; judul: string },
+  params: { assigneeIds: string[]; actorId: string; taskId: string; judul: string },
 ) {
-  const { assigneeId, actorId, taskId, judul } = params;
-  if (!assigneeId || assigneeId === actorId) return;
+  const { assigneeIds, actorId, taskId, judul } = params;
+  const targets = assigneeIds.filter((id) => id !== actorId);
+  if (targets.length === 0) return;
 
-  await supabase.from("pm_notifications").insert({
-    user_id: assigneeId,
-    type: "task_commented",
-    task_id: taskId,
-    pesan: `Ada komentar baru di Task "${judul}".`,
-  });
+  await supabase.from("pm_notifications").insert(
+    targets.map((userId) => ({
+      user_id: userId,
+      type: "task_commented" as const,
+      task_id: taskId,
+      pesan: `Ada komentar baru di Task "${judul}".`,
+    })),
+  );
 }
 
 export async function notifyMentions(

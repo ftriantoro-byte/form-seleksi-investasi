@@ -44,7 +44,7 @@ type PmTaskRow = {
   judul: string;
   status: string;
   priority: string | null;
-  assignee_id: string | null;
+  assignee_ids: string[];
   start_date: string | null;
   due_date: string | null;
   recurrence_type: string | null;
@@ -116,13 +116,30 @@ export default async function ListDetailPage({
 
   const statusLabels = mergeStatusLabels(list.custom_status_labels);
 
+  // pm_task_assignees di-embed langsung lewat nested select (bukan query
+  // terpisah). CATATAN: filter assignee TIDAK dilakukan lewat `!inner` +
+  // `.eq("pm_task_assignees.user_id", ...)` di query yang sama - itu bikin
+  // isi array embed-nya IKUT ter-filter (jadi kolom Assignee di tabel cuma
+  // menampilkan 1 assignee yang match filter, bukan semua assignee Task
+  // itu - ditemukan saat verifikasi). Jadi task_id yang match filter dicari
+  // DULU lewat query terpisah, baru dipakai `.in("id", ...)` di query utama
+  // supaya embed pm_task_assignees tetap utuh menampilkan SEMUA assignee.
+  let filteredTaskIds: string[] | null = null;
+  if (assigneeFilter) {
+    const { data: matchingRows } = await supabase
+      .from("pm_task_assignees")
+      .select("task_id")
+      .eq("user_id", assigneeFilter);
+    filteredTaskIds = (matchingRows ?? []).map((r) => r.task_id);
+  }
+
   let taskQuery = supabase
     .from("pm_tasks")
-    .select("id, judul, status, priority, assignee_id, start_date, due_date, recurrence_type")
+    .select("id, judul, status, priority, start_date, due_date, recurrence_type, pm_task_assignees(user_id)")
     .eq("list_id", listId);
 
   if (statusFilter) taskQuery = taskQuery.eq("status", statusFilter);
-  if (assigneeFilter) taskQuery = taskQuery.eq("assignee_id", assigneeFilter);
+  if (filteredTaskIds) taskQuery = taskQuery.in("id", filteredTaskIds);
   if (priorityFilter) taskQuery = taskQuery.eq("priority", priorityFilter);
 
   taskQuery = taskQuery.order(sort, { ascending: true, nullsFirst: false });
@@ -143,7 +160,12 @@ export default async function ListDetailPage({
         .order("created_at", { ascending: true }),
     ]);
 
-  const tasks = (tasksRaw ?? []) as PmTaskRow[];
+  const tasks = ((tasksRaw ?? []) as unknown as (Omit<PmTaskRow, "assignee_ids"> & {
+    pm_task_assignees: { user_id: string }[];
+  })[]).map((t) => ({
+    ...t,
+    assignee_ids: t.pm_task_assignees.map((a) => a.user_id),
+  })) as PmTaskRow[];
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
   const emailByUserIdRecord = Object.fromEntries(emailByUserId);

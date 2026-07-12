@@ -10,7 +10,7 @@ type PmDashboardTask = {
   id: string;
   status: string;
   due_date: string | null;
-  assignee_id: string | null;
+  assignee_ids: string[];
 };
 
 const TAB_VALUES = ["progress", "workload", "resume"] as const;
@@ -70,9 +70,11 @@ export default async function PmWorkspaceDashboardPage({
   if (listIds.length > 0) {
     const { data: taskRows } = await supabase
       .from("pm_tasks")
-      .select("id, status, due_date, assignee_id")
+      .select("id, status, due_date, pm_task_assignees(user_id)")
       .in("list_id", listIds);
-    tasks = (taskRows ?? []) as PmDashboardTask[];
+    tasks = ((taskRows ?? []) as unknown as (Omit<PmDashboardTask, "assignee_ids"> & {
+      pm_task_assignees: { user_id: string }[];
+    })[]).map((t) => ({ ...t, assignee_ids: t.pm_task_assignees.map((a) => a.user_id) }));
   }
 
   const { data: anggotaRaw } = await supabase.rpc("pm_workspace_member_profiles", {
@@ -162,16 +164,19 @@ function WorkloadTab({
   anggota: PmWorkspaceMemberProfile[];
   emailByUserId: Map<string, string>;
 }) {
-  const unassignedCount = tasks.filter((t) => !t.assignee_id).length;
-  const maxCount = Math.max(1, ...anggota.map((a) => tasks.filter((t) => t.assignee_id === a.user_id).length));
+  const unassignedCount = tasks.filter((t) => t.assignee_ids.length === 0).length;
+  const maxCount = Math.max(
+    1,
+    ...anggota.map((a) => tasks.filter((t) => t.assignee_ids.includes(a.user_id)).length),
+  );
 
   return (
     <div className="rounded-3xl border border-black/[0.04] bg-white p-7 shadow-[0_1px_3px_rgba(0,0,0,0.03)] sm:p-9">
       <div className="space-y-3">
         {anggota.map((a) => {
-          const count = tasks.filter((t) => t.assignee_id === a.user_id).length;
+          const count = tasks.filter((t) => t.assignee_ids.includes(a.user_id)).length;
           const notDone = tasks.filter(
-            (t) => t.assignee_id === a.user_id && t.status !== "done",
+            (t) => t.assignee_ids.includes(a.user_id) && t.status !== "done",
           ).length;
           return (
             <div key={a.user_id}>

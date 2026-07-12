@@ -177,7 +177,6 @@ export async function convertActionItemToTask(itemId: string, listId: string) {
     .insert({
       list_id: listId,
       judul: item.deskripsi,
-      assignee_id: item.assignee_id,
       due_date: item.due_date,
       status: "to_do",
       created_by: user.id,
@@ -187,6 +186,12 @@ export async function convertActionItemToTask(itemId: string, listId: string) {
 
   if (taskError || !task) {
     throw new Error(taskError?.message ?? "Gagal membuat Task.");
+  }
+
+  if (item.assignee_id) {
+    await supabase
+      .from("pm_task_assignees")
+      .insert({ task_id: task.id, user_id: item.assignee_id });
   }
 
   const { error: updateError } = await supabase

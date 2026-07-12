@@ -12,7 +12,7 @@ type PmTaskRow = {
   judul: string;
   status: string;
   priority: string | null;
-  assignee_id: string | null;
+  assignee_ids: string[];
   due_date: string | null;
   recurrence_type: string | null;
 };
@@ -95,9 +95,9 @@ export function PmBoardView({
                       <span className="text-[11px] text-zinc-400">{task.due_date}</span>
                     )}
                   </div>
-                  {task.assignee_id && (
+                  {task.assignee_ids.length > 0 && (
                     <div className="mt-1 truncate text-[11px] text-zinc-400">
-                      {emailByUserId[task.assignee_id] ?? ""}
+                      {task.assignee_ids.map((id) => emailByUserId[id] ?? "").join(", ")}
                     </div>
                   )}
                 </div>

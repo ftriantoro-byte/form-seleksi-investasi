@@ -26,10 +26,15 @@ export async function runAutomations(
     if (automation.action_type === "set_status" && automation.action_value) {
       await supabase.from("pm_tasks").update({ status: automation.action_value }).eq("id", taskId);
     } else if (automation.action_type === "set_assignee") {
-      await supabase
-        .from("pm_tasks")
-        .update({ assignee_id: automation.action_value || null })
-        .eq("id", taskId);
+      // Ganti SELURUH assignee Task dengan 1 orang ini (replace, bukan
+      // tambah) - kelanjutan wajar dari perilaku lama "assignee_id = X"
+      // sebelum Task bisa multi-assignee.
+      await supabase.from("pm_task_assignees").delete().eq("task_id", taskId);
+      if (automation.action_value) {
+        await supabase
+          .from("pm_task_assignees")
+          .insert({ task_id: taskId, user_id: automation.action_value });
+      }
     } else if (automation.action_type === "set_priority") {
       await supabase
         .from("pm_tasks")

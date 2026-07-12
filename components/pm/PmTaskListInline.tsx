@@ -12,7 +12,7 @@ type PmTaskRow = {
   judul: string;
   status: string;
   priority: string | null;
-  assignee_id: string | null;
+  assignee_ids: string[];
   due_date: string | null;
   recurrence_type: string | null;
 };
@@ -48,7 +48,9 @@ export function PmTaskListInline({
             </Link>
           </td>
           <td className="px-2 py-2 text-zinc-500">
-            {task.assignee_id ? (emailByUserId[task.assignee_id] ?? "-") : "-"}
+            {task.assignee_ids.length > 0
+              ? task.assignee_ids.map((id) => emailByUserId[id] ?? "-").join(", ")
+              : "-"}
           </td>
           <td className="px-2 py-2">
             <input

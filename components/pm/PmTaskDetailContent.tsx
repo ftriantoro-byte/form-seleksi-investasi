@@ -17,6 +17,7 @@ import { RECURRENCE_TYPE_VALUES, RECURRENCE_TYPE_LABEL } from "@/lib/pm/recurren
 import { FormField } from "@/components/ui/FormField";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 import { PmCollaborativeDoc } from "@/components/pm/PmCollaborativeDoc";
+import { PmMentionTextarea } from "@/components/pm/PmMentionTextarea";
 import { renderMentionText } from "@/lib/pm/mentions";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
@@ -28,7 +29,6 @@ type PmTaskDetail = {
   deskripsi: string | null;
   status: string;
   priority: string | null;
-  assignee_id: string | null;
   start_date: string | null;
   due_date: string | null;
   parent_task_id: string | null;
@@ -103,7 +103,7 @@ export async function PmTaskDetailContent({
   const { data: taskRaw } = await supabase
     .from("pm_tasks")
     .select(
-      "id, list_id, judul, deskripsi, status, priority, assignee_id, start_date, due_date, parent_task_id, recurrence_type, recurrence_interval, recurrence_end_date",
+      "id, list_id, judul, deskripsi, status, priority, start_date, due_date, parent_task_id, recurrence_type, recurrence_interval, recurrence_end_date",
     )
     .eq("id", taskId)
     .single();
@@ -122,17 +122,16 @@ export async function PmTaskDetailContent({
     { data: anggotaRaw },
     { data: checklistRaw },
     { data: commentsRaw },
-    { data: subtasksRaw },
+    { data: listTasksRaw },
     { data: parentRaw },
-    { data: otherTasksRaw },
-    { data: dependenciesRaw },
-    { data: dependentsRaw },
+    { data: dependencyRowsRaw },
     { data: listRaw },
     { data: fieldDefinitionsRaw },
     { data: fieldValuesRaw },
     { data: timeEntriesRaw },
     { data: attachmentsRaw },
     { data: existingDocRaw },
+    { data: assigneeRowsRaw },
   ] = await Promise.all([
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
     supabase
@@ -145,22 +144,27 @@ export async function PmTaskDetailContent({
       .select("id, konten, created_by, created_at")
       .eq("task_id", taskId)
       .order("created_at", { ascending: true }),
+    // Subtask (parent_task_id = taskId) & "Task lain di List ini" (dipakai
+    // buat kandidat Dependency & lookup #[Judul Task] mention) DIGABUNG jadi
+    // satu query (semua Task di List ini), diturunkan/dipisah di JS -
+    // sebelumnya 2 query terpisah padahal sumbernya sama-sama pm_tasks
+    // dengan list_id yang sama.
     supabase
       .from("pm_tasks")
-      .select("id, judul, status")
-      .eq("parent_task_id", taskId)
-      .order("created_at", { ascending: true }),
+      .select("id, judul, status, parent_task_id")
+      .eq("list_id", listId)
+      .order("judul", { ascending: true }),
     task.parent_task_id
       ? supabase.from("pm_tasks").select("id, judul").eq("id", task.parent_task_id).single()
       : Promise.resolve({ data: null }),
+    // "Menunggu Task lain" & "Diperlukan oleh" DIGABUNG jadi satu query lewat
+    // `.or()` (task_id = X ATAU depends_on_task_id = X), dipisah lagi di JS
+    // sesuai sisi mana yang match - sebelumnya 2 query terpisah ke tabel
+    // yang sama.
     supabase
-      .from("pm_tasks")
-      .select("id, judul")
-      .eq("list_id", listId)
-      .neq("id", taskId)
-      .order("judul", { ascending: true }),
-    supabase.from("pm_task_dependencies").select("id, depends_on_task_id").eq("task_id", taskId),
-    supabase.from("pm_task_dependencies").select("id, task_id").eq("depends_on_task_id", taskId),
+      .from("pm_task_dependencies")
+      .select("id, task_id, depends_on_task_id")
+      .or(`task_id.eq.${taskId},depends_on_task_id.eq.${taskId}`),
     supabase.from("pm_lists").select("custom_status_labels").eq("id", listId).single(),
     supabase
       .from("pm_custom_field_definitions")
@@ -187,18 +191,22 @@ export async function PmTaskDetailContent({
     // (kalau Doc belum pernah ada) tetap query terpisah karena baru
     // diketahui perlu tidaknya setelah SELECT ini selesai.
     supabase.from("pm_docs").select("id, crdt_state").eq("task_id", taskId).maybeSingle(),
+    supabase.from("pm_task_assignees").select("user_id").eq("task_id", taskId),
   ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
+  const assigneeIds = new Set((assigneeRowsRaw ?? []).map((r) => r.user_id as string));
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
   const checklist = (checklistRaw ?? []) as PmChecklistItemRow[];
   const comments = (commentsRaw ?? []) as PmCommentRow[];
-  const subtasks = (subtasksRaw ?? []) as PmSubtaskRow[];
+  const listTasks = (listTasksRaw ?? []) as (PmSubtaskRow & { parent_task_id: string | null })[];
+  const subtasks = listTasks.filter((t) => t.parent_task_id === taskId);
   const parentTask = parentRaw as { id: string; judul: string } | null;
-  const otherTasks = (otherTasksRaw ?? []) as PmOtherTaskRow[];
+  const otherTasks = listTasks.filter((t) => t.id !== taskId) as PmOtherTaskRow[];
   const judulByTaskId = new Map(otherTasks.map((t) => [t.id, t.judul]));
-  const dependencies = (dependenciesRaw ?? []) as PmDependencyRow[];
-  const dependents = (dependentsRaw ?? []) as PmDependentRow[];
+  const dependencyRows = (dependencyRowsRaw ?? []) as (PmDependencyRow & PmDependentRow)[];
+  const dependencies = dependencyRows.filter((d) => d.task_id === taskId);
+  const dependents = dependencyRows.filter((d) => d.depends_on_task_id === taskId);
   const dependencyCandidates = otherTasks.filter(
     (t) => !dependencies.some((d) => d.depends_on_task_id === t.id),
   );
@@ -388,16 +396,25 @@ export async function PmTaskDetailContent({
             </p>
           )}
 
-          <div className="sm:w-1/2">
-            <label className={compactLabelCls}>Assignee</label>
-            <select name="assigneeId" defaultValue={task.assignee_id ?? ""} className={compactInputCls}>
-              <option value="">- Belum ditentukan -</option>
+          <div>
+            <label className={compactLabelCls}>Assignee (bisa lebih dari satu)</label>
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1.5">
               {anggota.map((a) => (
-                <option key={a.user_id} value={a.user_id}>
+                <label key={a.user_id} className="flex items-center gap-1.5 text-[13px] text-zinc-700">
+                  <input
+                    type="checkbox"
+                    name="assigneeIds"
+                    value={a.user_id}
+                    defaultChecked={assigneeIds.has(a.user_id)}
+                    className="h-3.5 w-3.5 rounded border-zinc-300"
+                  />
                   {a.email}
-                </option>
+                </label>
               ))}
-            </select>
+              {anggota.length === 0 && (
+                <span className="text-[13px] text-zinc-400">Belum ada anggota Workspace.</span>
+              )}
+            </div>
           </div>
 
           {fieldDefinitions.length > 0 && (
@@ -836,14 +853,13 @@ export async function PmTaskDetailContent({
 
           <form action={createComment} className="mt-2 flex items-start gap-2">
             {hiddenFields}
-            <div className="flex-1">
-              <textarea
-                name="konten"
-                rows={2}
-                placeholder="Tulis komentar... (@email untuk mention, #[Judul Task] untuk tautkan Task)"
-                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
-              />
-            </div>
+            <PmMentionTextarea
+              name="konten"
+              rows={2}
+              placeholder="Tulis komentar... (ketik @ untuk mention, #[Judul Task] untuk tautkan Task)"
+              members={anggota}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+            />
             <button
               type="submit"
               className="rounded-full bg-zinc-900 px-3 py-1.5 text-[12px] font-medium text-white transition-colors hover:bg-zinc-700"

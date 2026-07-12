@@ -44,15 +44,14 @@ export async function createComment(formData: FormData) {
     return redirect(`${path}?error=${encodeURIComponent(error.message)}`);
   }
 
-  const { data: task } = await supabase
-    .from("pm_tasks")
-    .select("judul, assignee_id")
-    .eq("id", taskId)
-    .single();
+  const [{ data: task }, { data: assigneeRows }] = await Promise.all([
+    supabase.from("pm_tasks").select("judul").eq("id", taskId).single(),
+    supabase.from("pm_task_assignees").select("user_id").eq("task_id", taskId),
+  ]);
 
   if (task) {
     await notifyTaskCommented(supabase, {
-      assigneeId: task.assignee_id,
+      assigneeIds: (assigneeRows ?? []).map((r) => r.user_id),
       actorId: user.id,
       taskId,
       judul: task.judul,

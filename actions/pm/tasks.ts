@@ -45,6 +45,19 @@ async function applyRecurrenceIfDone(supabase: SupabaseServerClient, taskId: str
     .eq("id", taskId);
 }
 
+// Full-replace sync (bukan diff insert/delete granular) - jumlah assignee
+// per Task kecil (skala ~3 orang anggota PM), jadi hapus-semua-lalu-insert-
+// ulang lebih sederhana daripada hitung selisih tambah/kurang.
+async function syncTaskAssignees(supabase: SupabaseServerClient, taskId: string, assigneeIds: string[]) {
+  await supabase.from("pm_task_assignees").delete().eq("task_id", taskId);
+  const unique = Array.from(new Set(assigneeIds.filter(Boolean)));
+  if (unique.length > 0) {
+    await supabase
+      .from("pm_task_assignees")
+      .insert(unique.map((userId) => ({ task_id: taskId, user_id: userId })));
+  }
+}
+
 export async function createTask(formData: FormData) {
   await requirePmAccess();
 
@@ -65,7 +78,7 @@ export async function createTask(formData: FormData) {
     deskripsi: formData.get("deskripsi") || undefined,
     status: formData.get("status"),
     priority: formData.get("priority") || "",
-    assigneeId: formData.get("assigneeId") || "",
+    assigneeIds: formData.getAll("assigneeIds"),
     startDate: formData.get("startDate") || "",
     dueDate: formData.get("dueDate") || "",
   });
@@ -75,7 +88,7 @@ export async function createTask(formData: FormData) {
     return redirect(`${base}?error=${encodeURIComponent(pesan)}`);
   }
 
-  const { judul, deskripsi, status, priority, assigneeId, startDate, dueDate } = parsed.data;
+  const { judul, deskripsi, status, priority, assigneeIds, startDate, dueDate } = parsed.data;
 
   const { data: task, error } = await supabase
     .from("pm_tasks")
@@ -85,7 +98,6 @@ export async function createTask(formData: FormData) {
       deskripsi: deskripsi || null,
       status,
       priority: priority || null,
-      assignee_id: assigneeId || null,
       start_date: startDate || null,
       due_date: dueDate || null,
       created_by: user.id,
@@ -97,12 +109,15 @@ export async function createTask(formData: FormData) {
     return redirect(`${base}?error=${encodeURIComponent(error?.message ?? "Gagal membuat Task.")}`);
   }
 
-  await notifyTaskAssigned(supabase, {
-    assigneeId: assigneeId || null,
-    actorId: user.id,
-    taskId: task.id,
-    judul,
-  });
+  if (assigneeIds && assigneeIds.length > 0) {
+    await syncTaskAssignees(supabase, task.id, assigneeIds);
+    await notifyTaskAssigned(supabase, {
+      assigneeIds,
+      actorId: user.id,
+      taskId: task.id,
+      judul,
+    });
+  }
 
   redirect(`${base}/${task.id}`);
 }
@@ -128,7 +143,7 @@ export async function updateTask(formData: FormData) {
     deskripsi: formData.get("deskripsi") || undefined,
     status: formData.get("status"),
     priority: formData.get("priority") || "",
-    assigneeId: formData.get("assigneeId") || "",
+    assigneeIds: formData.getAll("assigneeIds"),
     startDate: formData.get("startDate") || "",
     dueDate: formData.get("dueDate") || "",
     recurrenceType: formData.get("recurrenceType") || "",
@@ -146,7 +161,7 @@ export async function updateTask(formData: FormData) {
     deskripsi,
     status,
     priority,
-    assigneeId,
+    assigneeIds,
     startDate,
     dueDate,
     recurrenceType,
@@ -156,9 +171,14 @@ export async function updateTask(formData: FormData) {
 
   const { data: existing } = await supabase
     .from("pm_tasks")
-    .select("assignee_id, status")
+    .select("status")
     .eq("id", taskId)
     .single();
+  const { data: existingAssigneeRows } = await supabase
+    .from("pm_task_assignees")
+    .select("user_id")
+    .eq("task_id", taskId);
+  const existingAssigneeIds = new Set((existingAssigneeRows ?? []).map((r) => r.user_id));
 
   const { error } = await supabase
     .from("pm_tasks")
@@ -167,7 +187,6 @@ export async function updateTask(formData: FormData) {
       deskripsi: deskripsi || null,
       status,
       priority: priority || null,
-      assignee_id: assigneeId || null,
       start_date: startDate || null,
       due_date: dueDate || null,
       recurrence_type: recurrenceType || null,
@@ -180,9 +199,11 @@ export async function updateTask(formData: FormData) {
     return redirect(`${base}/${taskId}?error=${encodeURIComponent(error.message)}`);
   }
 
-  if (assigneeId && assigneeId !== existing?.assignee_id) {
+  await syncTaskAssignees(supabase, taskId, assigneeIds ?? []);
+  const newlyAdded = (assigneeIds ?? []).filter((id) => !existingAssigneeIds.has(id));
+  if (newlyAdded.length > 0) {
     await notifyTaskAssigned(supabase, {
-      assigneeId,
+      assigneeIds: newlyAdded,
       actorId: user.id,
       taskId,
       judul,

@@ -29,7 +29,7 @@ export const taskSchema = z.object({
   deskripsi: z.string().optional(),
   status: z.enum(TASK_STATUS_VALUES),
   priority: z.enum(TASK_PRIORITY_VALUES).optional().or(z.literal("")),
-  assigneeId: z.string().optional().or(z.literal("")),
+  assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().optional().or(z.literal("")),
   dueDate: z.string().optional().or(z.literal("")),
   recurrenceType: z.enum(RECURRENCE_TYPE_VALUES).optional().or(z.literal("")),
