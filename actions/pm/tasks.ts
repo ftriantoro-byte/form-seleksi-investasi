@@ -6,9 +6,43 @@ import { requirePmAccess } from "@/lib/pm/access";
 import { taskSchema } from "@/lib/pm/schema";
 import { notifyTaskAssigned } from "@/lib/pm/notifications";
 import { runAutomations } from "@/lib/pm/automations";
+import { computeNextDueDate, shiftStartDate, type PmRecurrenceType } from "@/lib/pm/recurrence";
 
 function pathBase(workspaceId: string, spaceId: string, listId: string) {
   return `/pm/${workspaceId}/${spaceId}/${listId}`;
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+// Dipanggil setelah status Task berhasil diubah jadi 'done' - kalau Task
+// ini diset berulang (recurrence_type terisi), Task yang SAMA di-reset
+// balik ke 'to_do' dengan due_date/start_date digeser maju ke siklus
+// berikutnya (bukan bikin Task baru - lihat catatan cakupan di migration
+// pm_task_recurrence). Kalau recurrence_end_date terlewati, biarkan Task
+// tetap 'done' (recurrence berhenti wajar, tanpa perlu aksi tambahan).
+async function applyRecurrenceIfDone(supabase: SupabaseServerClient, taskId: string) {
+  const { data: task } = await supabase
+    .from("pm_tasks")
+    .select("status, due_date, start_date, recurrence_type, recurrence_interval, recurrence_end_date")
+    .eq("id", taskId)
+    .single();
+
+  if (!task || task.status !== "done" || !task.recurrence_type || !task.due_date) return;
+
+  const nextDue = computeNextDueDate(
+    task.due_date,
+    task.recurrence_type as PmRecurrenceType,
+    task.recurrence_interval,
+  );
+
+  if (task.recurrence_end_date && nextDue > task.recurrence_end_date) return;
+
+  const nextStart = task.start_date ? shiftStartDate(task.start_date, task.due_date, nextDue) : null;
+
+  await supabase
+    .from("pm_tasks")
+    .update({ status: "to_do", due_date: nextDue, start_date: nextStart })
+    .eq("id", taskId);
 }
 
 export async function createTask(formData: FormData) {
@@ -97,6 +131,9 @@ export async function updateTask(formData: FormData) {
     assigneeId: formData.get("assigneeId") || "",
     startDate: formData.get("startDate") || "",
     dueDate: formData.get("dueDate") || "",
+    recurrenceType: formData.get("recurrenceType") || "",
+    recurrenceInterval: formData.get("recurrenceInterval") || undefined,
+    recurrenceEndDate: formData.get("recurrenceEndDate") || "",
   });
 
   if (!parsed.success) {
@@ -104,7 +141,18 @@ export async function updateTask(formData: FormData) {
     return redirect(`${base}/${taskId}?error=${encodeURIComponent(pesan)}`);
   }
 
-  const { judul, deskripsi, status, priority, assigneeId, startDate, dueDate } = parsed.data;
+  const {
+    judul,
+    deskripsi,
+    status,
+    priority,
+    assigneeId,
+    startDate,
+    dueDate,
+    recurrenceType,
+    recurrenceInterval,
+    recurrenceEndDate,
+  } = parsed.data;
 
   const { data: existing } = await supabase
     .from("pm_tasks")
@@ -122,6 +170,9 @@ export async function updateTask(formData: FormData) {
       assignee_id: assigneeId || null,
       start_date: startDate || null,
       due_date: dueDate || null,
+      recurrence_type: recurrenceType || null,
+      recurrence_interval: recurrenceInterval || 1,
+      recurrence_end_date: recurrenceEndDate || null,
     })
     .eq("id", taskId);
 
@@ -145,6 +196,7 @@ export async function updateTask(formData: FormData) {
       newStatus: status,
       taskPriority: priority || null,
     });
+    await applyRecurrenceIfDone(supabase, taskId);
   }
 
   // Simpan nilai Custom Field (B.6) yang dikirim bersama form Detail Task -
@@ -206,6 +258,7 @@ export async function updateTaskStatus(taskId: string, status: string) {
       newStatus: parsedStatus.data,
       taskPriority: existing.priority,
     });
+    await applyRecurrenceIfDone(supabase, taskId);
   }
 }
 

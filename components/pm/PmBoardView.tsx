@@ -14,6 +14,7 @@ type PmTaskRow = {
   priority: string | null;
   assignee_id: string | null;
   due_date: string | null;
+  recurrence_type: string | null;
 };
 
 export function PmBoardView({
@@ -77,6 +78,7 @@ export function PmBoardView({
                     href={`${listBase}/${task.id}`}
                     className="text-[13px] font-medium text-zinc-800 hover:underline"
                   >
+                    {task.recurrence_type && <span aria-label="Berulang">🔁 </span>}
                     {task.judul}
                   </Link>
                   <div className="mt-2 flex flex-wrap items-center gap-1.5">

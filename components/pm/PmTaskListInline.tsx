@@ -14,6 +14,7 @@ type PmTaskRow = {
   priority: string | null;
   assignee_id: string | null;
   due_date: string | null;
+  recurrence_type: string | null;
 };
 
 // Edit inline langsung di baris tabel List (Status/Priority/Due Date) tanpa
@@ -42,6 +43,7 @@ export function PmTaskListInline({
         >
           <td className="px-4 py-2 font-medium text-zinc-800">
             <Link href={`${listBase}/${task.id}`} className="hover:underline">
+              {task.recurrence_type && <span aria-label="Berulang">🔁 </span>}
               {task.judul}
             </Link>
           </td>

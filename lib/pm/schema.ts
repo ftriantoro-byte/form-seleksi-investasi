@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { RECURRENCE_TYPE_VALUES } from "@/lib/pm/recurrence";
 
 export const workspaceSchema = z.object({
   nama: z.string().min(1, "Nama Workspace wajib diisi"),
@@ -31,6 +32,9 @@ export const taskSchema = z.object({
   assigneeId: z.string().optional().or(z.literal("")),
   startDate: z.string().optional().or(z.literal("")),
   dueDate: z.string().optional().or(z.literal("")),
+  recurrenceType: z.enum(RECURRENCE_TYPE_VALUES).optional().or(z.literal("")),
+  recurrenceInterval: z.coerce.number().int().min(1).optional(),
+  recurrenceEndDate: z.string().optional().or(z.literal("")),
 });
 
 export const commentSchema = z.object({

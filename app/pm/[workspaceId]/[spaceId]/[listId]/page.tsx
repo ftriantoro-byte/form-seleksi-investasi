@@ -47,6 +47,7 @@ type PmTaskRow = {
   assignee_id: string | null;
   start_date: string | null;
   due_date: string | null;
+  recurrence_type: string | null;
 };
 
 const VIEW_VALUES = ["list", "board", "calendar", "gantt"] as const;
@@ -117,7 +118,7 @@ export default async function ListDetailPage({
 
   let taskQuery = supabase
     .from("pm_tasks")
-    .select("id, judul, status, priority, assignee_id, start_date, due_date")
+    .select("id, judul, status, priority, assignee_id, start_date, due_date, recurrence_type")
     .eq("list_id", listId);
 
   if (statusFilter) taskQuery = taskQuery.eq("status", statusFilter);

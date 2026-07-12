@@ -13,6 +13,7 @@ import { uploadAttachment, downloadAttachment, deleteAttachment } from "@/action
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
 import { TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
+import { RECURRENCE_TYPE_VALUES, RECURRENCE_TYPE_LABEL } from "@/lib/pm/recurrence";
 import { FormField } from "@/components/ui/FormField";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 import { PmCollaborativeDoc } from "@/components/pm/PmCollaborativeDoc";
@@ -31,6 +32,9 @@ type PmTaskDetail = {
   start_date: string | null;
   due_date: string | null;
   parent_task_id: string | null;
+  recurrence_type: string | null;
+  recurrence_interval: number;
+  recurrence_end_date: string | null;
 };
 
 type PmChecklistItemRow = {
@@ -99,7 +103,7 @@ export async function PmTaskDetailContent({
   const { data: taskRaw } = await supabase
     .from("pm_tasks")
     .select(
-      "id, list_id, judul, deskripsi, status, priority, assignee_id, start_date, due_date, parent_task_id",
+      "id, list_id, judul, deskripsi, status, priority, assignee_id, start_date, due_date, parent_task_id, recurrence_type, recurrence_interval, recurrence_end_date",
     )
     .eq("id", taskId)
     .single();
@@ -337,6 +341,49 @@ export async function PmTaskDetailContent({
               />
             </div>
           </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <label className={compactLabelCls}>Ulangi</label>
+              <select
+                name="recurrenceType"
+                defaultValue={task.recurrence_type ?? ""}
+                className={compactInputCls}
+              >
+                <option value="">- Tidak berulang -</option>
+                {RECURRENCE_TYPE_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {RECURRENCE_TYPE_LABEL[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={compactLabelCls}>Setiap</label>
+              <input
+                type="number"
+                name="recurrenceInterval"
+                min={1}
+                defaultValue={task.recurrence_interval ?? 1}
+                className={compactInputCls}
+              />
+            </div>
+            <div className="col-span-2">
+              <label className={compactLabelCls}>Berhenti Pada (opsional)</label>
+              <input
+                type="date"
+                name="recurrenceEndDate"
+                defaultValue={task.recurrence_end_date ?? ""}
+                className={compactInputCls}
+              />
+            </div>
+          </div>
+          {task.recurrence_type && (
+            <p className="-mt-1.5 text-[11px] text-zinc-400">
+              🔁 Saat ditandai Done, Task ini otomatis kembali ke To Do dengan Due Date digeser
+              maju sesuai pengaturan di atas.
+            </p>
+          )}
 
           <div className="sm:w-1/2">
             <label className={compactLabelCls}>Assignee</label>
