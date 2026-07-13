@@ -1,4 +1,5 @@
 import Link from "next/link";
+import "./pm.css";
 import { logout } from "@/actions/auth";
 import { getPmMobileMode } from "@/lib/pm/preferences";
 import { createClient } from "@/lib/supabase/server";
@@ -55,7 +56,7 @@ export default async function PmLayout({ children }: { children: React.ReactNode
 
   if (mobileMode) {
     return (
-      <div className="min-h-screen bg-[#fbfbfd]">
+      <div className="pm-app min-h-screen bg-[#fbfbfd]">
         <div className="flex items-center justify-between gap-3 border-b border-black/[0.04] bg-white px-4 py-2.5 sm:px-6">
           {user?.email && <span className="truncate text-[12px] text-zinc-400">{user.email}</span>}
           <div className="ml-auto flex items-center gap-2.5">
@@ -147,7 +148,7 @@ export default async function PmLayout({ children }: { children: React.ReactNode
   }));
 
   return (
-    <div className="flex min-h-screen bg-[#fbfbfd]">
+    <div className="pm-app flex min-h-screen bg-[#fbfbfd]">
       <PmSidebar workspaces={workspaces} />
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="flex items-center justify-between gap-3 border-b border-black/[0.04] bg-white px-6 py-2.5 sm:px-10">

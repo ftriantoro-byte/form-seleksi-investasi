@@ -1,0 +1,39 @@
+/* Umpan balik interaksi ringan khusus modul PM - di-scope lewat class
+   .pm-app (bukan global) supaya modul form yang sudah ada sama sekali tidak
+   tersentuh. Kebanyakan tombol di modul ini sudah punya transition-colors
+   dari Tailwind, tapi belum ada reaksi APAPUN pas ditekan (state :active) -
+   ini yang bikin user tidak yakin klik-nya "kena" atau tidak. */
+
+.pm-app button:not(:disabled),
+.pm-app summary,
+.pm-app a[href] {
+  transition:
+    transform 0.1s ease,
+    background-color 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.pm-app button:not(:disabled):active,
+.pm-app summary:active {
+  transform: scale(0.96);
+}
+
+.pm-app input[type="checkbox"] {
+  cursor: pointer;
+  transition: transform 0.1s ease;
+}
+
+.pm-app input[type="checkbox"]:active {
+  transform: scale(0.85);
+}
+
+.pm-app select,
+.pm-app input[type="text"],
+.pm-app input[type="date"],
+.pm-app input[type="number"],
+.pm-app textarea {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}

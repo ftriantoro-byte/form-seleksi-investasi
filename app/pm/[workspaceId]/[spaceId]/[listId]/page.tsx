@@ -200,7 +200,7 @@ export default async function ListDetailPage({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-1.5">
           <details className="group relative">
-            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200 group-open:bg-zinc-900 group-open:text-white group-open:hover:bg-zinc-900">
               ⚙ Status
             </summary>
             <div className="absolute left-0 top-full z-20 mt-2 w-80 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
@@ -305,7 +305,7 @@ export default async function ListDetailPage({
           </details>
 
           <details className="group relative">
-            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200 group-open:bg-zinc-900 group-open:text-white group-open:hover:bg-zinc-900">
               ⚡ Automasi
             </summary>
             <div className="absolute left-0 top-full z-20 mt-2 w-96 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
@@ -483,7 +483,7 @@ export default async function ListDetailPage({
           </details>
 
           <details className="group relative">
-            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200 group-open:bg-zinc-900 group-open:text-white group-open:hover:bg-zinc-900">
               💾 Simpan sbg Template
             </summary>
             <div className="absolute right-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
@@ -511,7 +511,7 @@ export default async function ListDetailPage({
           </details>
 
           <details className="group relative">
-            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200">
+            <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-600 hover:bg-zinc-200 group-open:bg-zinc-900 group-open:text-white group-open:hover:bg-zinc-900">
               ⚙️ Pengaturan
             </summary>
             <div className="absolute right-0 top-full z-20 mt-2 w-72 max-w-[90vw] rounded-2xl border border-zinc-100 bg-white p-4 shadow-xl">
