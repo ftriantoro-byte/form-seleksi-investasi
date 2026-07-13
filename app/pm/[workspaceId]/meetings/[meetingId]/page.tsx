@@ -55,6 +55,11 @@ export default async function MeetingDetailPage({
     );
   }
 
+  // Space+List digabung lewat nested select (dulu 2 round-trip berurutan),
+  // dan Task terkait tiap Action Item ikut di-embed langsung di query Action
+  // Item itu sendiri (dulu round-trip terpisah SETELAH actionItems selesai,
+  // menunggu task_id-nya dulu) - jadi semua 4 query di sini independen &
+  // bisa jalan paralel.
   const [
     { data: attendeeIdsRaw },
     { data: actionItemsRaw },
@@ -64,29 +69,27 @@ export default async function MeetingDetailPage({
     supabase.from("pm_meeting_attendees").select("user_id").eq("meeting_id", meetingId),
     supabase
       .from("pm_meeting_action_items")
-      .select("id, deskripsi, assignee_id, due_date, task_id")
+      .select("id, deskripsi, assignee_id, due_date, task_id, pm_tasks(id, judul, list_id)")
       .eq("meeting_id", meetingId)
       .order("created_at", { ascending: true }),
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
-    supabase.from("pm_spaces").select("id, nama").eq("workspace_id", workspaceId),
+    supabase
+      .from("pm_spaces")
+      .select("id, nama, pm_lists(id, nama, space_id)")
+      .eq("workspace_id", workspaceId),
   ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
   const attendeeIds = new Set((attendeeIdsRaw ?? []).map((a) => a.user_id as string));
   const attendees = anggota.filter((a) => attendeeIds.has(a.user_id));
-  const actionItems = (actionItemsRaw ?? []) as PmActionItem[];
-  const spaces = (spacesRaw ?? []) as PmSpace[];
-  const spaceIds = spaces.map((s) => s.id);
+  const actionItemsWithTask = (actionItemsRaw ?? []) as unknown as (PmActionItem & {
+    pm_tasks: { id: string; judul: string; list_id: string } | null;
+  })[];
+  const actionItems: PmActionItem[] = actionItemsWithTask;
+  const spaces = ((spacesRaw ?? []) as unknown as (PmSpace & { pm_lists: PmListOption[] })[]);
+  const lists = spaces.flatMap((s) => s.pm_lists);
 
-  let lists: PmListOption[] = [];
-  if (spaceIds.length > 0) {
-    const { data: listsRaw } = await supabase
-      .from("pm_lists")
-      .select("id, nama, space_id")
-      .in("space_id", spaceIds);
-    lists = (listsRaw ?? []) as PmListOption[];
-  }
   const spaceNameById = new Map(spaces.map((s) => [s.id, s.nama]));
   const listOptions = lists.map((l) => ({
     id: l.id,
@@ -94,28 +97,15 @@ export default async function MeetingDetailPage({
   }));
   const spaceIdByListId = new Map(lists.map((l) => [l.id, l.space_id]));
 
-  const taskIds = actionItems
-    .map((item) => item.task_id)
-    .filter((id): id is string => Boolean(id));
   const taskInfoByItemId: Record<
     string,
     { taskId: string; spaceId: string; listId: string; judul: string }
   > = {};
-
-  if (taskIds.length > 0) {
-    const { data: tasksRaw } = await supabase
-      .from("pm_tasks")
-      .select("id, judul, list_id")
-      .in("id", taskIds);
-    const tasks = (tasksRaw ?? []) as Array<{ id: string; judul: string; list_id: string }>;
-    const taskById = new Map(tasks.map((t) => [t.id, t]));
-    for (const item of actionItems) {
-      if (!item.task_id) continue;
-      const task = taskById.get(item.task_id);
-      const spaceId = task ? spaceIdByListId.get(task.list_id) : undefined;
-      if (task && spaceId) {
-        taskInfoByItemId[item.id] = { taskId: task.id, spaceId, listId: task.list_id, judul: task.judul };
-      }
+  for (const item of actionItemsWithTask) {
+    const task = item.pm_tasks;
+    const spaceId = task ? spaceIdByListId.get(task.list_id) : undefined;
+    if (task && spaceId) {
+      taskInfoByItemId[item.id] = { taskId: task.id, spaceId, listId: task.list_id, judul: task.judul };
     }
   }
 

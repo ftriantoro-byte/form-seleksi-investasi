@@ -18,13 +18,16 @@ export default async function FolderDetailPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
-  const { data: folder } = await supabase
+  // Folder+List digabung lewat nested select (dulu 2 round-trip berurutan) -
+  // pm_lists.folder_id cuma bisa merujuk 1 Folder, jadi tidak ambigu.
+  const { data: folderRaw } = await supabase
     .from("pm_folders")
-    .select("id, nama, deskripsi, space_id")
+    .select("id, nama, deskripsi, space_id, pm_lists(id, nama, deskripsi)")
     .eq("id", folderId)
+    .order("urutan", { referencedTable: "pm_lists", ascending: true })
     .single();
 
-  if (!folder || folder.space_id !== spaceId) {
+  if (!folderRaw || folderRaw.space_id !== spaceId) {
     return (
       <FormPageShell maxWidth="max-w-xl">
         <p className="text-[15px] text-zinc-500">
@@ -34,11 +37,7 @@ export default async function FolderDetailPage({
     );
   }
 
-  const { data: lists } = await supabase
-    .from("pm_lists")
-    .select("id, nama, deskripsi")
-    .eq("folder_id", folderId)
-    .order("urutan", { ascending: true });
+  const { pm_lists: lists, ...folder } = folderRaw;
 
   return (
     <FormPageShell maxWidth="max-w-4xl">

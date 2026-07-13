@@ -22,11 +22,17 @@ export default async function MeetingsPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
-  const { data: workspace } = await supabase
-    .from("pm_workspaces")
-    .select("id, nama")
-    .eq("id", workspaceId)
-    .single();
+  const [{ data: workspace }, { data: meetingsRaw }, { data: spacesRaw }, { data: anggotaRaw }] =
+    await Promise.all([
+      supabase.from("pm_workspaces").select("id, nama").eq("id", workspaceId).single(),
+      supabase
+        .from("pm_meetings")
+        .select("id, judul, meeting_date")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: false }),
+      supabase.from("pm_spaces").select("id, nama").eq("workspace_id", workspaceId),
+      supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
+    ]);
 
   if (!workspace) {
     return (
@@ -37,16 +43,6 @@ export default async function MeetingsPage({
       </FormPageShell>
     );
   }
-
-  const [{ data: meetingsRaw }, { data: spacesRaw }, { data: anggotaRaw }] = await Promise.all([
-    supabase
-      .from("pm_meetings")
-      .select("id, judul, meeting_date")
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: false }),
-    supabase.from("pm_spaces").select("id, nama").eq("workspace_id", workspaceId),
-    supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
-  ]);
 
   const meetings = (meetingsRaw ?? []) as PmMeeting[];
   const spaces = (spacesRaw ?? []) as PmSpace[];

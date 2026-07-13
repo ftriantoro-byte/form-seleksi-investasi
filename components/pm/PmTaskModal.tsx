@@ -3,6 +3,15 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+// Pola resmi Next.js utk menutup modal @modal+intercepting-route adalah
+// router.back() (lihat node_modules/next/dist/docs/.../parallel-routes.md).
+// Sempat dicoba ganti ke router.push(closeHref) supaya deterministik, tapi
+// itu butuh route catch-all di slot @modal utk membersihkan slot pas soft
+// navigation - dan catch-all itu bikin Turbopack dev server error saat
+// mencocokkan intercepting route ("Invalid interception route"). Jadi balik
+// ke back() sesuai dokumentasi resmi; jalan keluar utk kasus modal nyasar
+// (mis. Task tidak ditemukan) ditangani lewat link "Kembali ke List" di
+// PmTaskDetailContent, bukan di sini.
 export function PmTaskModal({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 

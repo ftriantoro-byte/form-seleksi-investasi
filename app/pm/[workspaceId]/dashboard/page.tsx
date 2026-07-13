@@ -38,11 +38,18 @@ export default async function PmWorkspaceDashboardPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
-  const { data: workspace } = await supabase
-    .from("pm_workspaces")
-    .select("id, nama")
-    .eq("id", workspaceId)
-    .single();
+  // workspace, pohon Space->List->Task, dan daftar anggota tidak saling
+  // bergantung - sebelumnya 5 round-trip berurutan (termasuk waterfall
+  // Space->List->Task 3 tahap), sekarang 2 round-trip paralel (nested
+  // select menggantikan waterfall-nya).
+  const [{ data: workspace }, { data: spaceRows }, { data: anggotaRaw }] = await Promise.all([
+    supabase.from("pm_workspaces").select("id, nama").eq("id", workspaceId).single(),
+    supabase
+      .from("pm_spaces")
+      .select("id, pm_lists(id, pm_tasks(id, status, due_date, pm_task_assignees(user_id)))")
+      .eq("workspace_id", workspaceId),
+    supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
+  ]);
 
   if (!workspace) {
     return (
@@ -54,32 +61,19 @@ export default async function PmWorkspaceDashboardPage({
     );
   }
 
-  const { data: spaceRows } = await supabase
-    .from("pm_spaces")
-    .select("id")
-    .eq("workspace_id", workspaceId);
-  const spaceIds = (spaceRows ?? []).map((s) => s.id);
+  type SpaceTree = {
+    pm_lists: {
+      pm_tasks: (Omit<PmDashboardTask, "assignee_ids"> & {
+        pm_task_assignees: { user_id: string }[];
+      })[];
+    }[];
+  };
+  const tasks: PmDashboardTask[] = ((spaceRows ?? []) as unknown as SpaceTree[]).flatMap((space) =>
+    space.pm_lists.flatMap((list) =>
+      list.pm_tasks.map((t) => ({ ...t, assignee_ids: t.pm_task_assignees.map((a) => a.user_id) })),
+    ),
+  );
 
-  let listIds: string[] = [];
-  if (spaceIds.length > 0) {
-    const { data: listRows } = await supabase.from("pm_lists").select("id").in("space_id", spaceIds);
-    listIds = (listRows ?? []).map((l) => l.id);
-  }
-
-  let tasks: PmDashboardTask[] = [];
-  if (listIds.length > 0) {
-    const { data: taskRows } = await supabase
-      .from("pm_tasks")
-      .select("id, status, due_date, pm_task_assignees(user_id)")
-      .in("list_id", listIds);
-    tasks = ((taskRows ?? []) as unknown as (Omit<PmDashboardTask, "assignee_ids"> & {
-      pm_task_assignees: { user_id: string }[];
-    })[]).map((t) => ({ ...t, assignee_ids: t.pm_task_assignees.map((a) => a.user_id) }));
-  }
-
-  const { data: anggotaRaw } = await supabase.rpc("pm_workspace_member_profiles", {
-    p_workspace_id: workspaceId,
-  });
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
 

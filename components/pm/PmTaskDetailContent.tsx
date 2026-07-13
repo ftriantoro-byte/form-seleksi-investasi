@@ -112,9 +112,17 @@ export async function PmTaskDetailContent({
 
   if (!task || task.list_id !== listId) {
     return (
-      <p className="text-[15px] text-zinc-500">
-        Task tidak ditemukan (atau Anda tidak berwenang melihatnya).
-      </p>
+      <div>
+        <p className="text-[15px] text-zinc-500">
+          Task tidak ditemukan (atau Anda tidak berwenang melihatnya).
+        </p>
+        <Link
+          href={`/pm/${workspaceId}/${spaceId}/${listId}`}
+          className="mt-3 inline-block text-[13px] font-medium text-zinc-600 hover:underline"
+        >
+          &larr; Kembali ke List
+        </Link>
+      </div>
     );
   }
 

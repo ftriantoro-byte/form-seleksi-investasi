@@ -26,23 +26,8 @@ export default async function TemplatesPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
-  const { data: workspace } = await supabase
-    .from("pm_workspaces")
-    .select("id, nama")
-    .eq("id", workspaceId)
-    .single();
-
-  if (!workspace) {
-    return (
-      <FormPageShell maxWidth="max-w-xl">
-        <p className="text-[15px] text-zinc-500">
-          Workspace tidak ditemukan (atau Anda tidak berwenang melihatnya).
-        </p>
-      </FormPageShell>
-    );
-  }
-
-  const [{ data: templatesRaw }, { data: spacesRaw }] = await Promise.all([
+  const [{ data: workspace }, { data: templatesRaw }, { data: spacesRaw }] = await Promise.all([
+    supabase.from("pm_workspaces").select("id, nama").eq("id", workspaceId).single(),
     supabase
       .from("pm_list_templates")
       .select("id, nama, custom_fields, created_at")
@@ -54,6 +39,16 @@ export default async function TemplatesPage({
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: true }),
   ]);
+
+  if (!workspace) {
+    return (
+      <FormPageShell maxWidth="max-w-xl">
+        <p className="text-[15px] text-zinc-500">
+          Workspace tidak ditemukan (atau Anda tidak berwenang melihatnya).
+        </p>
+      </FormPageShell>
+    );
+  }
 
   const templates = (templatesRaw ?? []) as PmTemplate[];
   const spaces = (spacesRaw ?? []) as PmSpace[];

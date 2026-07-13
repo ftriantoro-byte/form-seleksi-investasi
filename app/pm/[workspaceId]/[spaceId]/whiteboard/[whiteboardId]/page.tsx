@@ -43,34 +43,28 @@ export default async function WhiteboardPage({
     );
   }
 
+  // Task terkait tiap item di-embed langsung lewat nested select (dulu
+  // round-trip terpisah SETELAH items selesai, menunggu task_id-nya dulu).
   const [{ data: itemsRaw }, { data: listsRaw }] = await Promise.all([
     supabase
       .from("pm_whiteboard_items")
-      .select("id, konten, warna, pos_x, pos_y, task_id")
+      .select("id, konten, warna, pos_x, pos_y, task_id, pm_tasks(id, judul, list_id)")
       .eq("whiteboard_id", whiteboardId)
       .order("created_at", { ascending: true }),
     supabase.from("pm_lists").select("id, nama").eq("space_id", spaceId),
   ]);
 
-  const items = (itemsRaw ?? []) as PmWhiteboardItemRow[];
+  const itemsWithTask = (itemsRaw ?? []) as unknown as (PmWhiteboardItemRow & {
+    pm_tasks: PmTaskRow | null;
+  })[];
+  const items: PmWhiteboardItemRow[] = itemsWithTask;
   const lists = (listsRaw ?? []) as PmListOption[];
 
-  const taskIds = items.map((item) => item.task_id).filter((id): id is string => Boolean(id));
   const taskInfoByItemId: Record<string, { taskId: string; listId: string; judul: string }> = {};
-
-  if (taskIds.length > 0) {
-    const { data: tasksRaw } = await supabase
-      .from("pm_tasks")
-      .select("id, judul, list_id")
-      .in("id", taskIds);
-    const tasks = (tasksRaw ?? []) as PmTaskRow[];
-    const taskById = new Map(tasks.map((t) => [t.id, t]));
-    for (const item of items) {
-      if (!item.task_id) continue;
-      const task = taskById.get(item.task_id);
-      if (task) {
-        taskInfoByItemId[item.id] = { taskId: task.id, listId: task.list_id, judul: task.judul };
-      }
+  for (const item of itemsWithTask) {
+    const task = item.pm_tasks;
+    if (task) {
+      taskInfoByItemId[item.id] = { taskId: task.id, listId: task.list_id, judul: task.judul };
     }
   }
 
