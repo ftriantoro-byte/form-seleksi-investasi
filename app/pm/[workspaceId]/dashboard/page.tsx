@@ -4,17 +4,38 @@ import { TASK_STATUS_VALUES } from "@/lib/pm/schema";
 import { TASK_STATUS_LABEL, TASK_STATUS_BADGE_KELAS } from "@/lib/pm/labels";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
+import { PmBoardView } from "@/components/pm/PmBoardView";
+import { PmCalendarView } from "@/components/pm/PmCalendarView";
+import { PmTaskListInline } from "@/components/pm/PmTaskListInline";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 type PmDashboardTask = {
   id: string;
+  judul: string;
   status: string;
+  priority: string | null;
   due_date: string | null;
+  recurrence_type: string | null;
   assignee_ids: string[];
+  // URL Task ini sendiri - beda dari halaman List yang punya 1 listId tetap
+  // (jadi 1 base URL berlaku utk semua Task-nya), di sini Task berasal dari
+  // banyak List sekaligus jadi tiap Task perlu URL-nya masing-masing.
+  // Disematkan sbg data (bukan function) karena PmBoardView/PmTaskListInline
+  // "use client" - function dari Server Component tidak bisa lolos RSC
+  // boundary ("Functions cannot be passed directly to Client Components").
+  href: string;
 };
 
-const TAB_VALUES = ["progress", "workload", "resume"] as const;
+const TAB_VALUES = ["progress", "workload", "resume", "list", "board", "calendar"] as const;
 type PmDashboardTab = (typeof TAB_VALUES)[number];
+const TAB_LABEL: Record<PmDashboardTab, string> = {
+  progress: "Progres Task",
+  workload: "Workload",
+  resume: "Resume",
+  list: "List",
+  board: "Board",
+  calendar: "Calendar",
+};
 
 // Dashboard di-scope per Workspace (bukan gabungan semua Workspace) - selaras
 // dengan cara sidebar & breadcrumb sudah dipakai. Label status di sini
@@ -27,13 +48,18 @@ export default async function PmWorkspaceDashboardPage({
   searchParams,
 }: {
   params: Promise<{ workspaceId: string }>;
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<{ tab?: string; month?: string }>;
 }) {
   const { workspaceId } = await params;
-  const { tab: tabParam } = await searchParams;
+  const { tab: tabParam, month: monthParam } = await searchParams;
   const tab: PmDashboardTab = TAB_VALUES.includes(tabParam as PmDashboardTab)
     ? (tabParam as PmDashboardTab)
     : "progress";
+  const now = new Date();
+  const month =
+    monthParam && /^\d{4}-\d{2}$/.test(monthParam)
+      ? monthParam
+      : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
@@ -46,7 +72,9 @@ export default async function PmWorkspaceDashboardPage({
     supabase.from("pm_workspaces").select("id, nama").eq("id", workspaceId).single(),
     supabase
       .from("pm_spaces")
-      .select("id, pm_lists(id, pm_tasks(id, status, due_date, pm_task_assignees(user_id)))")
+      .select(
+        "id, pm_lists(id, pm_tasks(id, judul, status, priority, due_date, recurrence_type, pm_task_assignees(user_id)))",
+      )
       .eq("workspace_id", workspaceId),
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
   ]);
@@ -62,20 +90,27 @@ export default async function PmWorkspaceDashboardPage({
   }
 
   type SpaceTree = {
+    id: string;
     pm_lists: {
-      pm_tasks: (Omit<PmDashboardTask, "assignee_ids"> & {
+      id: string;
+      pm_tasks: (Omit<PmDashboardTask, "assignee_ids" | "href"> & {
         pm_task_assignees: { user_id: string }[];
       })[];
     }[];
   };
   const tasks: PmDashboardTask[] = ((spaceRows ?? []) as unknown as SpaceTree[]).flatMap((space) =>
     space.pm_lists.flatMap((list) =>
-      list.pm_tasks.map((t) => ({ ...t, assignee_ids: t.pm_task_assignees.map((a) => a.user_id) })),
+      list.pm_tasks.map((t) => ({
+        ...t,
+        assignee_ids: t.pm_task_assignees.map((a) => a.user_id),
+        href: `/pm/${workspaceId}/${space.id}/${list.id}/${t.id}`,
+      })),
     ),
   );
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
+  const emailByUserIdRecord = Object.fromEntries(emailByUserId);
 
   const dashboardBase = `/pm/${workspaceId}/dashboard`;
 
@@ -88,16 +123,19 @@ export default async function PmWorkspaceDashboardPage({
         backLabel="Kembali ke Workspace"
       />
 
-      <div className="inline-flex rounded-full bg-zinc-100 p-1">
+      <div className="inline-flex flex-wrap rounded-full bg-zinc-100 p-1">
         {TAB_VALUES.map((value) => (
           <Link
             key={value}
-            href={{ pathname: dashboardBase, query: { tab: value } }}
-            className={`rounded-full px-4 py-1.5 text-[13px] font-medium capitalize transition-colors duration-150 ${
+            href={{
+              pathname: dashboardBase,
+              query: value === "calendar" ? { tab: value, month } : { tab: value },
+            }}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
               tab === value ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
             }`}
           >
-            {value === "progress" ? "Progres Task" : value === "workload" ? "Workload" : "Resume"}
+            {TAB_LABEL[value]}
           </Link>
         ))}
       </div>
@@ -108,6 +146,46 @@ export default async function PmWorkspaceDashboardPage({
           <WorkloadTab tasks={tasks} anggota={anggota} emailByUserId={emailByUserId} />
         )}
         {tab === "resume" && <ResumeTab tasks={tasks} />}
+        {tab === "list" && (
+          <div className="overflow-hidden rounded-2xl border border-black/[0.04] bg-white">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-left text-[13px]">
+                <thead>
+                  <tr className="border-b border-zinc-100 text-zinc-400">
+                    <th className="px-4 py-2 font-medium">Task</th>
+                    <th className="px-2 py-2 font-medium">Assignee</th>
+                    <th className="px-2 py-2 font-medium">Due Date</th>
+                    <th className="px-2 py-2 font-medium">Status</th>
+                    <th className="px-2 py-2 font-medium">Priority</th>
+                  </tr>
+                </thead>
+                <PmTaskListInline
+                  tasks={tasks}
+                  emailByUserId={emailByUserIdRecord}
+                  listBase={dashboardBase}
+                  statusLabels={TASK_STATUS_LABEL}
+                />
+              </table>
+            </div>
+          </div>
+        )}
+        {tab === "board" && (
+          <PmBoardView
+            tasks={tasks}
+            emailByUserId={emailByUserIdRecord}
+            listBase={dashboardBase}
+            statusLabels={TASK_STATUS_LABEL}
+          />
+        )}
+        {tab === "calendar" && (
+          <PmCalendarView
+            tasks={tasks}
+            listBase={dashboardBase}
+            month={month}
+            baseQuery={{}}
+            viewParamKey="tab"
+          />
+        )}
       </div>
     </FormPageShell>
   );

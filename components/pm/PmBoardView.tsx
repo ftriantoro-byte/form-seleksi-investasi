@@ -15,6 +15,12 @@ type PmTaskRow = {
   assignee_ids: string[];
   due_date: string | null;
   recurrence_type: string | null;
+  // Dipakai Dashboard Workspace (agregat lintas List) - tiap Task punya List
+  // sendiri jadi tidak bisa pakai 1 `listBase` bersama seperti di halaman
+  // List. Kalau tidak diisi, fallback ke `${listBase}/${task.id}` seperti
+  // semula. Data (bukan function) karena komponen ini "use client" - function
+  // dari Server Component tidak bisa lolos RSC boundary.
+  href?: string;
 };
 
 export function PmBoardView({
@@ -75,7 +81,7 @@ export function PmBoardView({
                   className="pm-card cursor-grab rounded-xl border border-black/[0.04] bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)] active:cursor-grabbing"
                 >
                   <Link
-                    href={`${listBase}/${task.id}`}
+                    href={task.href ?? `${listBase}/${task.id}`}
                     className="text-[13px] font-medium text-zinc-800 hover:underline"
                   >
                     {task.recurrence_type && <span aria-label="Berulang">🔁 </span>}

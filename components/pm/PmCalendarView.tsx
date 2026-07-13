@@ -1,7 +1,16 @@
 import Link from "next/link";
 import { TASK_STATUS_BADGE_KELAS } from "@/lib/pm/labels";
 
-type PmCalendarTaskRow = { id: string; judul: string; status: string; due_date: string | null };
+type PmCalendarTaskRow = {
+  id: string;
+  judul: string;
+  status: string;
+  due_date: string | null;
+  // Dipakai Dashboard Workspace (agregat lintas List) - tiap Task punya List
+  // sendiri jadi tidak bisa pakai 1 `listBase` bersama seperti di halaman
+  // List. Kalau tidak diisi, fallback ke `${listBase}/${id}` seperti semula.
+  href?: string;
+};
 
 const HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
@@ -14,11 +23,17 @@ export function PmCalendarView({
   listBase,
   month,
   baseQuery,
+  viewParamKey = "view",
 }: {
   tasks: PmCalendarTaskRow[];
   listBase: string;
   month: string;
   baseQuery: Record<string, string>;
+  // Nama query param buat switch tab/view - halaman List pakai "view",
+  // Dashboard Workspace pakai "tab" utk 3 tab statistik yang sudah ada
+  // sebelumnya, jadi dibuat bisa diatur supaya nav bulan tetap konsisten
+  // dengan skema masing-masing halaman.
+  viewParamKey?: string;
 }) {
   const [year, monthNum] = month.split("-").map(Number);
   const firstOfMonth = new Date(year, monthNum - 1, 1);
@@ -52,7 +67,10 @@ export function PmCalendarView({
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link
-            href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: prevMonth } }}
+            href={{
+              pathname: listBase,
+              query: { ...baseQuery, [viewParamKey]: "calendar", month: prevMonth },
+            }}
             className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
             aria-label="Bulan sebelumnya"
           >
@@ -60,7 +78,10 @@ export function PmCalendarView({
           </Link>
           <span className="text-[14px] font-semibold text-zinc-900">{monthLabel}</span>
           <Link
-            href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: nextMonth } }}
+            href={{
+              pathname: listBase,
+              query: { ...baseQuery, [viewParamKey]: "calendar", month: nextMonth },
+            }}
             className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
             aria-label="Bulan berikutnya"
           >
@@ -68,7 +89,10 @@ export function PmCalendarView({
           </Link>
         </div>
         <Link
-          href={{ pathname: listBase, query: { ...baseQuery, view: "calendar", month: todayMonth } }}
+          href={{
+            pathname: listBase,
+            query: { ...baseQuery, [viewParamKey]: "calendar", month: todayMonth },
+          }}
           className="text-[12px] font-medium text-blue-600 hover:underline"
         >
           Hari ini
@@ -105,7 +129,7 @@ export function PmCalendarView({
                 {dayTasks.slice(0, 3).map((t) => (
                   <Link
                     key={t.id}
-                    href={`${listBase}/${t.id}`}
+                    href={t.href ?? `${listBase}/${t.id}`}
                     className={`block truncate rounded px-1 py-0.5 text-[10px] ${
                       TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
                     }`}

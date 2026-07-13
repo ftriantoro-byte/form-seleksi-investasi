@@ -15,6 +15,12 @@ type PmTaskRow = {
   assignee_ids: string[];
   due_date: string | null;
   recurrence_type: string | null;
+  // Dipakai Dashboard Workspace (agregat lintas List) - tiap Task punya List
+  // sendiri jadi tidak bisa pakai 1 `listBase` bersama seperti di halaman
+  // List. Kalau tidak diisi, fallback ke `${listBase}/${task.id}` seperti
+  // semula. Data (bukan function) karena komponen ini "use client" - function
+  // dari Server Component tidak bisa lolos RSC boundary.
+  href?: string;
 };
 
 // Edit inline langsung di baris tabel List (Status/Priority/Due Date) tanpa
@@ -42,7 +48,7 @@ export function PmTaskListInline({
           className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
         >
           <td className="px-4 py-2 font-medium text-zinc-800">
-            <Link href={`${listBase}/${task.id}`} className="hover:underline">
+            <Link href={task.href ?? `${listBase}/${task.id}`} className="hover:underline">
               {task.recurrence_type && <span aria-label="Berulang">🔁 </span>}
               {task.judul}
             </Link>
