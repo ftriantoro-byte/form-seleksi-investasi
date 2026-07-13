@@ -25,7 +25,7 @@ export function PmEntityGrid({
         <Link
           key={item.id}
           href={hrefBase(item.id)}
-          className="group rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
+          className="pm-card group rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
         >
           <div className="flex items-start justify-between">
             <h2 className="text-[17px] font-semibold text-zinc-900">{item.nama}</h2>

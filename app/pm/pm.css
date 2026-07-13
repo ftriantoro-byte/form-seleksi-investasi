@@ -19,6 +19,24 @@
   transform: scale(0.96);
 }
 
+/* Link polos (baris Task di tabel List, item sidebar, dsb) - dikecualikan
+   dari kartu ber-hover-lift sendiri (.pm-card, lihat di bawah) supaya efek
+   :active-nya tidak baku-hantam dengan transform hover kartu itu. */
+.pm-app a[href]:not(.pm-card):active {
+  transform: scale(0.97);
+}
+
+/* Kartu entitas (Workspace/Space/Folder/List/Whiteboard grid & kartu Task
+   di Board) - punya efek hover angkat sendiri lewat Tailwind
+   (hover:-translate-y-0.5), jadi :active di sini SENGAJA override balik ke
+   posisi semula + sedikit mengecil supaya kerasa "ditekan", bukan cuma
+   berhenti di posisi terangkat. Specificity 2 class + :active otomatis
+   menang dibanding utility hover 1 class Tailwind. */
+.pm-app .pm-card:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
 .pm-app input[type="checkbox"] {
   cursor: pointer;
   transition: transform 0.1s ease;
