@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { renameFolder, deleteFolder } from "@/actions/pm/folders";
 import { createList } from "@/actions/pm/lists";
@@ -48,7 +49,16 @@ export default async function FolderDetailPage({
         backLabel="Kembali ke Space"
       />
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
+        <Link
+          href={{
+            pathname: `/pm/${workspaceId}/dashboard`,
+            query: { space: spaceId, folder: folderId },
+          }}
+          className="rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 transition-colors hover:bg-zinc-200"
+        >
+          📊 Dashboard
+        </Link>
         <details className="group relative">
           <summary className="cursor-pointer list-none rounded-full bg-zinc-100 px-3 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200 group-open:bg-zinc-900 group-open:text-white group-open:hover:bg-zinc-900">
             ⚙️ Pengaturan Folder

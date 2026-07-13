@@ -17,6 +17,11 @@ type PmDashboardTask = {
   due_date: string | null;
   recurrence_type: string | null;
   assignee_ids: string[];
+  // Dipakai buat filter Space/Folder/List berjenjang, bukan ditampilkan
+  // langsung - listId khususnya dipakai jg buat kunci `href` di bawah.
+  spaceId: string;
+  folderId: string | null;
+  listId: string;
   // URL Task ini sendiri - beda dari halaman List yang punya 1 listId tetap
   // (jadi 1 base URL berlaku utk semua Task-nya), di sini Task berasal dari
   // banyak List sekaligus jadi tiap Task perlu URL-nya masing-masing.
@@ -25,6 +30,8 @@ type PmDashboardTask = {
   // boundary ("Functions cannot be passed directly to Client Components").
   href: string;
 };
+type PmFolderOption = { id: string; nama: string; spaceId: string };
+type PmListOption = { id: string; nama: string; spaceId: string; folderId: string | null };
 
 const TAB_VALUES = ["progress", "workload", "resume", "list", "board", "calendar"] as const;
 type PmDashboardTab = (typeof TAB_VALUES)[number];
@@ -48,10 +55,22 @@ export default async function PmWorkspaceDashboardPage({
   searchParams,
 }: {
   params: Promise<{ workspaceId: string }>;
-  searchParams: Promise<{ tab?: string; month?: string }>;
+  searchParams: Promise<{
+    tab?: string;
+    month?: string;
+    space?: string;
+    folder?: string;
+    list?: string;
+  }>;
 }) {
   const { workspaceId } = await params;
-  const { tab: tabParam, month: monthParam } = await searchParams;
+  const {
+    tab: tabParam,
+    month: monthParam,
+    space: spaceFilter,
+    folder: folderFilter,
+    list: listFilter,
+  } = await searchParams;
   const tab: PmDashboardTab = TAB_VALUES.includes(tabParam as PmDashboardTab)
     ? (tabParam as PmDashboardTab)
     : "progress";
@@ -64,18 +83,20 @@ export default async function PmWorkspaceDashboardPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
-  // workspace, pohon Space->List->Task, dan daftar anggota tidak saling
-  // bergantung - sebelumnya 5 round-trip berurutan (termasuk waterfall
-  // Space->List->Task 3 tahap), sekarang 2 round-trip paralel (nested
-  // select menggantikan waterfall-nya).
+  // workspace, pohon Space->Folder/List->Task, dan daftar anggota tidak
+  // saling bergantung - digabung paralel. pm_folders & pm_lists sama-sama
+  // di-nested langsung di bawah pm_spaces (dua relasi independen, tidak
+  // ambigu karena masing-masing FK cuma merujuk 1 tabel) supaya opsi filter
+  // Folder/List bisa dibangun tanpa round-trip tambahan.
   const [{ data: workspace }, { data: spaceRows }, { data: anggotaRaw }] = await Promise.all([
     supabase.from("pm_workspaces").select("id, nama").eq("id", workspaceId).single(),
     supabase
       .from("pm_spaces")
       .select(
-        "id, pm_lists(id, pm_tasks(id, judul, status, priority, due_date, recurrence_type, pm_task_assignees(user_id)))",
+        "id, nama, pm_folders(id, nama), pm_lists(id, nama, folder_id, pm_tasks(id, judul, status, priority, due_date, recurrence_type, pm_task_assignees(user_id)))",
       )
-      .eq("workspace_id", workspaceId),
+      .eq("workspace_id", workspaceId)
+      .order("created_at", { ascending: true }),
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
   ]);
 
@@ -91,28 +112,82 @@ export default async function PmWorkspaceDashboardPage({
 
   type SpaceTree = {
     id: string;
+    nama: string;
+    pm_folders: { id: string; nama: string }[];
     pm_lists: {
       id: string;
-      pm_tasks: (Omit<PmDashboardTask, "assignee_ids" | "href"> & {
+      nama: string;
+      folder_id: string | null;
+      pm_tasks: (Omit<
+        PmDashboardTask,
+        "assignee_ids" | "href" | "spaceId" | "folderId" | "listId"
+      > & {
         pm_task_assignees: { user_id: string }[];
       })[];
     }[];
   };
-  const tasks: PmDashboardTask[] = ((spaceRows ?? []) as unknown as SpaceTree[]).flatMap((space) =>
+  const spaceTree = (spaceRows ?? []) as unknown as SpaceTree[];
+
+  const spaces = spaceTree.map((s) => ({ id: s.id, nama: s.nama }));
+  const folders: PmFolderOption[] = spaceTree.flatMap((s) =>
+    s.pm_folders.map((f) => ({ id: f.id, nama: f.nama, spaceId: s.id })),
+  );
+  const lists: PmListOption[] = spaceTree.flatMap((s) =>
+    s.pm_lists.map((l) => ({ id: l.id, nama: l.nama, spaceId: s.id, folderId: l.folder_id })),
+  );
+
+  const allTasks: PmDashboardTask[] = spaceTree.flatMap((space) =>
     space.pm_lists.flatMap((list) =>
       list.pm_tasks.map((t) => ({
         ...t,
         assignee_ids: t.pm_task_assignees.map((a) => a.user_id),
+        spaceId: space.id,
+        folderId: list.folder_id,
+        listId: list.id,
         href: `/pm/${workspaceId}/${space.id}/${list.id}/${t.id}`,
       })),
     ),
   );
+
+  // Filter berjenjang Space -> Folder -> List: makin spesifik makin
+  // menang - pilih List = cuma Task List itu, pilih Folder = seluruh List di
+  // Folder itu, pilih Space (tanpa Folder/List) = seluruh Task di Space itu.
+  // "folder=none" khusus mewakili List yang langsung di bawah Space (di
+  // luar Folder manapun), beda dari folder tidak dipilih sama sekali.
+  const tasks = listFilter
+    ? allTasks.filter((t) => t.listId === listFilter)
+    : folderFilter === "none"
+      ? allTasks.filter((t) => t.spaceId === spaceFilter && t.folderId === null)
+      : folderFilter
+        ? allTasks.filter((t) => t.folderId === folderFilter)
+        : spaceFilter
+          ? allTasks.filter((t) => t.spaceId === spaceFilter)
+          : allTasks;
+
+  // Opsi dropdown Folder/List di-scope ke Space/Folder yang sudah dipilih -
+  // form submit ulang tiap "Terapkan" (pola sama seperti filter halaman
+  // List), bukan cascading live lewat JS.
+  const folderOptions = spaceFilter ? folders.filter((f) => f.spaceId === spaceFilter) : [];
+  const listOptions = folderFilter
+    ? folderFilter === "none"
+      ? lists.filter((l) => l.spaceId === spaceFilter && l.folderId === null)
+      : lists.filter((l) => l.folderId === folderFilter)
+    : spaceFilter
+      ? lists.filter((l) => l.spaceId === spaceFilter)
+      : lists;
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
   const emailByUserId = new Map(anggota.map((a) => [a.user_id, a.email]));
   const emailByUserIdRecord = Object.fromEntries(emailByUserId);
 
   const dashboardBase = `/pm/${workspaceId}/dashboard`;
+  // Dibawa serta di semua Link (switch tab, nav bulan Calendar) supaya
+  // filter Space/Folder/List yang aktif tidak hilang pas pindah tab.
+  const filterQuery: Record<string, string> = {
+    ...(spaceFilter ? { space: spaceFilter } : {}),
+    ...(folderFilter ? { folder: folderFilter } : {}),
+    ...(listFilter ? { list: listFilter } : {}),
+  };
 
   return (
     <FormPageShell maxWidth="max-w-4xl">
@@ -129,7 +204,7 @@ export default async function PmWorkspaceDashboardPage({
             key={value}
             href={{
               pathname: dashboardBase,
-              query: value === "calendar" ? { tab: value, month } : { tab: value },
+              query: { ...filterQuery, tab: value, ...(value === "calendar" ? { month } : {}) },
             }}
             className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
               tab === value ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
@@ -139,6 +214,67 @@ export default async function PmWorkspaceDashboardPage({
           </Link>
         ))}
       </div>
+
+      <form className="mt-4 flex flex-wrap items-center gap-3">
+        <input type="hidden" name="tab" value={tab} />
+        {tab === "calendar" && <input type="hidden" name="month" value={month} />}
+        <select
+          name="space"
+          defaultValue={spaceFilter ?? ""}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+        >
+          <option value="">Semua Space</option>
+          {spaces.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.nama}
+            </option>
+          ))}
+        </select>
+        <select
+          name="folder"
+          defaultValue={folderFilter ?? ""}
+          disabled={!spaceFilter}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:text-zinc-300"
+        >
+          <option value="">{spaceFilter ? "Semua Folder" : "- Pilih Space dulu -"}</option>
+          {spaceFilter && <option value="none">Tanpa Folder (langsung di Space)</option>}
+          {folderOptions.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.nama}
+            </option>
+          ))}
+        </select>
+        <select
+          name="list"
+          defaultValue={listFilter ?? ""}
+          disabled={!spaceFilter}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10 disabled:cursor-not-allowed disabled:text-zinc-300"
+        >
+          <option value="">{spaceFilter ? "Semua List" : "- Pilih Space dulu -"}</option>
+          {listOptions.map((l) => (
+            <option key={l.id} value={l.id}>
+              {l.nama}
+            </option>
+          ))}
+        </select>
+        <button
+          type="submit"
+          className="rounded-full bg-zinc-900 px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
+        >
+          Terapkan
+        </button>
+        {(spaceFilter || folderFilter || listFilter) && (
+          <Link
+            href={{
+              pathname: dashboardBase,
+              query: { tab, ...(tab === "calendar" ? { month } : {}) },
+            }}
+            className="text-[13px] text-zinc-400 transition-colors hover:text-zinc-700"
+          >
+            Reset filter
+          </Link>
+        )}
+      </form>
 
       <div className="mt-6">
         {tab === "progress" && <ProgresTaskTab tasks={tasks} />}
@@ -182,7 +318,7 @@ export default async function PmWorkspaceDashboardPage({
             tasks={tasks}
             listBase={dashboardBase}
             month={month}
-            baseQuery={{}}
+            baseQuery={filterQuery}
             viewParamKey="tab"
           />
         )}
