@@ -143,6 +143,23 @@ export default async function HomePage() {
           {(!forms || forms.length === 0) && (
             <p className="text-[14px] text-zinc-400">Belum ada form yang tersedia.</p>
           )}
+          {user && (
+            <Link
+              href="/exsum"
+              className="group rounded-3xl border border-black/[0.04] bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_32px_rgba(0,0,0,0.08)]"
+            >
+              <div className="flex items-start justify-between">
+                <h2 className="text-[17px] font-semibold text-zinc-900">Executive Summary</h2>
+                <span className="mt-0.5 text-zinc-300 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-zinc-400">
+                  &rarr;
+                </span>
+              </div>
+              <p className="mt-2 text-[14px] leading-relaxed text-zinc-500">
+                Laporan ringkasan kinerja bulanan (kompetitif, keuangan, portofolio, CAPEX, isu
+                strategis, mitra, rekomendasi) untuk Direksi &amp; Dewan Komisaris.
+              </p>
+            </Link>
+          )}
         </div>
       </main>
     </div>

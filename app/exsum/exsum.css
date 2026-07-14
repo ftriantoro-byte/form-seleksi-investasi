@@ -1,0 +1,683 @@
+/* Desain "blueprint navy" diadaptasi persis dari exsum-framework-wege.html
+   (dokumen sumber yang diminta user) - di-scope lewat .exsum-doc (BUKAN
+   :root/body global) supaya cuma berlaku di halaman tampilan laporan,
+   sama sekali tidak menyentuh modul PM atau form seleksi investasi yang
+   sudah ada. Variabel font (--font-disp dst) diisi lewat next/font/google
+   di app/exsum/layout.tsx, bukan <link> Google Fonts runtime seperti file
+   sumbernya - custom property warna & mono tetap sama persis.               */
+
+.exsum-doc {
+  --navy: #14304a;
+  --steel: #3e7cb1;
+  --steel-lt: #b9d2e6;
+  --paper: #f5f7f9;
+  --card: #ffffff;
+  --ink: #1b2a38;
+  --muted: #5c6b78;
+  --line: #d7dee6;
+  --amber: #e8a13c;
+  --red: #c94f44;
+  --green: #2f8f5b;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body), "IBM Plex Sans", Segoe UI, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.exsum-doc *,
+.exsum-doc *::before,
+.exsum-doc *::after {
+  box-sizing: border-box;
+}
+.exsum-doc .page {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+/* ── KOP GAMBAR (title block ala gambar teknik) ─────────────── */
+.exsum-doc .titleblock {
+  background: var(--navy);
+  color: #fff;
+  border: 2px solid var(--navy);
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 26px 26px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.exsum-doc .tb-main {
+  padding: 26px 30px 22px;
+}
+.exsum-doc .tb-eyebrow {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--steel-lt);
+  text-transform: uppercase;
+}
+.exsum-doc .tb-title {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-weight: 700;
+  font-size: 42px;
+  line-height: 1.02;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin-top: 6px;
+}
+.exsum-doc .tb-sub {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #d8e4ee;
+  max-width: 620px;
+}
+.exsum-doc .tb-fields {
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  border-left: 1px solid rgba(255, 255, 255, 0.25);
+  min-width: 220px;
+}
+.exsum-doc .tb-field {
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+}
+.exsum-doc .tb-field:last-child {
+  border-bottom: none;
+}
+.exsum-doc .tb-field .k {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  color: var(--steel-lt);
+  text-transform: uppercase;
+}
+.exsum-doc .tb-field .v {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 20px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* ── SECTION SHEET ──────────────────────────────────────────── */
+.exsum-doc section {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin-top: 22px;
+  overflow: hidden;
+}
+.exsum-doc .sheet-head {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(#fbfcfd, #f3f6f9);
+}
+.exsum-doc .sheet-no {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 11px;
+  color: var(--steel);
+  letter-spacing: 0.12em;
+  border: 1px solid var(--steel-lt);
+  padding: 2px 8px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.exsum-doc .sheet-title {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--navy);
+}
+.exsum-doc .sheet-body {
+  padding: 20px 22px;
+}
+.exsum-doc .note {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 14px;
+  border-top: 1px dashed var(--line);
+  padding-top: 10px;
+}
+.exsum-doc .note b {
+  color: var(--ink);
+}
+
+.exsum-doc .chip {
+  display: inline-block;
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 2px 8px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.exsum-doc .chip.red {
+  background: #fbeae8;
+  color: var(--red);
+}
+.exsum-doc .chip.green {
+  background: #e8f4ee;
+  color: var(--green);
+}
+.exsum-doc .chip.amber {
+  background: #fbf1de;
+  color: #9a6a14;
+}
+
+/* ── 1. KOMPETITIF ─────────────────────────────────────────── */
+.exsum-doc .comp-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 26px;
+}
+.exsum-doc .bar-row {
+  display: grid;
+  grid-template-columns: 170px 1fr 52px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 9px;
+}
+.exsum-doc .bar-row .lbl {
+  font-size: 12.5px;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.exsum-doc .bar-track {
+  background: #edf2f6;
+  height: 16px;
+  border-radius: 2px;
+  position: relative;
+}
+.exsum-doc .bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--steel);
+}
+.exsum-doc .bar-row.hl .bar-fill {
+  background: var(--amber);
+}
+.exsum-doc .bar-row.hl .lbl {
+  font-weight: 600;
+}
+.exsum-doc .bar-val {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 12px;
+  text-align: right;
+}
+.exsum-doc .rank-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.exsum-doc .rank-card {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 14px;
+  text-align: center;
+}
+.exsum-doc .rank-card .big {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1;
+}
+.exsum-doc .rank-card .big.warn {
+  color: var(--red);
+}
+.exsum-doc .rank-card .cap {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.exsum-doc .rank-card .delta {
+  font-size: 12px;
+  margin-top: 6px;
+  color: var(--red);
+}
+.exsum-doc .margin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 12px;
+}
+.exsum-doc .margin-table th {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: right;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--line);
+}
+.exsum-doc .margin-table th:first-child {
+  text-align: left;
+}
+.exsum-doc .margin-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #edf1f5;
+  text-align: right;
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 12px;
+}
+.exsum-doc .margin-table td:first-child {
+  text-align: left;
+  font-family: var(--font-body), "IBM Plex Sans", Segoe UI, sans-serif;
+}
+.exsum-doc .margin-table tr.hl td {
+  background: #fdf6e9;
+  font-weight: 600;
+}
+.exsum-doc .neg {
+  color: var(--red);
+}
+.exsum-doc .pos {
+  color: var(--green);
+}
+
+/* ── 2. KEUANGAN ───────────────────────────────────────────── */
+.exsum-doc .kpi-group-title {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--steel);
+  margin: 18px 0 10px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 5px;
+}
+.exsum-doc .kpi-group-title:first-child {
+  margin-top: 0;
+}
+.exsum-doc .kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+  gap: 12px;
+}
+.exsum-doc .kpi {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 14px;
+  position: relative;
+}
+.exsum-doc .kpi::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 4px 0 0 4px;
+  background: var(--status, var(--line));
+}
+.exsum-doc .kpi .name {
+  font-size: 12px;
+  color: var(--muted);
+}
+.exsum-doc .kpi .val {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  margin-top: 2px;
+}
+.exsum-doc .kpi .tgt {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.exsum-doc .kpi .mom {
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+
+/* ── 3. PORTOFOLIO ─────────────────────────────────────────── */
+.exsum-doc .porto-grid {
+  display: grid;
+  grid-template-columns: 1.25fr 0.75fr;
+  gap: 28px;
+}
+.exsum-doc .funnel-row {
+  margin-bottom: 14px;
+}
+.exsum-doc .funnel-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12.5px;
+  margin-bottom: 4px;
+}
+.exsum-doc .funnel-top .nm {
+  font-weight: 600;
+}
+.exsum-doc .funnel-top .pv {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.exsum-doc .funnel-track {
+  background: #edf2f6;
+  height: 20px;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+}
+.exsum-doc .funnel-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 7px;
+  color: #fff;
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 2px;
+  min-width: 52px;
+}
+.exsum-doc .ratio-chips {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.exsum-doc .ratio-chip {
+  flex: 1;
+  min-width: 150px;
+  border: 1px dashed var(--line);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.exsum-doc .ratio-chip .r {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--navy);
+}
+.exsum-doc .ratio-chip .t {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.exsum-doc .ratio-chip .s {
+  font-size: 11.5px;
+  margin-top: 2px;
+  color: var(--red);
+}
+.exsum-doc .donut-wrap {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.exsum-doc .legend {
+  font-size: 12.5px;
+}
+.exsum-doc .legend div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.exsum-doc .legend .sw {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex: none;
+}
+.exsum-doc .legend .pct {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-weight: 600;
+  margin-left: auto;
+  padding-left: 12px;
+}
+
+/* ── 4. CAPEX ──────────────────────────────────────────────── */
+.exsum-doc .capex-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 26px;
+  align-items: start;
+}
+.exsum-doc .capex-hero {
+  border: 2px solid var(--red);
+  border-radius: 4px;
+  padding: 18px 26px;
+  text-align: center;
+  background: #fdf3f2;
+  min-width: 200px;
+}
+.exsum-doc .capex-hero .big {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--red);
+  line-height: 1;
+}
+.exsum-doc .capex-hero .cap {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.exsum-doc .capex-hero .sub {
+  font-size: 12px;
+  margin-top: 8px;
+  color: var(--ink);
+}
+.exsum-doc .capex-list {
+  font-size: 12.5px;
+}
+.exsum-doc .capex-item {
+  display: grid;
+  grid-template-columns: 1fr 90px 90px;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid #edf1f5;
+  align-items: center;
+}
+.exsum-doc .capex-item .amt,
+.exsum-doc .capex-item .re {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 12px;
+  text-align: right;
+}
+.exsum-doc .capex-item.head {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.exsum-doc .capex-item.total {
+  font-weight: 600;
+  border-bottom: none;
+  border-top: 2px solid var(--navy);
+}
+
+/* ── 5. ISU ────────────────────────────────────────────────── */
+.exsum-doc .issue-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.exsum-doc .issue-col {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.exsum-doc .issue-col h4 {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 9px 14px;
+  color: #fff;
+}
+.exsum-doc .issue-col ul {
+  list-style: none;
+  padding: 12px 14px;
+  margin: 0;
+}
+.exsum-doc .issue-col li {
+  font-size: 12.5px;
+  padding-left: 16px;
+  position: relative;
+  margin-bottom: 9px;
+}
+.exsum-doc .issue-col li::before {
+  content: "▸";
+  position: absolute;
+  left: 0;
+  color: var(--steel);
+}
+.exsum-doc .issue-col.eks h4 {
+  background: var(--red);
+}
+.exsum-doc .issue-col.intl h4 {
+  background: var(--amber);
+}
+.exsum-doc .issue-col.mit h4 {
+  background: var(--green);
+}
+.exsum-doc .issue-col.mit li::before {
+  content: "✓";
+  color: var(--green);
+}
+
+/* ── 6. MITRA ──────────────────────────────────────────────── */
+.exsum-doc .mitra-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.exsum-doc .mitra-card {
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--steel);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+.exsum-doc .mitra-card h5 {
+  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--navy);
+}
+.exsum-doc .mitra-card p {
+  font-size: 12.5px;
+  margin-top: 4px;
+  color: var(--ink);
+}
+.exsum-doc .mitra-card.full {
+  grid-column: 1 / -1;
+  border-left-color: var(--amber);
+  background: #fdfaf3;
+}
+
+/* ── 7. REKOMENDASI ────────────────────────────────────────── */
+.exsum-doc .reko {
+  counter-reset: rk;
+}
+.exsum-doc .reko-item {
+  display: flex;
+  gap: 14px;
+  padding: 11px 0;
+  border-bottom: 1px solid #edf1f5;
+  align-items: flex-start;
+}
+.exsum-doc .reko-item:last-child {
+  border-bottom: none;
+}
+.exsum-doc .reko-item::before {
+  counter-increment: rk;
+  content: counter(rk, decimal-leading-zero);
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--navy);
+  border-radius: 2px;
+  padding: 3px 8px;
+  flex: none;
+}
+.exsum-doc .reko-item p {
+  font-size: 13.5px;
+}
+
+.exsum-doc footer {
+  margin-top: 26px;
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10.5px;
+  color: var(--muted);
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+  letter-spacing: 0.05em;
+}
+
+@media (max-width: 820px) {
+  .exsum-doc .comp-grid,
+  .exsum-doc .porto-grid,
+  .exsum-doc .capex-grid,
+  .exsum-doc .mitra-grid {
+    grid-template-columns: 1fr;
+  }
+  .exsum-doc .issue-grid {
+    grid-template-columns: 1fr;
+  }
+  .exsum-doc .titleblock {
+    grid-template-columns: 1fr;
+  }
+  .exsum-doc .tb-fields {
+    grid-template-rows: none;
+    grid-template-columns: repeat(3, 1fr);
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+  }
+}
+
+/* Cetak: sembunyikan chrome aplikasi (sidebar/tombol aksi), sisakan cuma
+   dokumen laporan - ditandai lewat .exsum-print-hide di elemen di luar
+   dokumen (tombol Edit/Hapus dsb) dan .exsum-doc sendiri utk dokumennya. */
+@media print {
+  body {
+    background: #fff;
+  }
+  .exsum-doc {
+    background: #fff;
+  }
+  .exsum-doc .page {
+    max-width: none;
+    padding: 0;
+  }
+  .exsum-doc section {
+    break-inside: avoid;
+    border-color: #bbb;
+  }
+  .exsum-print-hide {
+    display: none !important;
+  }
+}
