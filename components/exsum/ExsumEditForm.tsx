@@ -4,6 +4,13 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateReport } from "@/actions/exsum";
 import { EXSUM_STATUS_VALUES } from "@/lib/exsum/schema";
+import { BULAN_LIST, formatPeriode, formatNoDok, parsePeriode } from "@/lib/exsum/periode";
+import {
+  normalizeExsumData,
+  syncKompetitifFromHighlight,
+  recomputeSegmenPct,
+  recomputeCapexPct,
+} from "@/lib/exsum/normalize";
 import type {
   ExsumData,
   ExsumPesaing,
@@ -46,7 +53,21 @@ export function ExsumEditForm({
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [meta, setMeta] = useState<Meta>(initialMeta);
-  const [data, setData] = useState<ExsumData>(initialData);
+  const [data, setData] = useState<ExsumData>(() => normalizeExsumData(initialData));
+  const initialParsed = parsePeriode(initialMeta.periode);
+  const now = new Date();
+  const [periodeBulan, setPeriodeBulan] = useState(initialParsed?.bulan ?? now.getMonth());
+  const [periodeTahun, setPeriodeTahun] = useState(initialParsed?.tahun ?? now.getFullYear());
+
+  // Periode & No. Dokumen diturunkan dari pilihan Bulan+Tahun (catatan user:
+  // laporan ini rutin dibuat 1x/bulan) - No. Dokumen ikut ter-update
+  // otomatis TAPI tetap bisa disunting manual (field-nya sendiri masih
+  // editable, cuma nilai awalnya mengikuti Bulan+Tahun yang dipilih).
+  function handlePeriodeChange(bulan: number, tahun: number) {
+    setPeriodeBulan(bulan);
+    setPeriodeTahun(tahun);
+    setMeta((prev) => ({ ...prev, periode: formatPeriode(bulan, tahun), noDok: formatNoDok(bulan, tahun) }));
+  }
 
   function save() {
     setSaving(true);
@@ -88,11 +109,25 @@ export function ExsumEditForm({
           </div>
           <div>
             <label className={labelCls}>Periode</label>
-            <input
-              className={inputCls}
-              value={meta.periode}
-              onChange={(e) => setMeta({ ...meta, periode: e.target.value })}
-            />
+            <div className="mt-1.5 flex gap-2">
+              <select
+                className={`${inputCls} mt-0`}
+                value={periodeBulan}
+                onChange={(e) => handlePeriodeChange(Number(e.target.value), periodeTahun)}
+              >
+                {BULAN_LIST.map((b, i) => (
+                  <option key={b} value={i}>
+                    {b}
+                  </option>
+                ))}
+              </select>
+              <input
+                type="number"
+                className={`${inputCls} mt-0 w-24 shrink-0`}
+                value={periodeTahun}
+                onChange={(e) => handlePeriodeChange(periodeBulan, Number(e.target.value) || periodeTahun)}
+              />
+            </div>
           </div>
           <div>
             <label className={labelCls}>No. Dokumen</label>
@@ -140,25 +175,23 @@ export function ExsumEditForm({
       <div className={sectionCls}>
         <h3 className="text-[14px] font-semibold text-zinc-900">1. Posisi Kompetitif</h3>
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
-          <NumField
-            label="Peringkat"
+          <ReadonlyField
+            label="Peringkat (otomatis dari &quot;Ini kami&quot;)"
             value={data.kompetitif.peringkat}
-            onChange={(v) => setData({ ...data, kompetitif: { ...data.kompetitif, peringkat: v } })}
           />
           <NumField
-            label="Peringkat Sebelum"
+            label="Peringkat Sebelum (otomatis dari laporan lalu)"
             value={data.kompetitif.peringkatSebelum}
             onChange={(v) =>
               setData({ ...data, kompetitif: { ...data.kompetitif, peringkatSebelum: v } })
             }
           />
-          <NumField
-            label="Market Share (%)"
+          <ReadonlyField
+            label="Market Share % (otomatis dari &quot;Ini kami&quot;)"
             value={data.kompetitif.share}
-            onChange={(v) => setData({ ...data, kompetitif: { ...data.kompetitif, share: v } })}
           />
           <NumField
-            label="Share Sebelum (%)"
+            label="Share Sebelum % (otomatis dari laporan lalu)"
             value={data.kompetitif.shareSebelum}
             onChange={(v) => setData({ ...data, kompetitif: { ...data.kompetitif, shareSebelum: v } })}
           />
@@ -335,7 +368,7 @@ export function ExsumEditForm({
         <div className="mt-2 space-y-2">
           {data.portofolio.rows.map((r, i) => (
             <div key={i} className={rowCls}>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <TextField
                   label="Nama"
                   value={r.nama}
@@ -343,7 +376,12 @@ export function ExsumEditForm({
                   className="sm:col-span-2"
                 />
                 <NumField label="RKAP (Rp jt)" value={r.rkap} onChange={(v) => updatePortoRow(i, { rkap: v })} />
-                <NumField label="RI (Rp jt)" value={r.ri} onChange={(v) => updatePortoRow(i, { ri: v })} />
+                <NumField
+                  label="RA Bulan Berjalan (Rp jt)"
+                  value={r.ra}
+                  onChange={(v) => updatePortoRow(i, { ra: v })}
+                />
+                <NumField label="RI Bulan Berjalan (Rp jt)" value={r.ri} onChange={(v) => updatePortoRow(i, { ri: v })} />
               </div>
               <button type="button" className={removeBtnCls} onClick={() => removePortoRow(i)}>
                 Hapus
@@ -362,7 +400,7 @@ export function ExsumEditForm({
               ...data,
               portofolio: {
                 ...data.portofolio,
-                rows: [...data.portofolio.rows, { nama: "", rkap: 0, ri: 0, pct: 0 }],
+                rows: [...data.portofolio.rows, { nama: "", rkap: 0, ra: 0, ri: 0, pct: 0 }],
               },
             })
           }
@@ -409,8 +447,8 @@ export function ExsumEditForm({
             <div key={i} className={rowCls}>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
                 <TextField label="Nama" value={s.nama} onChange={(v) => updateSegmen(i, { nama: v })} />
-                <TextField label="Nilai (mis. Rp 465,4 M)" value={s.nilai} onChange={(v) => updateSegmen(i, { nilai: v })} />
-                <NumField label="Persen" value={s.pct} onChange={(v) => updateSegmen(i, { pct: v })} />
+                <NumField label="Nilai (Rp jt)" value={s.nilai} onChange={(v) => updateSegmen(i, { nilai: v })} />
+                <ReadonlyField label="Persen (otomatis)" value={s.pct} />
                 <div>
                   <label className={labelCls}>Warna</label>
                   <input
@@ -427,19 +465,10 @@ export function ExsumEditForm({
             </div>
           ))}
         </div>
-        <p className="mt-1 text-[11px] text-zinc-400">Total persen segmen idealnya 100%.</p>
         <button
           type="button"
           className={addBtnCls}
-          onClick={() =>
-            setData({
-              ...data,
-              portofolio: {
-                ...data.portofolio,
-                segmen: [...data.portofolio.segmen, { nama: "", nilai: "", pct: 0, warna: "#3E7CB1" }],
-              },
-            })
-          }
+          onClick={() => addSegmen()}
         >
           + Tambah Segmen
         </button>
@@ -459,11 +488,7 @@ export function ExsumEditForm({
       <div className={sectionCls}>
         <h3 className="text-[14px] font-semibold text-zinc-900">4. Sasaran Investasi (CAPEX)</h3>
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <NumField
-            label="Realisasi (%)"
-            value={data.capex.realisasiPct}
-            onChange={(v) => setData({ ...data, capex: { ...data.capex, realisasiPct: v } })}
-          />
+          <ReadonlyField label="Realisasi % (otomatis, total Realisasi/RKAP)" value={data.capex.realisasiPct} />
           <TextField
             label="Keterangan Utama"
             value={data.capex.heroCaption}
@@ -495,13 +520,7 @@ export function ExsumEditForm({
             </div>
           ))}
         </div>
-        <button
-          type="button"
-          className={addBtnCls}
-          onClick={() =>
-            setData({ ...data, capex: { ...data.capex, items: [...data.capex.items, { nama: "", rkap: 0, ri: 0 }] } })
-          }
-        >
+        <button type="button" className={addBtnCls} onClick={() => addCapexItem()}>
           + Tambah Pos
         </button>
 
@@ -606,14 +625,18 @@ export function ExsumEditForm({
     </div>
   );
 
+  // Peringkat & Market Share di atas SELALU ikut baris pesaing yang ditandai
+  // "Ini kami" (catatan user: "otomatis jika dipilih ini kami") - bukan cuma
+  // pas checkbox-nya dicentang, tapi tiap kali baris itu (atau baris lain
+  // yang mungkin jadi ganti ditandai) berubah, supaya tetap sinkron.
   function updatePesaing(i: number, patch: Partial<ExsumPesaing>) {
-    setData((prev) => ({
-      ...prev,
-      kompetitif: {
-        ...prev.kompetitif,
-        pesaing: prev.kompetitif.pesaing.map((p, idx) => (idx === i ? { ...p, ...patch } : p)),
-      },
-    }));
+    setData((prev) => {
+      const pesaing = prev.kompetitif.pesaing.map((p, idx) => (idx === i ? { ...p, ...patch } : p));
+      return {
+        ...prev,
+        kompetitif: syncKompetitifFromHighlight({ ...prev.kompetitif, pesaing }),
+      };
+    });
   }
   function removePesaing(i: number) {
     setData((prev) => ({
@@ -667,32 +690,46 @@ export function ExsumEditForm({
   }
 
   function updateSegmen(i: number, patch: Partial<ExsumSegmen>) {
-    setData((prev) => ({
-      ...prev,
-      portofolio: {
-        ...prev.portofolio,
-        segmen: prev.portofolio.segmen.map((s, idx) => (idx === i ? { ...s, ...patch } : s)),
-      },
-    }));
+    setData((prev) => {
+      const segmen = recomputeSegmenPct(
+        prev.portofolio.segmen.map((s, idx) => (idx === i ? { ...s, ...patch } : s)),
+      );
+      return { ...prev, portofolio: { ...prev.portofolio, segmen } };
+    });
+  }
+  function addSegmen() {
+    setData((prev) => {
+      const segmen = recomputeSegmenPct([
+        ...prev.portofolio.segmen,
+        { nama: "", nilai: 0, pct: 0, warna: "#3E7CB1" },
+      ]);
+      return { ...prev, portofolio: { ...prev.portofolio, segmen } };
+    });
   }
   function removeSegmen(i: number) {
-    setData((prev) => ({
-      ...prev,
-      portofolio: { ...prev.portofolio, segmen: prev.portofolio.segmen.filter((_, idx) => idx !== i) },
-    }));
+    setData((prev) => {
+      const segmen = recomputeSegmenPct(prev.portofolio.segmen.filter((_, idx) => idx !== i));
+      return { ...prev, portofolio: { ...prev.portofolio, segmen } };
+    });
   }
 
   function updateCapexItem(i: number, patch: Partial<ExsumCapexItem>) {
-    setData((prev) => ({
-      ...prev,
-      capex: { ...prev.capex, items: prev.capex.items.map((it, idx) => (idx === i ? { ...it, ...patch } : it)) },
-    }));
+    setData((prev) => {
+      const items = prev.capex.items.map((it, idx) => (idx === i ? { ...it, ...patch } : it));
+      return { ...prev, capex: { ...prev.capex, items, realisasiPct: recomputeCapexPct(items) } };
+    });
+  }
+  function addCapexItem() {
+    setData((prev) => {
+      const items = [...prev.capex.items, { nama: "", rkap: 0, ri: 0 }];
+      return { ...prev, capex: { ...prev.capex, items, realisasiPct: recomputeCapexPct(items) } };
+    });
   }
   function removeCapexItem(i: number) {
-    setData((prev) => ({
-      ...prev,
-      capex: { ...prev.capex, items: prev.capex.items.filter((_, idx) => idx !== i) },
-    }));
+    setData((prev) => {
+      const items = prev.capex.items.filter((_, idx) => idx !== i);
+      return { ...prev, capex: { ...prev.capex, items, realisasiPct: recomputeCapexPct(items) } };
+    });
   }
 
   function updateMitra(i: number, patch: Partial<ExsumMitra>) {
@@ -724,6 +761,24 @@ function NumField({
         className={inputCls}
         value={value}
         onChange={(e) => onChange(e.target.value === "" ? 0 : Number(e.target.value))}
+      />
+    </div>
+  );
+}
+
+// Dipakai utk field yang dihitung otomatis (Peringkat/Share dari "Ini kami",
+// Persen Segmen, Realisasi % CAPEX) - ditampilkan supaya user tetap lihat
+// hasilnya, TAPI tidak bisa diketik langsung (mencegah nilai jadi tidak
+// sinkron dgn sumber datanya).
+function ReadonlyField({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <label className={labelCls}>{label}</label>
+      <input
+        type="text"
+        readOnly
+        className={`${inputCls} cursor-not-allowed bg-zinc-100 text-zinc-500`}
+        value={value}
       />
     </div>
   );

@@ -5,6 +5,8 @@ import { EXSUM_STATUS_VALUES } from "@/lib/exsum/schema";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { FormField } from "@/components/ui/FormField";
+import { ExsumPeriodePicker } from "@/components/exsum/ExsumPeriodePicker";
+import { parsePeriode, addMonths } from "@/lib/exsum/periode";
 
 export default async function ExsumDuplicatePage({
   params,
@@ -34,6 +36,10 @@ export default async function ExsumDuplicatePage({
     );
   }
 
+  // Sarankan bulan berikutnya setelah laporan sumber (rutin 1x/bulan).
+  const sourcePeriode = parsePeriode(source.periode);
+  const suggested = sourcePeriode ? addMonths(sourcePeriode.bulan, sourcePeriode.tahun, 1) : null;
+
   return (
     <FormPageShell maxWidth="max-w-xl">
       <FormPageHeader
@@ -52,8 +58,7 @@ export default async function ExsumDuplicatePage({
           <input type="hidden" name="sourceId" value={reportId} />
           <FormField label="Perusahaan" name="perusahaan" defaultValue={source.perusahaan} />
           <FormField label="Kode" name="kode" defaultValue={source.kode} />
-          <FormField label="Periode" name="periode" defaultValue="" />
-          <FormField label="No. Dokumen" name="noDok" defaultValue="" />
+          <ExsumPeriodePicker defaultBulan={suggested?.bulan} defaultTahun={suggested?.tahun} />
           <div>
             <label className="block text-[13px] font-medium text-zinc-500">Status</label>
             <select

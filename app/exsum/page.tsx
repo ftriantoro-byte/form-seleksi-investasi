@@ -6,6 +6,8 @@ import { createReport } from "@/actions/exsum";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { FormField } from "@/components/ui/FormField";
+import { ExsumPeriodePicker } from "@/components/exsum/ExsumPeriodePicker";
+import { parsePeriode, addMonths } from "@/lib/exsum/periode";
 
 type ExsumReportRow = {
   id: string;
@@ -38,6 +40,10 @@ export default async function ExsumListPage({
   ]);
 
   const reports = (reportsRaw ?? []) as ExsumReportRow[];
+  // Sarankan bulan berikutnya setelah laporan terakhir (rutin 1x/bulan) -
+  // laporan pertama di `reports` sudah paling baru krn diurutkan desc.
+  const lastPeriode = reports[0] ? parsePeriode(reports[0].periode) : null;
+  const suggested = lastPeriode ? addMonths(lastPeriode.bulan, lastPeriode.tahun, 1) : null;
 
   return (
     <FormPageShell maxWidth="max-w-3xl">
@@ -91,8 +97,7 @@ export default async function ExsumListPage({
           <form action={createReport} className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Perusahaan" name="perusahaan" />
             <FormField label="Kode" name="kode" />
-            <FormField label="Periode" name="periode" />
-            <FormField label="No. Dokumen" name="noDok" />
+            <ExsumPeriodePicker defaultBulan={suggested?.bulan} defaultTahun={suggested?.tahun} />
             <div>
               <label className="block text-[13px] font-medium text-zinc-500">Status</label>
               <select

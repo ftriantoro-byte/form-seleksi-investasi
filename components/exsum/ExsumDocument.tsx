@@ -201,12 +201,25 @@ export function ExsumDocument({
               <div>
                 {P.rows.map((r, i) => {
                   const good = r.pct >= 100;
+                  const riWidth = Math.min(r.pct, 100);
+                  const riColor = good ? "var(--green)" : r.pct >= 60 ? "var(--steel)" : "var(--red)";
+                  const raPct = r.rkap > 0 ? Math.round((r.ra / r.rkap) * 10000) / 100 : 0;
+                  const raWidth = Math.min(raPct, 100);
+                  // RA cuma penanda referensi (bukan KPI ber-status), jadi
+                  // selalu satu warna muda - beda dari RI yg pakai warna
+                  // status (hijau/biru/merah). Bar bernilai LEBIH KECIL selalu
+                  // ditaruh di depan (belakangan di DOM = di atas) - kalau
+                  // ditaruh di belakang, bar pendek itu akan tertutup total
+                  // oleh bar yg lebih panjang di sebelahnya (catatan user).
+                  const riBar = { width: riWidth, color: riColor, label: pctFmt(r.pct, 1) };
+                  const raBar = { width: raWidth, color: "var(--steel-lt)", label: null as string | null };
+                  const [backBar, frontBar] = r.ri <= r.ra ? [raBar, riBar] : [riBar, raBar];
                   return (
                     <div key={i} className="funnel-row">
                       <div className="funnel-top">
                         <span className="nm">{r.nama}</span>
                         <span className="pv">
-                          RKAP {idn(r.rkap)} → RI {idn(r.ri)}{" "}
+                          RKAP {idn(r.rkap)} · RA {idn(r.ra)} → RI {idn(r.ri)}{" "}
                           <span style={{ color: good ? "var(--green)" : "var(--red)", fontWeight: 700 }}>
                             ({pctFmt(r.pct)})
                           </span>
@@ -214,13 +227,16 @@ export function ExsumDocument({
                       </div>
                       <div className="funnel-track">
                         <div
-                          className="funnel-fill"
-                          style={{
-                            width: `${Math.min(r.pct, 100)}%`,
-                            background: good ? "var(--green)" : r.pct >= 60 ? "var(--steel)" : "var(--red)",
-                          }}
+                          className={`funnel-fill${backBar.label ? " funnel-fill-labeled" : ""}`}
+                          style={{ width: `${backBar.width}%`, background: backBar.color }}
                         >
-                          {pctFmt(r.pct, 1)}
+                          {backBar.label}
+                        </div>
+                        <div
+                          className={`funnel-fill funnel-fill-front${frontBar.label ? " funnel-fill-labeled" : ""}`}
+                          style={{ width: `${frontBar.width}%`, background: frontBar.color }}
+                        >
+                          {frontBar.label}
                         </div>
                       </div>
                     </div>
@@ -297,7 +313,7 @@ export function ExsumDocument({
                         <span className="sw" style={{ background: sg.warna }} />
                         {sg.nama}
                         <br />
-                        <small style={{ color: "var(--muted)" }}>{sg.nilai}</small>
+                        <small style={{ color: "var(--muted)" }}>Rp {idn(sg.nilai)} jt</small>
                         <span className="pct">{pctFmt(sg.pct, 1)}</span>
                       </div>
                     ))}
@@ -309,8 +325,8 @@ export function ExsumDocument({
           </div>
         </section>
 
-        {/* 4 - CAPEX */}
-        <section>
+        {/* 4 - CAPEX - awal "halaman 2" saat dicetak, lihat exsum.css */}
+        <section className="exsum-print-page2">
           <div className="sheet-head">
             <span className="sheet-no">LEMBAR 4/7</span>
             <h2 className="sheet-title">Sasaran Investasi (CAPEX)</h2>

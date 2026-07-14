@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireExsumEditor } from "@/lib/exsum/access";
 import { exsumReportMetaSchema } from "@/lib/exsum/schema";
 import { EXSUM_BLANK_DATA, type ExsumData } from "@/lib/exsum/types";
+import { seedFromPrevious } from "@/lib/exsum/carryover";
 
 const EXSUM_LIST_PATH = "/exsum";
 
@@ -15,6 +16,29 @@ function reportPath(reportId: string) {
 
 function editPath(reportId: string) {
   return `/exsum/${reportId}/edit`;
+}
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+// Laporan bulan sebelumnya (kode Perusahaan yang sama, paling baru dibuat) -
+// dipakai buat isi otomatis field "periode sebelumnya" (catatan user: rutin
+// dibuat 1x/bulan, tidak perlu ketik ulang). `excludeId` mencegah laporan
+// yang baru saja diduplikasi jadi "previous"-nya dirinya sendiri kalau ada
+// race, walau alur normal tidak akan sampai kesitu.
+async function findPreviousReport(
+  supabase: SupabaseServerClient,
+  kode: string,
+  excludeId?: string,
+): Promise<{ periode: string; data: ExsumData } | null> {
+  let query = supabase
+    .from("exsum_reports")
+    .select("periode, data")
+    .eq("kode", kode)
+    .order("dibuat_pada", { ascending: false })
+    .limit(1);
+  if (excludeId) query = query.neq("id", excludeId);
+  const { data } = await query.maybeSingle();
+  return data ? { periode: data.periode, data: data.data as ExsumData } : null;
 }
 
 // Buat/ubah/hapus laporan dibatasi whitelist exsum_editors - laporan ini
@@ -45,6 +69,9 @@ export async function createReport(formData: FormData) {
     return redirect(`${EXSUM_LIST_PATH}?error=${encodeURIComponent(pesan)}`);
   }
 
+  const previous = await findPreviousReport(supabase, parsed.data.kode);
+  const seededData = seedFromPrevious({ ...EXSUM_BLANK_DATA, subjudul: "" }, previous, "blank");
+
   const { data: report, error } = await supabase
     .from("exsum_reports")
     .insert({
@@ -53,7 +80,7 @@ export async function createReport(formData: FormData) {
       periode: parsed.data.periode,
       no_dok: parsed.data.noDok,
       status: parsed.data.status,
-      data: { ...EXSUM_BLANK_DATA, subjudul: "" },
+      data: seededData,
       dibuat_oleh: user.id,
     })
     .select("id")
@@ -98,9 +125,15 @@ export async function duplicateReport(formData: FormData) {
 
   const { data: source } = await supabase
     .from("exsum_reports")
-    .select("data")
+    .select("periode, data")
     .eq("id", sourceId)
     .single();
+
+  // Sumber duplikat ITU SENDIRI yang jadi "bulan sebelumnya" - kini tiap KPI
+  // di sumber jadi lalu di laporan baru (lihat lib/exsum/carryover.ts).
+  const seededData = source
+    ? seedFromPrevious(source.data as ExsumData, { periode: source.periode, data: source.data as ExsumData }, "duplicate")
+    : EXSUM_BLANK_DATA;
 
   const { data: report, error } = await supabase
     .from("exsum_reports")
@@ -110,7 +143,7 @@ export async function duplicateReport(formData: FormData) {
       periode: parsed.data.periode,
       no_dok: parsed.data.noDok,
       status: parsed.data.status,
-      data: source?.data ?? EXSUM_BLANK_DATA,
+      data: seededData,
       dibuat_oleh: user.id,
     })
     .select("id")

@@ -38,6 +38,10 @@ export type ExsumKeuanganKPI = {
 export type ExsumPortofolioRow = {
   nama: string;
   rkap: number;
+  // RA = Rencana/Anggaran bulan berjalan (Rp jt) - beda dari RKAP yang
+  // rencana 1 tahun penuh, RA angka rencana KHUSUS bulan ini (catatan
+  // user: parameter Kinerja Portofolio ada 4: nama/RKAP/RA/RI).
+  ra: number;
   ri: number;
   pct: number;
 };
@@ -50,7 +54,11 @@ export type ExsumRasio = {
 
 export type ExsumSegmen = {
   nama: string;
-  nilai: string;
+  // Rp juta - angka polos (bukan teks berformat "Rp 465,4 M") supaya `pct`
+  // bisa dihitung otomatis dari proporsinya, sesuai catatan user: "Persentase
+  // otomatis dari jumlah nilai". Ditampilkan lewat idn() di ExsumDocument,
+  // konsisten dgn kolom Rp jt lain (RKAP/RI dst).
+  nilai: number;
   pct: number;
   warna: string;
 };

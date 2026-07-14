@@ -5,6 +5,7 @@ import { deleteReport } from "@/actions/exsum";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { ExsumDocument } from "@/components/exsum/ExsumDocument";
 import { ExsumPrintButton } from "@/components/exsum/ExsumPrintButton";
+import { normalizeExsumData } from "@/lib/exsum/normalize";
 import type { ExsumData } from "@/lib/exsum/types";
 
 export default async function ExsumReportPage({
@@ -37,7 +38,11 @@ export default async function ExsumReportPage({
     );
   }
 
-  const data = report.data as ExsumData;
+  // Normalisasi field turunan (Peringkat/Share, Persen Segmen, Realisasi %
+  // CAPEX) - laporan lama yang belum disunting ulang sejak field ini jadi
+  // otomatis masih bisa simpan angka manual sedikit meleset, ditampilkan
+  // versi terhitungnya di sini tanpa perlu user buka form edit dulu.
+  const data = normalizeExsumData(report.data as ExsumData);
 
   return (
     <div>
