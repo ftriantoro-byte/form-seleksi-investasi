@@ -668,25 +668,27 @@
    dokumen laporan - ditandai lewat .exsum-print-hide di elemen di luar
    dokumen (tombol Edit/Hapus dsb) dan .exsum-doc sendiri utk dokumennya.
 
-   TARGET: pasti 2 halaman A4 (permintaan user), bukan "sebisanya". Dikalibrasi
-   EMPIRIS (bukan tebak-tebakan) - diukur pakai data laporan sungguhan
-   (WEGE Juni 2026) via getBoundingClientRect() di browser: total tinggi
-   native (lebar desain 1080px) diukur, dicoba beberapa versi pemangkasan
-   padding/gap/ukuran font sampai muat, BUKAN cuma diperkecil pakai `zoom`
-   generik (kalau cuma zoom tanpa pemangkasan, font jadi terlalu kecil utk
-   dibaca di kertas - 14px screen * 0.665 ≈ 9px, masih longgar; tapi kalau
-   spacing-nya tidak dipangkas duluan, total tinggi 3773px * 0.665 ≈ 2509px
-   > budget 2094px/2-halaman, jadi TETAP overflow ke halaman ke-3 meski
-   sudah di-zoom). Urutan kalibrasi: (1) pangkas padding/margin/gap section
-   & komponen (paling banyak menghemat tinggi, TANPA mengorbankan
-   keterbacaan font), (2) breakpoint fisik dipaksa PERSIS sebelum CAPEX
-   (bukan Isu/Mitra seperti dugaan awal - diukur ulang krn Lembar 1-3 saja
-   sudah 1477px native, nyaris penuh 1 halaman; Lembar 1-4 jadi 1891px,
-   KELEBIHAN dari budget 1575px/halaman), (3) BARU `zoom: 0.665` di .page
-   (718px lebar cetak A4 dgn margin 10mm / 1080px lebar desain asli) supaya
-   lebar JUGA pas, bukan cuma tinggi. Hasil: halaman 1 (Judul+Lembar 1-3)
-   ~982px dari budget 1047px (94%), halaman 2 (Lembar 4-7+footer) ~830px
-   dari budget 1047px (79%, ada slack kalau user nambah 1-2 baris data). */
+   RONDE 2 (susulan permintaan user + referensi "LAPORAN EXECUTIVE SUMMARY
+   DIVISI DTPS JUNI 2026.docx" sungguhan): versi pertama memang berhasil
+   pas 2 halaman TAPI terlalu padat/kartu-infografis & font kekecilan utk
+   dibaca di kertas. Keputusan user (ditanya via pertanyaan eksplisit):
+   (a) TETAP wajib persis 2 halaman - bukan dilonggarkan, (b) gaya visual
+   cetak diganti total jadi laporan formal ala referensi (heading+tabel
+   polos hitam-putih/aksen tipis, BUKAN kartu warna-warni/donut/bar chart
+   spt tampilan layar) - tampilan LAYAR (non-print) SAMA SEKALI tidak
+   disentuh, cuma override di dalam @media print ini.
+
+   Trik supaya tetap 2 halaman TAPI font lebih besar: elemen dekoratif
+   (donut SVG, bar market-share, bar funnel Portofolio, kartu KPI/rank/
+   capex-hero berbingkai) di-`display:none`-kan/diratakan jadi baris teks
+   polos utk cetak - representasi grafis itu paling banyak makan tinggi
+   halaman padahal datanya SUDAH ada juga dlm bentuk teks (funnel-top .pv,
+   legend donut, dst), jadi menghapusnya JUSTRU menghemat ruang vertikal
+   yg lalu dipakai utk membesarkan font, bukan sebaliknya. Dikalibrasi
+   EMPIRIS ulang (bukan tebak-tebakan) dgn metode sama spt sebelumnya:
+   ukur tinggi native asli via getBoundingClientRect() thd laporan
+   PRODUCTION sungguhan (WEGE Juni 2026), lalu tentukan zoom & titik potong
+   halaman berdasarkan angka terukur. */
 @media print {
   @page {
     size: A4;
@@ -700,15 +702,22 @@
     background: #fff;
   }
   .exsum-doc .page {
+    /* Lebar cetak A4 dikurangi margin 10mm kiri-kanan, diterapkan LANGSUNG
+       (bukan lewat `zoom` spt versi pertama) - komponen cetak sekarang
+       flex/block sederhana (bukan grid lebar-tetap ala kartu dashboard),
+       jadi reflow wajar di lebar ini tanpa perlu trik zoom. Konsekuensinya
+       ukuran font yg dideklarasikan di bawah = ukuran cetak SUNGGUHAN
+       (tidak diperkecil lagi), jadi "font ketara kecil" dari versi
+       pertama tidak berulang. */
     max-width: none;
+    width: 190mm;
     padding: 0;
-    /* 190mm (lebar cetak A4 dikurangi margin 10mm kiri-kanan) / 1080px
-       (lebar native desain) - lihat catatan di atas. */
-    zoom: 0.665;
   }
   .exsum-doc section {
     break-inside: avoid;
-    border-color: #bbb;
+    border: none;
+    border-radius: 0;
+    margin-top: 6px;
   }
   .exsum-print-hide {
     display: none !important;
@@ -720,237 +729,343 @@
     break-before: page;
   }
 
-  /* ── Pemangkasan spacing/ukuran, dikalibrasi supaya Judul+Lembar 1-3
-     muat 1 halaman A4 dan Lembar 4-7+footer muat 1 halaman A4 lagi
-     (lihat catatan kalibrasi di atas). ────────────────────────────── */
+  /* ── Kop dokumen: warna & gradasi hero band DIPERTAHANKAN (permintaan
+     user - jangan dijadikan heading polos), cuma padding/font dipadatkan
+     spy muat budget 2 halaman. Style dasar (background/gradient/grid)
+     ikut dari .titleblock non-print, di sini cuma override ukuran. ─── */
   .exsum-doc .tb-main {
-    padding: 14px 20px 12px;
+    padding: 9px 16px 8px;
   }
   .exsum-doc .tb-title {
-    font-size: 32px;
-    margin-top: 3px;
+    font-size: 24px;
+    margin-top: 2px;
   }
   .exsum-doc .tb-sub {
-    font-size: 12px;
-    margin-top: 5px;
+    font-size: 10.5px;
+    margin-top: 3px;
   }
   .exsum-doc .tb-field {
-    padding: 7px 16px;
+    padding: 4px 14px;
   }
   .exsum-doc .tb-field .v {
-    font-size: 17px;
+    font-size: 14px;
   }
-  .exsum-doc section {
-    margin-top: 10px;
-  }
+
+  /* ── Heading tiap Lembar: pil/label berwarna dilepas, jadi heading
+     laporan polos + garis bawah navy (ala referensi). ─────────────── */
   .exsum-doc .sheet-head {
-    padding: 8px 16px;
+    background: none;
+    border-bottom: 1.5px solid var(--navy);
+    padding: 0 0 4px;
     gap: 10px;
-  }
-  .exsum-doc .sheet-title {
-    font-size: 18px;
   }
   .exsum-doc .sheet-no {
+    border: none;
+    color: var(--muted);
     font-size: 9.5px;
-    padding: 2px 6px;
+    padding: 0;
+  }
+  .exsum-doc .sheet-title {
+    font-size: 15px;
   }
   .exsum-doc .sheet-body {
-    padding: 10px 16px;
+    padding: 6px 0 0;
   }
   .exsum-doc .note {
-    font-size: 12px;
-    margin-top: 8px;
-    padding-top: 6px;
+    font-size: 11px;
+    margin-top: 5px;
+    padding-top: 3px;
   }
+
+  /* ── 1. Kompetitif: bar market-share DIPERTAHANKAN (permintaan user),
+     dipadatkan tingginya spy hemat ruang; tabel margin diberi header
+     gelap ala referensi, kartu Peringkat/Share jadi baris teks polos. */
   .exsum-doc .comp-grid {
-    gap: 18px;
+    gap: 20px;
   }
   .exsum-doc .bar-row {
-    margin-bottom: 5px;
+    grid-template-columns: 130px 1fr 42px;
     gap: 8px;
-  }
-  .exsum-doc .bar-row .lbl {
-    font-size: 12px;
+    margin-bottom: 1px;
   }
   .exsum-doc .bar-track {
-    height: 12px;
+    height: 9px;
+  }
+  .exsum-doc .bar-row .lbl {
+    font-size: 10px;
   }
   .exsum-doc .bar-val {
-    font-size: 11.5px;
+    font-size: 10px;
   }
   .exsum-doc .margin-table {
-    margin-top: 8px;
-    font-size: 11.5px;
+    margin-top: 6px;
+    font-size: 11px;
   }
-  .exsum-doc .margin-table th,
+  .exsum-doc .margin-table th {
+    background: var(--steel);
+    color: #fff;
+    font-size: 9px;
+    padding: 5px 7px;
+  }
   .exsum-doc .margin-table td {
-    padding: 4px 7px;
-    font-size: 11.5px;
+    padding: 1.5px 5px;
+    font-size: 11px;
+  }
+  .exsum-doc .margin-table td.neg {
+    background: #fbeae8;
+  }
+  .exsum-doc .margin-table tr.hl td {
+    background: #eef4fa;
   }
   .exsum-doc .rank-cards {
-    gap: 10px;
+    display: flex;
+    gap: 20px;
   }
   .exsum-doc .rank-card {
-    padding: 8px;
+    flex: 1;
+    border: none;
+    padding: 2px 0;
+    text-align: left;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    border-bottom: 1px solid var(--line);
   }
   .exsum-doc .rank-card .big {
-    font-size: 30px;
+    font-size: 15px;
   }
   .exsum-doc .rank-card .cap {
     font-size: 9.5px;
+    margin-top: 0;
   }
   .exsum-doc .rank-card .delta {
-    font-size: 11px;
-    margin-top: 3px;
+    font-size: 10.5px;
+    margin-top: 0;
+    margin-left: auto;
   }
+
+  /* ── 2. Keuangan: kartu KPI jadi baris teks 1 baris/KPI (nama · nilai ·
+     target · vs bulan lalu), bukan grid kartu berbingkai. ────────────── */
   .exsum-doc .kpi-group-title {
     font-size: 10.5px;
-    margin: 10px 0 6px;
-    padding-bottom: 4px;
+    margin: 7px 0 4px;
+    padding-bottom: 3px;
   }
+  /* Grid 2 kolom, tiap KPI jadi blok RINGKAS 2 baris (bukan 1 baris lebar
+     penuh spt versi pertama - di kolom sempit 1 baris bikin 4 potongan
+     teks (nama/nilai/target/delta) wrap tak beraturan). Trik flex-wrap:
+     .name(70%)+.val(30%) pas 100% lebar row 1, otomatis mendorong
+     .tgt(60%)+.mom(40%) ke row 2 tanpa perlu ubah urutan markup. */
   .exsum-doc .kpi-grid {
-    gap: 8px;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 22px;
   }
   .exsum-doc .kpi {
-    padding: 6px 9px;
+    border: none;
+    border-radius: 0;
+    padding: 1px 0;
+    display: flex;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--line);
+  }
+  .exsum-doc .kpi::before {
+    display: none;
   }
   .exsum-doc .kpi .name {
-    font-size: 11px;
+    flex: 1 1 68%;
+    font-size: 10.5px;
   }
   .exsum-doc .kpi .val {
-    font-size: 21px;
-    margin-top: 1px;
+    flex: 0 0 32%;
+    text-align: right;
+    font-size: 13px;
+    margin-top: 0;
   }
   .exsum-doc .kpi .tgt {
-    font-size: 10.5px;
-    margin-top: 2px;
+    flex: 0 0 58%;
+    font-size: 9px;
+    margin-top: 0;
   }
   .exsum-doc .kpi .mom {
-    font-size: 10.5px;
+    flex: 0 0 42%;
+    text-align: right;
+    font-size: 9px;
+    margin-top: 0;
   }
+
+  /* ── 3. Portofolio: bar funnel & donut SVG DIPERTAHANKAN (permintaan
+     user), dipadatkan ukurannya spy hemat ruang cetak. ──────────────── */
   .exsum-doc .porto-grid {
-    gap: 18px;
+    gap: 20px;
   }
   .exsum-doc .funnel-row {
-    margin-bottom: 8px;
+    margin-bottom: 0;
+    padding-bottom: 0;
   }
   .exsum-doc .funnel-top {
-    font-size: 11.5px;
-    margin-bottom: 3px;
+    font-size: 10px;
+    margin-bottom: 0;
   }
   .exsum-doc .funnel-top .pv {
-    font-size: 11px;
-  }
-  .exsum-doc .funnel-track {
-    height: 15px;
-  }
-  .exsum-doc .funnel-fill {
-    font-size: 10.5px;
-  }
-  .exsum-doc .ratio-chips {
-    gap: 8px;
-    margin-top: 10px;
-  }
-  .exsum-doc .ratio-chip {
-    padding: 6px 9px;
-    min-width: 110px;
-  }
-  .exsum-doc .ratio-chip .r {
-    font-size: 18px;
-  }
-  .exsum-doc .ratio-chip .t {
     font-size: 9.5px;
   }
+  .exsum-doc .funnel-track {
+    height: 7px;
+  }
+  .exsum-doc .funnel-fill {
+    font-size: 0;
+    padding-right: 0;
+  }
+  .exsum-doc .ratio-chips {
+    gap: 14px;
+    margin-top: 3px;
+    border-top: 1px solid var(--line);
+    padding-top: 3px;
+  }
+  .exsum-doc .ratio-chip {
+    border: none;
+    padding: 0;
+    min-width: 0;
+    flex: none;
+  }
+  .exsum-doc .ratio-chip .r {
+    font-size: 12px;
+  }
+  .exsum-doc .ratio-chip .t {
+    font-size: 8px;
+  }
   .exsum-doc .ratio-chip .s {
-    font-size: 11px;
+    font-size: 8.5px;
+    margin-top: 0;
   }
   .exsum-doc .donut-wrap {
-    gap: 12px;
+    gap: 8px;
   }
   .exsum-doc .donut-wrap svg {
-    width: 105px;
-    height: 105px;
+    width: 62px;
+    height: 62px;
   }
   .exsum-doc .legend {
-    font-size: 11.5px;
+    font-size: 9.5px;
   }
   .exsum-doc .legend div {
-    gap: 6px;
-    margin-bottom: 5px;
+    gap: 5px;
+    margin-bottom: 1px;
   }
   .exsum-doc .legend .sw {
-    width: 10px;
-    height: 10px;
+    width: 9px;
+    height: 9px;
   }
+
+  /* ── 4. CAPEX: hero % besar jadi 1 baris teks, daftar Pos Anggaran
+     diberi header gelap ala tabel referensi. ────────────────────────── */
   .exsum-doc .capex-grid {
-    gap: 18px;
+    grid-template-columns: 1fr;
+    gap: 6px;
   }
   .exsum-doc .capex-hero {
-    padding: 10px 18px;
-    min-width: 125px;
+    border: none;
+    background: none;
+    padding: 0 0 6px;
+    text-align: left;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    min-width: 0;
+    border-bottom: 1px solid var(--line);
   }
   .exsum-doc .capex-hero .big {
-    font-size: 38px;
+    font-size: 17px;
   }
   .exsum-doc .capex-hero .cap {
     font-size: 9.5px;
-    margin-top: 4px;
+    margin-top: 0;
   }
   .exsum-doc .capex-hero .sub {
-    font-size: 11px;
-    margin-top: 5px;
+    font-size: 10px;
+    margin-top: 0;
+    margin-left: auto;
+    text-align: right;
   }
   .exsum-doc .capex-list {
-    font-size: 11.5px;
+    font-size: 11px;
   }
   .exsum-doc .capex-item {
-    padding: 4px 0;
+    padding: 2px 8px;
     gap: 8px;
   }
   .exsum-doc .capex-item .amt,
   .exsum-doc .capex-item .re {
-    font-size: 11.5px;
+    font-size: 11px;
   }
+  .exsum-doc .capex-item.head {
+    background: var(--steel);
+    color: #fff;
+    padding: 5px 8px;
+    font-size: 9px;
+    border-bottom: none;
+  }
+  .exsum-doc .capex-item.total {
+    border-top: 1.5px solid var(--navy);
+  }
+
+  /* ── 5. Isu: header kolom berwarna (Eksternal merah/Internal
+     kuning/Mitigasi hijau) DIPERTAHANKAN (permintaan user), dipadatkan
+     ukurannya. ────────────────────────────────────────────────────── */
   .exsum-doc .issue-grid {
-    gap: 10px;
+    gap: 12px;
   }
   .exsum-doc .issue-col h4 {
-    font-size: 13.5px;
-    padding: 6px 10px;
+    font-size: 11.5px;
+    padding: 5px 8px;
   }
   .exsum-doc .issue-col ul {
-    padding: 8px 10px;
+    padding: 6px 8px 4px;
   }
   .exsum-doc .issue-col li {
-    font-size: 11.5px;
-    margin-bottom: 5px;
-    padding-left: 14px;
+    font-size: 10.5px;
+    margin-bottom: 3px;
+    padding-left: 13px;
   }
+
+  /* ── 6. Mitra: kartu bingkai/aksen kiri dilepas, jadi blok teks
+     bertumpuk dgn garis pemisah tipis. ──────────────────────────────── */
   .exsum-doc .mitra-grid {
-    gap: 8px;
+    gap: 2px;
   }
   .exsum-doc .mitra-card {
-    padding: 8px 10px;
+    border: none;
+    padding: 2px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .exsum-doc .mitra-card.full {
+    background: none;
+    border-left: none;
   }
   .exsum-doc .mitra-card h5 {
-    font-size: 12.5px;
+    font-size: 11.5px;
   }
   .exsum-doc .mitra-card p {
-    font-size: 11.5px;
-    margin-top: 3px;
+    font-size: 10.5px;
+    margin-top: 2px;
   }
+
+  /* ── 7. Rekomendasi: badge nomor bulat berwarna jadi angka polos. ── */
   .exsum-doc .reko-item {
-    padding: 5px 0;
-    gap: 10px;
+    padding: 2px 0;
+    gap: 8px;
   }
   .exsum-doc .reko-item::before {
+    background: none;
+    color: var(--navy);
+    padding: 0;
     font-size: 11px;
-    padding: 2px 6px;
   }
   .exsum-doc .reko-item p {
-    font-size: 11.5px;
+    font-size: 11px;
   }
+
   .exsum-doc footer {
     margin-top: 10px;
     padding-top: 6px;

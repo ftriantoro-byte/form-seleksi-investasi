@@ -86,7 +86,7 @@ export function ExsumDocument({
         {/* 1 - POSISI KOMPETITIF */}
         <section>
           <div className="sheet-head">
-            <span className="sheet-no">LEMBAR 1/7</span>
+            <span className="sheet-no">BAB 1/7</span>
             <h2 className="sheet-title">Posisi Kompetitif di Industri Konstruksi</h2>
           </div>
           <div className="sheet-body">
@@ -158,7 +158,7 @@ export function ExsumDocument({
         {/* 2 - KEUANGAN */}
         <section>
           <div className="sheet-head">
-            <span className="sheet-no">LEMBAR 2/7</span>
+            <span className="sheet-no">BAB 2/7</span>
             <h2 className="sheet-title">Kinerja Keuangan ({periode})</h2>
           </div>
           <div className="sheet-body">
@@ -193,7 +193,7 @@ export function ExsumDocument({
         {/* 3 - PORTOFOLIO */}
         <section>
           <div className="sheet-head">
-            <span className="sheet-no">LEMBAR 3/7</span>
+            <span className="sheet-no">BAB 3/7</span>
             <h2 className="sheet-title">Kinerja Portofolio ({periode})</h2>
           </div>
           <div className="sheet-body">
@@ -242,15 +242,6 @@ export function ExsumDocument({
                     </div>
                   );
                 })}
-                <div className="ratio-chips">
-                  {P.rasio.map((r, i) => (
-                    <div key={i} className="ratio-chip">
-                      <div className="r">{r.nilai}</div>
-                      <div className="t">Rasio {r.nama}</div>
-                      <div className="s">{r.ket}</div>
-                    </div>
-                  ))}
-                </div>
               </div>
               <div>
                 <div
@@ -322,13 +313,24 @@ export function ExsumDocument({
                 <p className="note">{P.narasi}</p>
               </div>
             </div>
+            {/* Rasio CO/OB dst - di luar porto-grid supaya melebar selebar
+                halaman (permintaan user), bukan kejepit di kolom kiri. */}
+            <div className="ratio-chips">
+              {P.rasio.map((r, i) => (
+                <div key={i} className="ratio-chip">
+                  <div className="r">{r.nilai}</div>
+                  <div className="t">Rasio {r.nama}</div>
+                  <div className="s">{r.ket}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* 4 - CAPEX - awal "halaman 2" saat dicetak, lihat exsum.css */}
         <section className="exsum-print-page2">
           <div className="sheet-head">
-            <span className="sheet-no">LEMBAR 4/7</span>
+            <span className="sheet-no">BAB 4/7</span>
             <h2 className="sheet-title">Sasaran Investasi (CAPEX)</h2>
           </div>
           <div className="sheet-body">
@@ -365,7 +367,7 @@ export function ExsumDocument({
         {/* 5 - ISU */}
         <section>
           <div className="sheet-head">
-            <span className="sheet-no">LEMBAR 5/7</span>
+            <span className="sheet-no">BAB 5/7</span>
             <h2 className="sheet-title">Isu Strategis Utama &amp; Mitigasi</h2>
           </div>
           <div className="sheet-body">
@@ -401,7 +403,7 @@ export function ExsumDocument({
         {/* 6 - MITRA */}
         <section>
           <div className="sheet-head">
-            <span className="sheet-no">LEMBAR 6/7</span>
+            <span className="sheet-no">BAB 6/7</span>
             <h2 className="sheet-title">Progres Mitra Strategis &amp; Pipeline Potensial</h2>
           </div>
           <div className="sheet-body">
@@ -419,7 +421,7 @@ export function ExsumDocument({
         {/* 7 - REKOMENDASI */}
         <section>
           <div className="sheet-head">
-            <span className="sheet-no">LEMBAR 7/7</span>
+            <span className="sheet-no">BAB 7/7</span>
             <h2 className="sheet-title">Rekomendasi untuk Direksi &amp; Dewan Komisaris</h2>
           </div>
           <div className="sheet-body">
