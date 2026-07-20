@@ -314,13 +314,23 @@ export default async function PmWorkspaceDashboardPage({
           />
         )}
         {tab === "calendar" && (
-          <PmCalendarView
-            tasks={tasks}
-            listBase={dashboardBase}
-            month={month}
-            baseQuery={filterQuery}
-            viewParamKey="tab"
-          />
+          <>
+            {!listFilter && (
+              <p className="mb-3 text-[12px] text-zinc-400">
+                Pilih List spesifik lewat filter di atas (Terapkan) utk bisa menambahkan Task lewat
+                klik tanggal - Task baru butuh List tujuan yang jelas, jadi tidak aktif selama masih
+                menampilkan gabungan beberapa List.
+              </p>
+            )}
+            <PmCalendarView
+              tasks={tasks}
+              listBase={dashboardBase}
+              month={month}
+              baseQuery={filterQuery}
+              viewParamKey="tab"
+              listId={listFilter}
+            />
+          </>
         )}
       </div>
     </FormPageShell>
