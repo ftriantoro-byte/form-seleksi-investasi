@@ -13,7 +13,7 @@ export default async function TaskModalPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
 
   return (
-    <PmTaskModal>
+    <PmTaskModal taskId={taskId}>
       <PmTaskDetailContent
         workspaceId={workspaceId}
         spaceId={spaceId}

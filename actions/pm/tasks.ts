@@ -319,6 +319,39 @@ export async function updateTaskDueDate(taskId: string, dueDate: string) {
   }
 }
 
+// Dipanggil langsung dari PmCalendarView (Client Component) saat quick-add:
+// klik tanggal → ketik judul → Enter, TANPA redirect ke Task Detail (beda
+// dari createTask biasa) - supaya user bisa cepat menambahkan beberapa Task
+// berturut-turut dulu, baru didetailkan belakangan kalau perlu. Sengaja
+// minimal (judul + dueDate saja, status default "to_do") sama seperti
+// createSubtask - field lain diisi lewat Task Detail kalau dibutuhkan.
+export async function createTaskQuick(listId: string, judul: string, dueDate: string) {
+  await requirePmAccess();
+
+  const trimmed = judul.trim();
+  if (!trimmed) {
+    throw new Error("Judul Task wajib diisi.");
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Sesi tidak valid.");
+
+  const { error } = await supabase.from("pm_tasks").insert({
+    list_id: listId,
+    judul: trimmed,
+    status: "to_do",
+    due_date: dueDate || null,
+    created_by: user.id,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 // Form tambah Subtask sengaja minimal (cuma judul) - beda dengan createTask
 // yang punya form lengkap (assignee/due date/status/priority). Field lain
 // bisa diisi belakangan lewat halaman/modal Task Detail milik Subtask itu

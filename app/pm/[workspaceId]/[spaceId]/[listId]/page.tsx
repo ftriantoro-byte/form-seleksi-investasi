@@ -679,6 +679,7 @@ export default async function ListDetailPage({
               ...(assigneeFilter ? { assignee: assigneeFilter } : {}),
               ...(priorityFilter ? { priority: priorityFilter } : {}),
             }}
+            listId={listId}
           />
         ) : view === "gantt" ? (
           <PmGanttView tasks={tasks} listBase={listBase} />

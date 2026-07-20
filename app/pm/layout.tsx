@@ -60,6 +60,12 @@ export default async function PmLayout({ children }: { children: React.ReactNode
         <div className="flex items-center justify-between gap-3 border-b border-black/[0.04] bg-white px-4 py-2.5 sm:px-6">
           {user?.email && <span className="truncate text-[12px] text-zinc-400">{user.email}</span>}
           <div className="ml-auto flex items-center gap-2.5">
+            <Link
+              href="/"
+              className="rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-200"
+            >
+              &larr; Beranda
+            </Link>
             <PmCommandPalette />
             <PmNotificationBell unreadCount={unreadCount ?? 0} />
             <Link
@@ -154,6 +160,12 @@ export default async function PmLayout({ children }: { children: React.ReactNode
         <div className="flex items-center justify-between gap-3 border-b border-black/[0.04] bg-white px-6 py-2.5 sm:px-10">
           {user?.email && <span className="truncate text-[12px] text-zinc-400">{user.email}</span>}
           <div className="ml-auto flex items-center gap-2.5">
+            <Link
+              href="/"
+              className="rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-600 transition-colors hover:bg-zinc-200"
+            >
+              &larr; Beranda
+            </Link>
             <PmCommandPalette />
             <PmNotificationBell unreadCount={unreadCount ?? 0} />
             <Link
