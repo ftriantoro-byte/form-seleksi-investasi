@@ -348,3 +348,48 @@ export async function deleteTask(formData: FormData) {
 
   redirect(base);
 }
+
+// Pindahkan Task ke List lain (boleh beda Space, SELAMA masih 1 Workspace
+// yang sama - lintas Workspace sengaja tidak didukung, di luar cakupan
+// permintaan user & bikin kompleks krn perlu mikir ulang keanggotaan/akses).
+// list_id di pm_tasks satu-satunya kolom penentu (tidak ada workspace_id/
+// space_id langsung di pm_tasks), jadi cukup update 1 kolom - custom field
+// value & dependency lama TIDAK diikutkan/dibersihkan otomatis (biarkan apa
+// adanya, List tujuan mungkin punya field berbeda - user bisa rapikan manual
+// kalau perlu, bukan tanggung jawab pindah Task ini).
+export async function moveTask(formData: FormData) {
+  await requirePmAccess();
+
+  const supabase = await createClient();
+  const workspaceId = formData.get("workspaceId") as string;
+  const spaceId = formData.get("spaceId") as string;
+  const listId = formData.get("listId") as string;
+  const taskId = formData.get("taskId") as string;
+  const targetListId = formData.get("targetListId") as string;
+  const currentPath = `${pathBase(workspaceId, spaceId, listId)}/${taskId}`;
+
+  if (!targetListId || targetListId === listId) {
+    redirect(currentPath);
+  }
+
+  const { data: targetList } = await supabase
+    .from("pm_lists")
+    .select("space_id")
+    .eq("id", targetListId)
+    .single();
+
+  if (!targetList) {
+    return redirect(`${currentPath}?error=${encodeURIComponent("List tujuan tidak ditemukan.")}`);
+  }
+
+  const { error } = await supabase
+    .from("pm_tasks")
+    .update({ list_id: targetListId })
+    .eq("id", taskId);
+
+  if (error) {
+    return redirect(`${currentPath}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  redirect(`/pm/${workspaceId}/${targetList.space_id}/${targetListId}/${taskId}`);
+}

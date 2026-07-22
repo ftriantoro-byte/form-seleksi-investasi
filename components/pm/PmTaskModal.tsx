@@ -34,17 +34,30 @@ import { usePathname, useRouter } from "next/navigation";
 //
 // PERBAIKAN FINAL: bukan andalkan Next mengsinkronkan ulang slot paralel
 // (server-driven, terbukti tidak reliable di atas) - modal ini sendiri yang
-// mendeteksi ketidakcocokan (pathname tidak lagi berakhiran /taskId yang
-// modal ini dibuka utk), lalu berhenti me-render diri sendiri. `dismissed`
-// SENGAJA derived langsung saat render (bukan useState+useEffect) - murni
-// fungsi dari `pathname` (sudah reaktif lewat usePathname()) & `taskId`,
+// mendeteksi ketidakcocokan (pathname tidak lagi PERSIS PATH yang modal ini
+// dibuka utk), lalu berhenti me-render diri sendiri. `dismissed` SENGAJA
+// derived langsung saat render (bukan useState+useEffect) - murni fungsi
+// dari `pathname` (sudah reaktif lewat usePathname()) & `expectedPath`,
 // tidak ada alasan nunggu 1 siklus render tambahan lewat effect. Jaminan
 // 100% modal hilang dari layar tanpa bergantung pada bagaimana Next
 // memperlakukan slot @modal di baliknya.
-export function PmTaskModal({ taskId, children }: { taskId: string; children: React.ReactNode }) {
+//
+// `expectedPath` (path LENGKAP /pm/{workspaceId}/{spaceId}/{listId}/{taskId},
+// bukan cuma taskId) - sengaja diperkuat dari versi awal yang cuma cek
+// `pathname.endsWith('/'+taskId)`, supaya jg mendeteksi kasus moveTask
+// (Task dipindah ke List/Space LAIN sementara taskId-nya SAMA - endsWith
+// murni taskId tidak akan menangkap ini krn suffix-nya tetap cocok padahal
+// rute sesungguhnya sudah pindah ke List/Space berbeda).
+export function PmTaskModal({
+  expectedPath,
+  children,
+}: {
+  expectedPath: string;
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
-  const dismissed = !pathname.endsWith(`/${taskId}`);
+  const dismissed = pathname !== expectedPath;
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

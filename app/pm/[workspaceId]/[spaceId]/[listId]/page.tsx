@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { renameList, deleteList, updateStatusLabels } from "@/actions/pm/lists";
+import { renameList, deleteList, updateStatusLabels, moveList } from "@/actions/pm/lists";
+import { getPmMoveTargets } from "@/lib/pm/workspaceTree";
 import { createFieldDefinition, deleteFieldDefinition } from "@/actions/pm/customFields";
 import { createAutomation, toggleAutomation, deleteAutomation } from "@/actions/pm/automations";
 import { saveListAsTemplate } from "@/actions/pm/templates";
@@ -144,21 +145,30 @@ export default async function ListDetailPage({
 
   taskQuery = taskQuery.order(sort, { ascending: true, nullsFirst: false });
 
-  const [{ data: tasksRaw }, { data: anggotaRaw }, { data: fieldDefinitionsRaw }, { data: automationsRaw }] =
-    await Promise.all([
-      taskQuery,
-      supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
-      supabase
-        .from("pm_custom_field_definitions")
-        .select("id, nama, type, opsi")
-        .eq("list_id", listId)
-        .order("urutan", { ascending: true }),
-      supabase
-        .from("pm_automations")
-        .select("id, nama, trigger_status, condition_priority, action_type, action_value, aktif")
-        .eq("list_id", listId)
-        .order("created_at", { ascending: true }),
-    ]);
+  const [
+    { data: tasksRaw },
+    { data: anggotaRaw },
+    { data: fieldDefinitionsRaw },
+    { data: automationsRaw },
+    moveTargets,
+  ] = await Promise.all([
+    taskQuery,
+    supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
+    supabase
+      .from("pm_custom_field_definitions")
+      .select("id, nama, type, opsi")
+      .eq("list_id", listId)
+      .order("urutan", { ascending: true }),
+    supabase
+      .from("pm_automations")
+      .select("id, nama, trigger_status, condition_priority, action_type, action_value, aktif")
+      .eq("list_id", listId)
+      .order("created_at", { ascending: true }),
+    // Daftar Space/Folder di seluruh Workspace (buat dropdown "Pindahkan
+    // List ke..." di Pengaturan) - bentuk hasilnya beda dr query di atas
+    // (bukan { data }), jadi ditaruh terpisah bukan dalam array yg sama.
+    getPmMoveTargets(supabase, workspaceId),
+  ]);
 
   const tasks = ((tasksRaw ?? []) as unknown as (Omit<PmTaskRow, "assignee_ids"> & {
     pm_task_assignees: { user_id: string }[];
@@ -541,6 +551,38 @@ export default async function ListDetailPage({
                   className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
                 >
                   Simpan Perubahan
+                </button>
+              </form>
+              <form action={moveList} className="mt-2 grid grid-cols-1 gap-2 border-t border-zinc-100 pt-2">
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="listId" value={listId} />
+                <label className="block text-[11px] font-medium text-zinc-500">
+                  Pindahkan List ke...
+                </label>
+                <select
+                  name="target"
+                  defaultValue={`${spaceId}::${list.folder_id ?? ""}`}
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                >
+                  {moveTargets.spaces.map((s) => (
+                    <optgroup key={s.id} label={s.nama}>
+                      <option value={`${s.id}::`}>(langsung di Space)</option>
+                      {moveTargets.folders
+                        .filter((f) => f.spaceId === s.id)
+                        .map((f) => (
+                          <option key={f.id} value={`${s.id}::${f.id}`}>
+                            📁 {f.nama}
+                          </option>
+                        ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+                >
+                  Pindahkan
                 </button>
               </form>
               <form action={deleteList} className="mt-2 border-t border-zinc-100 pt-2">

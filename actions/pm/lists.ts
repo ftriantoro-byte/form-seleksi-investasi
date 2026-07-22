@@ -110,6 +110,40 @@ export async function updateStatusLabels(formData: FormData) {
   redirect(listPath);
 }
 
+// Pindahkan List ke Space/Folder lain (boleh lintas Space, dalam Workspace
+// yang sama). Field `target` gabungan "spaceId::folderId" (folderId boleh
+// kosong = langsung di Space) dari SATU <select> - dipilih drpd 2 field
+// terpisah (targetSpaceId+targetFolderId) supaya UI cukup 1 dropdown tanpa
+// perlu cascading select via JS (folder cuma valid dlm 1 Space tertentu).
+export async function moveList(formData: FormData) {
+  await requirePmAccess();
+
+  const supabase = await createClient();
+  const workspaceId = formData.get("workspaceId") as string;
+  const spaceId = formData.get("spaceId") as string;
+  const listId = formData.get("listId") as string;
+  const target = formData.get("target") as string;
+  const currentPath = `/pm/${workspaceId}/${spaceId}/${listId}`;
+
+  if (!target) return redirect(currentPath);
+  const [targetSpaceId, targetFolderIdRaw] = target.split("::");
+  const targetFolderId = targetFolderIdRaw || null;
+
+  if (!targetSpaceId) return redirect(currentPath);
+
+  const { error } = await supabase
+    .from("pm_lists")
+    .update({ space_id: targetSpaceId, folder_id: targetFolderId })
+    .eq("id", listId);
+
+  if (error) {
+    return redirect(`${currentPath}?error=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath(PM_LAYOUT_PATH, "layout");
+  redirect(`/pm/${workspaceId}/${targetSpaceId}/${listId}`);
+}
+
 export async function deleteList(formData: FormData) {
   await requirePmAccess();
 

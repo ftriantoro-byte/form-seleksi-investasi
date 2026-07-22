@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { updateTask, deleteTask, createSubtask } from "@/actions/pm/tasks";
+import { updateTask, deleteTask, createSubtask, moveTask } from "@/actions/pm/tasks";
+import { getPmMoveTargets } from "@/lib/pm/workspaceTree";
 import { createComment, deleteComment } from "@/actions/pm/comments";
 import { addDependency, removeDependency } from "@/actions/pm/dependencies";
 import {
@@ -127,20 +128,28 @@ export async function PmTaskDetailContent({
   }
 
   const [
-    { data: anggotaRaw },
-    { data: checklistRaw },
-    { data: commentsRaw },
-    { data: listTasksRaw },
-    { data: parentRaw },
-    { data: dependencyRowsRaw },
-    { data: listRaw },
-    { data: fieldDefinitionsRaw },
-    { data: fieldValuesRaw },
-    { data: timeEntriesRaw },
-    { data: attachmentsRaw },
-    { data: existingDocRaw },
-    { data: assigneeRowsRaw },
+    moveTargets,
+    [
+      { data: anggotaRaw },
+      { data: checklistRaw },
+      { data: commentsRaw },
+      { data: listTasksRaw },
+      { data: parentRaw },
+      { data: dependencyRowsRaw },
+      { data: listRaw },
+      { data: fieldDefinitionsRaw },
+      { data: fieldValuesRaw },
+      { data: timeEntriesRaw },
+      { data: attachmentsRaw },
+      { data: existingDocRaw },
+      { data: assigneeRowsRaw },
+    ],
   ] = await Promise.all([
+    // Daftar List di seluruh Workspace (buat dropdown "Pindahkan Task ke...")
+    // - query terpisah (bukan disatukan ke Promise.all di bawah) krn bentuk
+    // hasilnya beda (bukan { data }, lihat lib/pm/workspaceTree.ts).
+    getPmMoveTargets(supabase, workspaceId),
+    Promise.all([
     supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
     supabase
       .from("pm_checklist_items")
@@ -200,6 +209,7 @@ export async function PmTaskDetailContent({
     // diketahui perlu tidaknya setelah SELECT ini selesai.
     supabase.from("pm_docs").select("id, crdt_state").eq("task_id", taskId).maybeSingle(),
     supabase.from("pm_task_assignees").select("user_id").eq("task_id", taskId),
+    ]),
   ]);
 
   const anggota = (anggotaRaw ?? []) as PmWorkspaceMemberProfile[];
@@ -483,6 +493,37 @@ export async function PmTaskDetailContent({
             className="text-[12px] font-medium text-red-500 transition-colors hover:text-red-700"
           >
             Hapus Task ini
+          </button>
+        </form>
+
+        <form action={moveTask} className="mt-2 flex flex-wrap items-center gap-2">
+          {hiddenFields}
+          <label className={compactLabelCls}>Pindahkan ke List</label>
+          <select
+            name="targetListId"
+            defaultValue={listId}
+            className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[12px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+          >
+            {moveTargets.spaces.map((s) => (
+              <optgroup key={s.id} label={s.nama}>
+                {moveTargets.lists
+                  .filter((l) => l.spaceId === s.id)
+                  .map((l) => {
+                    const folder = moveTargets.folders.find((f) => f.id === l.folderId);
+                    return (
+                      <option key={l.id} value={l.id}>
+                        {folder ? `${folder.nama} / ${l.nama}` : l.nama}
+                      </option>
+                    );
+                  })}
+              </optgroup>
+            ))}
+          </select>
+          <button
+            type="submit"
+            className="text-[12px] font-medium text-zinc-600 transition-colors hover:underline"
+          >
+            Pindah
           </button>
         </form>
 

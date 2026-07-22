@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import { renameFolder, deleteFolder } from "@/actions/pm/folders";
+import { renameFolder, deleteFolder, moveFolder, convertFolderToSpace } from "@/actions/pm/folders";
 import { createList } from "@/actions/pm/lists";
+import { getPmMoveTargets } from "@/lib/pm/workspaceTree";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { PmEntityGrid } from "@/components/pm/PmEntityGrid";
@@ -21,12 +22,15 @@ export default async function FolderDetailPage({
 
   // Folder+List digabung lewat nested select (dulu 2 round-trip berurutan) -
   // pm_lists.folder_id cuma bisa merujuk 1 Folder, jadi tidak ambigu.
-  const { data: folderRaw } = await supabase
-    .from("pm_folders")
-    .select("id, nama, deskripsi, space_id, pm_lists(id, nama, deskripsi)")
-    .eq("id", folderId)
-    .order("urutan", { referencedTable: "pm_lists", ascending: true })
-    .single();
+  const [{ data: folderRaw }, moveTargets] = await Promise.all([
+    supabase
+      .from("pm_folders")
+      .select("id, nama, deskripsi, space_id, pm_lists(id, nama, deskripsi)")
+      .eq("id", folderId)
+      .order("urutan", { referencedTable: "pm_lists", ascending: true })
+      .single(),
+    getPmMoveTargets(supabase, workspaceId),
+  ]);
 
   if (!folderRaw || folderRaw.space_id !== spaceId) {
     return (
@@ -89,6 +93,52 @@ export default async function FolderDetailPage({
                 className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
               >
                 Simpan Perubahan
+              </button>
+            </form>
+            {moveTargets.spaces.filter((s) => s.id !== spaceId).length > 0 && (
+              <form
+                action={moveFolder}
+                className="mt-2 grid grid-cols-1 gap-2 border-t border-zinc-100 pt-2"
+              >
+                <input type="hidden" name="workspaceId" value={workspaceId} />
+                <input type="hidden" name="spaceId" value={spaceId} />
+                <input type="hidden" name="folderId" value={folderId} />
+                <label className="block text-[11px] font-medium text-zinc-500">
+                  Pindahkan Folder ke Space lain
+                </label>
+                <select
+                  name="targetSpaceId"
+                  defaultValue=""
+                  className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-[13px] text-zinc-900 shadow-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-500/10"
+                >
+                  <option value="" disabled>
+                    - Pilih Space -
+                  </option>
+                  {moveTargets.spaces
+                    .filter((s) => s.id !== spaceId)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.nama}
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="submit"
+                  className="w-fit rounded-full bg-zinc-100 px-4 py-1.5 text-[12px] font-medium text-zinc-700 hover:bg-zinc-200"
+                >
+                  Pindahkan
+                </button>
+              </form>
+            )}
+            <form action={convertFolderToSpace} className="mt-2 border-t border-zinc-100 pt-2">
+              <input type="hidden" name="workspaceId" value={workspaceId} />
+              <input type="hidden" name="spaceId" value={spaceId} />
+              <input type="hidden" name="folderId" value={folderId} />
+              <button
+                type="submit"
+                className="text-[12px] font-medium text-zinc-600 hover:underline"
+              >
+                Ubah Folder ini jadi Space baru
               </button>
             </form>
             <form action={deleteFolder} className="mt-2 border-t border-zinc-100 pt-2">
