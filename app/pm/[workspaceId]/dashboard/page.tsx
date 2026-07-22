@@ -8,6 +8,7 @@ import { PmBoardView } from "@/components/pm/PmBoardView";
 import { PmCalendarView } from "@/components/pm/PmCalendarView";
 import { PmTimeBoxView } from "@/components/pm/PmTimeBoxView";
 import { PmTaskListInline } from "@/components/pm/PmTaskListInline";
+import { getOrCreateInboxListId } from "@/lib/pm/inbox";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 type PmDashboardTask = {
@@ -173,6 +174,15 @@ export default async function PmWorkspaceDashboardPage({
         : spaceFilter
           ? allTasks.filter((t) => t.spaceId === spaceFilter)
           : allTasks;
+
+  // Tab Time Box tanpa filter List spesifik: quick-add tetap aktif (susulan
+  // permintaan user - "task bisa ditambahkan tanpa mengalokasikan folder/
+  // list terlebih dahulu"), diarahkan ke List "Inbox" per Workspace
+  // (di-provision lazy kalau belum ada - lihat lib/pm/inbox.ts). Cuma
+  // di-query saat genuinely dibutuhkan (tab timebox & belum ada listFilter)
+  // supaya tab lain tidak kena efek samping insert Inbox.
+  const inboxListId =
+    tab === "timebox" && !listFilter ? await getOrCreateInboxListId(supabase, workspaceId) : null;
 
   // Opsi dropdown Folder/List di-scope ke Space/Folder yang sudah dipilih -
   // form submit ulang tiap "Terapkan" (pola sama seperti filter halaman
@@ -352,9 +362,9 @@ export default async function PmWorkspaceDashboardPage({
           <>
             {!listFilter && (
               <p className="mb-3 text-[12px] text-zinc-400">
-                Pilih List spesifik lewat filter di atas (Terapkan) utk bisa menambahkan Task lewat
-                klik slot jam - Task baru butuh List tujuan yang jelas, jadi tidak aktif selama masih
-                menampilkan gabungan beberapa List.
+                Task baru lewat klik slot jam di sini masuk ke List &ldquo;Inbox&rdquo; (dibuat
+                otomatis) krn belum difilter ke List tertentu - pindahkan ke List yang sesuai
+                belakangan lewat &ldquo;Pindahkan ke List&rdquo; di Task Detail.
               </p>
             )}
             <PmTimeBoxView
@@ -363,7 +373,7 @@ export default async function PmWorkspaceDashboardPage({
               date={date}
               baseQuery={filterQuery}
               viewParamKey="tab"
-              listId={listFilter}
+              listId={listFilter ?? inboxListId ?? undefined}
             />
           </>
         )}
