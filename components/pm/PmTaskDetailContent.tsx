@@ -11,8 +11,8 @@ import {
 } from "@/actions/pm/checklist";
 import { createTimeEntry, deleteTimeEntry } from "@/actions/pm/timeEntries";
 import { uploadAttachment, downloadAttachment, deleteAttachment } from "@/actions/pm/attachments";
-import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
-import { TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
+import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES, TASK_COLOR_VALUES } from "@/lib/pm/schema";
+import { TASK_PRIORITY_LABEL, TASK_COLOR_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
 import { RECURRENCE_TYPE_VALUES, RECURRENCE_TYPE_LABEL } from "@/lib/pm/recurrence";
 import { FormField } from "@/components/ui/FormField";
@@ -38,6 +38,8 @@ type PmTaskDetail = {
   recurrence_type: string | null;
   recurrence_interval: number;
   recurrence_end_date: string | null;
+  color: string | null;
+  tags: string[];
 };
 
 type PmChecklistItemRow = {
@@ -106,7 +108,7 @@ export async function PmTaskDetailContent({
   const { data: taskRaw } = await supabase
     .from("pm_tasks")
     .select(
-      "id, list_id, judul, deskripsi, status, priority, start_date, due_date, scheduled_time, scheduled_duration_minutes, parent_task_id, recurrence_type, recurrence_interval, recurrence_end_date",
+      "id, list_id, judul, deskripsi, status, priority, start_date, due_date, scheduled_time, scheduled_duration_minutes, parent_task_id, recurrence_type, recurrence_interval, recurrence_end_date, color, tags",
     )
     .eq("id", taskId)
     .single();
@@ -438,6 +440,29 @@ export async function PmTaskDetailContent({
               maju sesuai pengaturan di atas.
             </p>
           )}
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <label className={compactLabelCls}>Warna</label>
+              <select name="color" defaultValue={task.color ?? ""} className={compactInputCls}>
+                <option value="">- Tidak ada -</option>
+                {TASK_COLOR_VALUES.map((value) => (
+                  <option key={value} value={value}>
+                    {TASK_COLOR_LABEL[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="col-span-3">
+              <label className={compactLabelCls}>Tag (pisah koma)</label>
+              <input
+                name="tags"
+                defaultValue={task.tags.join(", ")}
+                placeholder="mis. klien-a, review, urgent-internal"
+                className={compactInputCls}
+              />
+            </div>
+          </div>
 
           <div>
             <label className={compactLabelCls}>Assignee (bisa lebih dari satu)</label>

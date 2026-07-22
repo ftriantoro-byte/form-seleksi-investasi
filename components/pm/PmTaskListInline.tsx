@@ -5,7 +5,7 @@ import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateTaskStatus, updateTaskPriority, updateTaskDueDate } from "@/actions/pm/tasks";
 import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES } from "@/lib/pm/schema";
-import { TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
+import { TASK_PRIORITY_LABEL, TASK_COLOR_DOT_KELAS } from "@/lib/pm/labels";
 
 type PmTaskRow = {
   id: string;
@@ -15,6 +15,8 @@ type PmTaskRow = {
   assignee_ids: string[];
   due_date: string | null;
   recurrence_type: string | null;
+  color: string | null;
+  tags: string[];
   // Dipakai Dashboard Workspace (agregat lintas List) - tiap Task punya List
   // sendiri jadi tidak bisa pakai 1 `listBase` bersama seperti di halaman
   // List. Kalau tidak diisi, fallback ke `${listBase}/${task.id}` seperti
@@ -48,10 +50,28 @@ export function PmTaskListInline({
           className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
         >
           <td className="px-4 py-2 font-medium text-zinc-800">
-            <Link href={task.href ?? `${listBase}/${task.id}`} className="hover:underline">
+            <Link href={task.href ?? `${listBase}/${task.id}`} className="inline-flex items-center gap-1.5 hover:underline">
+              {task.color && (
+                <span
+                  className={`h-2 w-2 shrink-0 rounded-full ${TASK_COLOR_DOT_KELAS[task.color]}`}
+                  aria-hidden
+                />
+              )}
               {task.recurrence_type && <span aria-label="Berulang">🔁 </span>}
               {task.judul}
             </Link>
+            {task.tags.length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {task.tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-500"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </td>
           <td className="px-2 py-2 text-zinc-500">
             {task.assignee_ids.length > 0

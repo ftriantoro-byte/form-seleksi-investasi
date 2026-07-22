@@ -87,6 +87,8 @@ export async function updateTask(formData: FormData) {
     recurrenceType: formData.get("recurrenceType") || "",
     recurrenceInterval: formData.get("recurrenceInterval") || undefined,
     recurrenceEndDate: formData.get("recurrenceEndDate") || "",
+    color: formData.get("color") || "",
+    tags: formData.get("tags") || "",
   });
 
   if (!parsed.success) {
@@ -107,7 +109,14 @@ export async function updateTask(formData: FormData) {
     recurrenceType,
     recurrenceInterval,
     recurrenceEndDate,
+    color,
+    tags,
   } = parsed.data;
+
+  const tagsArray = (tags ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   const { data: existing } = await supabase
     .from("pm_tasks")
@@ -134,6 +143,8 @@ export async function updateTask(formData: FormData) {
       recurrence_type: recurrenceType || null,
       recurrence_interval: recurrenceInterval || 1,
       recurrence_end_date: recurrenceEndDate || null,
+      color: color || null,
+      tags: tagsArray,
     })
     .eq("id", taskId);
 

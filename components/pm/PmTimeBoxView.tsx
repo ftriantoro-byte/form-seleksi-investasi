@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useState, useTransition, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
-import { TASK_STATUS_BADGE_KELAS } from "@/lib/pm/labels";
+import { TASK_STATUS_BADGE_KELAS, TASK_COLOR_ACCENT_KELAS } from "@/lib/pm/labels";
 import { scheduleTask, createTaskQuick } from "@/actions/pm/tasks";
+import { projectRecurringOccurrences, type PmRecurrenceType } from "@/lib/pm/recurrence";
 
 type PmTimeBoxTaskRow = {
   id: string;
@@ -13,11 +14,19 @@ type PmTimeBoxTaskRow = {
   due_date: string | null;
   scheduled_time: string | null;
   scheduled_duration_minutes: number | null;
+  recurrence_type: string | null;
+  recurrence_interval: number;
+  recurrence_end_date: string | null;
+  color: string | null;
   // Dipakai Dashboard Workspace (agregat lintas List), sama seperti
   // PmCalendarView/PmBoardView - fallback ke `${listBase}/${id}` kalau
   // tidak diisi (konteks halaman List, 1 List pasti).
   href?: string;
 };
+
+// Blok "proyeksi" siklus berulang MASA DEPAN yang jatuh dalam minggu yang
+// sedang dilihat - lihat lib/pm/recurrence.ts (projectRecurringOccurrences).
+type PmTimeBoxVirtualBlock = { task: PmTimeBoxTaskRow; date: string };
 
 // Susulan permintaan user (ronde 2): bukan lagi 1 hari/1 jam, tapi grid 7
 // hari x slot 30 menit, jam kerja 06:00-21:00 (30 slot), Task tampil sbg
@@ -151,6 +160,32 @@ export function PmTimeBoxView({
     byDate.set(t.due_date, list);
   }
 
+  // Proyeksi siklus berulang MASA DEPAN yang jatuh dalam minggu ini -
+  // di-scan dari SEMUA Task (bukan cuma yang due_date-nya kebetulan ada di
+  // minggu ini), krn pola berulang jalan terus terlepas dari apakah siklus
+  // SEBELUMNYA sudah ditandai Done atau belum (mis. Task overdue berbulan-
+  // bulan tetap harusnya kelihatan proyeksinya minggu ini). Dibatasi cuma
+  // utk Task yang SUDAH berjam (scheduled_time terisi) - Time Box pada
+  // dasarnya soal "jam", Task berulang tanpa jam tetap ditangani seperti
+  // biasa (tidak diproyeksikan ke grid).
+  const virtualByDate = new Map<string, PmTimeBoxVirtualBlock[]>();
+  for (const t of optimisticTasks) {
+    if (!t.recurrence_type || !t.due_date || !t.scheduled_time) continue;
+    const occurrences = projectRecurringOccurrences(
+      t.due_date,
+      t.recurrence_type as PmRecurrenceType,
+      t.recurrence_interval,
+      t.recurrence_end_date,
+      weekDates[0],
+      weekDates[6],
+    );
+    for (const occurrence of occurrences) {
+      const list = virtualByDate.get(occurrence) ?? [];
+      list.push({ task: t, date: occurrence });
+      virtualByDate.set(occurrence, list);
+    }
+  }
+
   function handleDrop(dateStr: string, slotIdx: number) {
     setDragOverCell(null);
     if (!dragTaskId) return;
@@ -208,6 +243,10 @@ export function PmTimeBoxView({
           due_date: d,
           scheduled_time: time,
           scheduled_duration_minutes: 60,
+          recurrence_type: null,
+          recurrence_interval: 1,
+          recurrence_end_date: null,
+          color: null,
         },
       });
       await createTaskQuick(listId, judul, d, time, 60);
@@ -395,7 +434,7 @@ export function PmTimeBoxView({
                       style={{ top, height, left: 1, right: 1 }}
                       className={`group absolute cursor-grab overflow-hidden rounded px-1 py-0.5 text-[10px] leading-tight shadow-sm active:cursor-grabbing ${
                         TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
-                      }`}
+                      } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""}`}
                     >
                       <button
                         type="button"
@@ -414,6 +453,7 @@ export function PmTimeBoxView({
                         onClick={(e) => e.stopPropagation()}
                         className="block truncate pr-2.5 hover:underline"
                       >
+                        {t.recurrence_type && <span aria-label="Berulang">🔁 </span>}
                         {t.judul}
                       </Link>
                       {durationSlots >= 2 && (
@@ -438,6 +478,27 @@ export function PmTimeBoxView({
                         </select>
                       )}
                     </div>
+                  );
+                })}
+
+                {(virtualByDate.get(d) ?? []).map(({ task: t }) => {
+                  const startIdx = slotIndexFromTime(t.scheduled_time as string);
+                  const durationSlots = Math.max(
+                    1,
+                    Math.round((t.scheduled_duration_minutes ?? 60) / SLOT_MINUTES),
+                  );
+                  const top = startIdx * SLOT_HEIGHT;
+                  const height = Math.min(durationSlots * SLOT_HEIGHT, SLOTS.length * SLOT_HEIGHT - top) - 1;
+                  return (
+                    <Link
+                      key={`${t.id}-proj-${d}`}
+                      href={t.href ?? `${listBase}/${t.id}`}
+                      title="Proyeksi siklus berulang - tandai Done siklus sebelumnya utk menjadwalkan sungguhan di tanggal ini"
+                      style={{ top, height, left: 1, right: 1 }}
+                      className="absolute overflow-hidden rounded border border-dashed border-zinc-300 bg-zinc-50/80 px-1 py-0.5 text-[10px] leading-tight text-zinc-500 opacity-80 hover:opacity-100 hover:underline"
+                    >
+                      🔁 {t.judul}
+                    </Link>
                   );
                 })}
               </div>

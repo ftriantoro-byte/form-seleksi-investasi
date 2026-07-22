@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
-import { TASK_STATUS_BADGE_KELAS } from "@/lib/pm/labels";
+import { TASK_STATUS_BADGE_KELAS, TASK_COLOR_ACCENT_KELAS } from "@/lib/pm/labels";
 import { updateTaskDueDate, createTaskQuick } from "@/actions/pm/tasks";
 
 type PmCalendarTaskRow = {
@@ -11,6 +11,7 @@ type PmCalendarTaskRow = {
   judul: string;
   status: string;
   due_date: string | null;
+  color: string | null;
   // Dipakai Dashboard Workspace (agregat lintas List) - tiap Task punya List
   // sendiri jadi tidak bisa pakai 1 `listBase` bersama seperti di halaman
   // List. Kalau tidak diisi, fallback ke `${listBase}/${id}` seperti semula.
@@ -125,7 +126,7 @@ export function PmCalendarView({
     startTransition(async () => {
       applyOptimistic({
         type: "add",
-        task: { id: tempId, judul, status: "to_do", due_date: dateStr },
+        task: { id: tempId, judul, status: "to_do", due_date: dateStr, color: null },
       });
       await createTaskQuick(listId, judul, dateStr);
       router.refresh();
@@ -146,7 +147,7 @@ export function PmCalendarView({
         onClick={(e) => e.stopPropagation()}
         className={`block cursor-grab truncate rounded px-1 py-0.5 text-[10px] active:cursor-grabbing ${
           TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
-        }`}
+        } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""}`}
       >
         {t.judul}
       </Link>
@@ -208,7 +209,7 @@ export function PmCalendarView({
                 onDragEnd={() => setDragTaskId(null)}
                 className={`cursor-grab rounded-full px-2.5 py-1 text-[11px] active:cursor-grabbing ${
                   TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
-                }`}
+                } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""}`}
               >
                 {t.judul}
               </Link>

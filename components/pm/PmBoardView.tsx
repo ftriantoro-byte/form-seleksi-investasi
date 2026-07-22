@@ -5,7 +5,11 @@ import { useState, useTransition, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
 import { updateTaskStatus } from "@/actions/pm/tasks";
 import { TASK_STATUS_VALUES } from "@/lib/pm/schema";
-import { TASK_PRIORITY_LABEL, TASK_PRIORITY_BADGE_KELAS } from "@/lib/pm/labels";
+import {
+  TASK_PRIORITY_LABEL,
+  TASK_PRIORITY_BADGE_KELAS,
+  TASK_COLOR_ACCENT_KELAS,
+} from "@/lib/pm/labels";
 
 type PmTaskRow = {
   id: string;
@@ -15,6 +19,8 @@ type PmTaskRow = {
   assignee_ids: string[];
   due_date: string | null;
   recurrence_type: string | null;
+  color: string | null;
+  tags: string[];
   // Dipakai Dashboard Workspace (agregat lintas List) - tiap Task punya List
   // sendiri jadi tidak bisa pakai 1 `listBase` bersama seperti di halaman
   // List. Kalau tidak diisi, fallback ke `${listBase}/${task.id}` seperti
@@ -88,7 +94,9 @@ export function PmBoardView({
                   draggable
                   onDragStart={() => setDragTaskId(task.id)}
                   onDragEnd={() => setDragTaskId(null)}
-                  className="pm-card cursor-grab rounded-xl border border-black/[0.04] bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)] active:cursor-grabbing"
+                  className={`pm-card cursor-grab rounded-xl border border-black/[0.04] bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)] active:cursor-grabbing ${
+                    task.color ? TASK_COLOR_ACCENT_KELAS[task.color] : ""
+                  }`}
                 >
                   <Link
                     href={task.href ?? `${listBase}/${task.id}`}
@@ -114,6 +122,18 @@ export function PmBoardView({
                   {task.assignee_ids.length > 0 && (
                     <div className="mt-1 truncate text-[11px] text-zinc-400">
                       {task.assignee_ids.map((id) => emailByUserId[id] ?? "").join(", ")}
+                    </div>
+                  )}
+                  {task.tags.length > 0 && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      {task.tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] text-zinc-500"
+                        >
+                          {tag}
+                        </span>
+                      ))}
                     </div>
                   )}
                 </div>

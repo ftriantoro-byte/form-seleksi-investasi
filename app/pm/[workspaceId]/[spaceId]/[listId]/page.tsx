@@ -52,6 +52,10 @@ type PmTaskRow = {
   scheduled_time: string | null;
   scheduled_duration_minutes: number | null;
   recurrence_type: string | null;
+  recurrence_interval: number;
+  recurrence_end_date: string | null;
+  color: string | null;
+  tags: string[];
 };
 
 const VIEW_VALUES = ["list", "board", "calendar", "gantt", "timebox"] as const;
@@ -146,7 +150,7 @@ export default async function ListDetailPage({
   let taskQuery = supabase
     .from("pm_tasks")
     .select(
-      "id, judul, status, priority, start_date, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, pm_task_assignees(user_id)",
+      "id, judul, status, priority, start_date, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, recurrence_interval, recurrence_end_date, color, tags, pm_task_assignees(user_id)",
     )
     .eq("list_id", listId);
 

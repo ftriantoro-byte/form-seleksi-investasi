@@ -20,6 +20,10 @@ type PmDashboardTask = {
   scheduled_time: string | null;
   scheduled_duration_minutes: number | null;
   recurrence_type: string | null;
+  recurrence_interval: number;
+  recurrence_end_date: string | null;
+  color: string | null;
+  tags: string[];
   assignee_ids: string[];
   // Dipakai buat filter Space/Folder/List berjenjang, bukan ditampilkan
   // langsung - listId khususnya dipakai jg buat kunci `href` di bawah.
@@ -179,7 +183,7 @@ export default async function PmWorkspaceDashboardPage({
     let taskQuery = supabase
       .from("pm_tasks")
       .select(
-        "id, judul, status, priority, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, list_id, pm_task_assignees(user_id)",
+        "id, judul, status, priority, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, recurrence_interval, recurrence_end_date, color, tags, list_id, pm_task_assignees(user_id)",
       )
       .in("list_id", scopedListIds);
     if (assigneeTaskIds) {
@@ -199,6 +203,10 @@ export default async function PmWorkspaceDashboardPage({
           scheduled_time: t.scheduled_time,
           scheduled_duration_minutes: t.scheduled_duration_minutes,
           recurrence_type: t.recurrence_type,
+          recurrence_interval: t.recurrence_interval,
+          recurrence_end_date: t.recurrence_end_date,
+          color: t.color,
+          tags: t.tags,
           assignee_ids: t.pm_task_assignees.map((a) => a.user_id),
           spaceId: listMeta.spaceId,
           folderId: listMeta.folderId,

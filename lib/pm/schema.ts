@@ -23,6 +23,10 @@ export const listSchema = z.object({
 
 export const TASK_STATUS_VALUES = ["to_do", "in_progress", "in_review", "done"] as const;
 export const TASK_PRIORITY_VALUES = ["urgent", "high", "normal", "low"] as const;
+// Palet warna aksen Task (susulan permintaan user) - nama warna tetap
+// (bukan hex bebas), konsisten dgn pola TASK_STATUS_BADGE_KELAS/
+// TASK_PRIORITY_BADGE_KELAS di lib/pm/labels.ts.
+export const TASK_COLOR_VALUES = ["red", "orange", "yellow", "green", "blue", "purple", "gray"] as const;
 
 export const taskSchema = z.object({
   judul: z.string().min(1, "Judul Task wajib diisi"),
@@ -39,6 +43,11 @@ export const taskSchema = z.object({
   recurrenceType: z.enum(RECURRENCE_TYPE_VALUES).optional().or(z.literal("")),
   recurrenceInterval: z.coerce.number().int().min(1).optional(),
   recurrenceEndDate: z.string().optional().or(z.literal("")),
+  // Warna + tag (susulan permintaan user) - tags dikirim dari form sbg 1
+  // string dipisah koma (pola sama spt `opsi` di customFieldDefinitionSchema),
+  // diparse jadi array di actions/pm/tasks.ts, bukan di sini.
+  color: z.enum(TASK_COLOR_VALUES).optional().or(z.literal("")),
+  tags: z.string().optional().or(z.literal("")),
 });
 
 export const commentSchema = z.object({
