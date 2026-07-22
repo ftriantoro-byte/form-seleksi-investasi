@@ -67,6 +67,7 @@ export default async function PmWorkspaceDashboardPage({
     space?: string;
     folder?: string;
     list?: string;
+    assignee?: string;
   }>;
 }) {
   const { workspaceId } = await params;
@@ -77,6 +78,7 @@ export default async function PmWorkspaceDashboardPage({
     space: spaceFilter,
     folder: folderFilter,
     list: listFilter,
+    assignee: assigneeFilter,
   } = await searchParams;
   const tab: PmDashboardTab = TAB_VALUES.includes(tabParam as PmDashboardTab)
     ? (tabParam as PmDashboardTab)
@@ -165,15 +167,17 @@ export default async function PmWorkspaceDashboardPage({
   // Folder itu, pilih Space (tanpa Folder/List) = seluruh Task di Space itu.
   // "folder=none" khusus mewakili List yang langsung di bawah Space (di
   // luar Folder manapun), beda dari folder tidak dipilih sama sekali.
-  const tasks = listFilter
-    ? allTasks.filter((t) => t.listId === listFilter)
-    : folderFilter === "none"
-      ? allTasks.filter((t) => t.spaceId === spaceFilter && t.folderId === null)
-      : folderFilter
-        ? allTasks.filter((t) => t.folderId === folderFilter)
-        : spaceFilter
-          ? allTasks.filter((t) => t.spaceId === spaceFilter)
-          : allTasks;
+  const tasks = (
+    listFilter
+      ? allTasks.filter((t) => t.listId === listFilter)
+      : folderFilter === "none"
+        ? allTasks.filter((t) => t.spaceId === spaceFilter && t.folderId === null)
+        : folderFilter
+          ? allTasks.filter((t) => t.folderId === folderFilter)
+          : spaceFilter
+            ? allTasks.filter((t) => t.spaceId === spaceFilter)
+            : allTasks
+  ).filter((t) => (assigneeFilter ? t.assignee_ids.includes(assigneeFilter) : true));
 
   // Tab Time Box tanpa filter List spesifik: quick-add tetap aktif (susulan
   // permintaan user - "task bisa ditambahkan tanpa mengalokasikan folder/
@@ -207,6 +211,7 @@ export default async function PmWorkspaceDashboardPage({
     ...(spaceFilter ? { space: spaceFilter } : {}),
     ...(folderFilter ? { folder: folderFilter } : {}),
     ...(listFilter ? { list: listFilter } : {}),
+    ...(assigneeFilter ? { assignee: assigneeFilter } : {}),
   };
 
   return (
@@ -283,13 +288,25 @@ export default async function PmWorkspaceDashboardPage({
             </option>
           ))}
         </select>
+        <select
+          name="assignee"
+          defaultValue={assigneeFilter ?? ""}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+        >
+          <option value="">Semua assignee</option>
+          {anggota.map((a) => (
+            <option key={a.user_id} value={a.user_id}>
+              {a.email}
+            </option>
+          ))}
+        </select>
         <button
           type="submit"
           className="rounded-full bg-zinc-900 px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
         >
           Terapkan
         </button>
-        {(spaceFilter || folderFilter || listFilter) && (
+        {(spaceFilter || folderFilter || listFilter || assigneeFilter) && (
           <Link
             href={{
               pathname: dashboardBase,
