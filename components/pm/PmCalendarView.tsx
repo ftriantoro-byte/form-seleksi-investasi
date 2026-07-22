@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
 import { TASK_STATUS_BADGE_KELAS } from "@/lib/pm/labels";
 import { updateTaskDueDate, createTaskQuick } from "@/actions/pm/tasks";
@@ -54,6 +54,19 @@ export function PmCalendarView({
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
   const [addDate, setAddDate] = useState<string | null>(null);
   const [addValue, setAddValue] = useState("");
+  // Optimis: geser chip ke tanggal baru & tampilkan Task baru dari quick-add
+  // SEKETIKA (bukan nunggu router.refresh() round-trip server) - id Task
+  // hasil quick-add belum diketahui sblm server jawab, jadi dikasih id
+  // sementara ("optimistic-...") yg otomatis diganti data asli begitu
+  // `router.refresh()` selesai (bagian dari cara kerja useOptimistic).
+  type OptimisticAction =
+    | { type: "move"; taskId: string; dueDate: string }
+    | { type: "add"; task: PmCalendarTaskRow };
+  const [optimisticTasks, applyOptimistic] = useOptimistic(tasks, (state, action: OptimisticAction) =>
+    action.type === "move"
+      ? state.map((t) => (t.id === action.taskId ? { ...t, due_date: action.dueDate } : t))
+      : [...state, action.task],
+  );
 
   const [year, monthNum] = month.split("-").map(Number);
   const firstOfMonth = new Date(year, monthNum - 1, 1);
@@ -62,7 +75,7 @@ export function PmCalendarView({
 
   const tasksByDate = new Map<string, PmCalendarTaskRow[]>();
   const unscheduled: PmCalendarTaskRow[] = [];
-  for (const t of tasks) {
+  for (const t of optimisticTasks) {
     if (!t.due_date) {
       unscheduled.push(t);
       continue;
@@ -92,6 +105,7 @@ export function PmCalendarView({
     const taskId = dragTaskId;
     setDragTaskId(null);
     startTransition(async () => {
+      applyOptimistic({ type: "move", taskId, dueDate: dateStr });
       await updateTaskDueDate(taskId, dateStr);
       router.refresh();
     });
@@ -106,7 +120,13 @@ export function PmCalendarView({
     const judul = addValue.trim();
     if (!judul || !listId) return;
     setAddValue("");
+    setAddDate(null);
+    const tempId = `optimistic-${Date.now()}`;
     startTransition(async () => {
+      applyOptimistic({
+        type: "add",
+        task: { id: tempId, judul, status: "to_do", due_date: dateStr },
+      });
       await createTaskQuick(listId, judul, dateStr);
       router.refresh();
     });

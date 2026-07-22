@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
 import { TASK_STATUS_BADGE_KELAS } from "@/lib/pm/labels";
 import { scheduleTask, createTaskQuick } from "@/actions/pm/tasks";
@@ -113,17 +113,38 @@ export function PmTimeBoxView({
   const [dragOverCell, setDragOverCell] = useState<string | null>(null); // `${date}-${slotIdx}`
   const [addTarget, setAddTarget] = useState<{ date: string; slotIdx: number } | null>(null);
   const [addValue, setAddValue] = useState("");
+  // Optimis: blok Task pindah hari/jam & Task baru dari quick-add muncul
+  // SEKETIKA (bukan nunggu router.refresh() round-trip server) - sama pola
+  // dgn PmCalendarView. Drop, ganti durasi, & lepas-jadwal semua lewat
+  // scheduleTask yg sama jadi digabung 1 action type "schedule".
+  type OptimisticAction =
+    | { type: "schedule"; taskId: string; dueDate: string; time: string | null; duration: number | null }
+    | { type: "add"; task: PmTimeBoxTaskRow };
+  const [optimisticTasks, applyOptimistic] = useOptimistic(tasks, (state, action: OptimisticAction) =>
+    action.type === "add"
+      ? [...state, action.task]
+      : state.map((t) =>
+          t.id === action.taskId
+            ? {
+                ...t,
+                due_date: action.dueDate,
+                scheduled_time: action.time,
+                scheduled_duration_minutes: action.duration,
+              }
+            : t,
+        ),
+  );
 
   const today = todayStr();
   const weekStart = weekStartOf(date);
   const weekDates = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
 
-  const tasksById = new Map(tasks.map((t) => [t.id, t]));
-  const unscheduled = tasks.filter(
+  const tasksById = new Map(optimisticTasks.map((t) => [t.id, t]));
+  const unscheduled = optimisticTasks.filter(
     (t) => t.due_date && weekDates.includes(t.due_date) && !t.scheduled_time,
   );
   const byDate = new Map<string, PmTimeBoxTaskRow[]>();
-  for (const t of tasks) {
+  for (const t of optimisticTasks) {
     if (!t.due_date || !weekDates.includes(t.due_date) || !t.scheduled_time) continue;
     const list = byDate.get(t.due_date) ?? [];
     list.push(t);
@@ -138,14 +159,17 @@ export function PmTimeBoxView({
     const existing = tasksById.get(taskId);
     const duration = existing?.scheduled_duration_minutes ?? 60;
     const { hour, minute } = SLOTS[slotIdx];
+    const time = `${pad2(hour)}:${pad2(minute)}:00`;
     startTransition(async () => {
-      await scheduleTask(taskId, dateStr, `${pad2(hour)}:${pad2(minute)}:00`, duration);
+      applyOptimistic({ type: "schedule", taskId, dueDate: dateStr, time, duration });
+      await scheduleTask(taskId, dateStr, time, duration);
       router.refresh();
     });
   }
 
   function handleUnschedule(taskId: string, dateStr: string) {
     startTransition(async () => {
+      applyOptimistic({ type: "schedule", taskId, dueDate: dateStr, time: null, duration: null });
       await scheduleTask(taskId, dateStr, null, null);
       router.refresh();
     });
@@ -153,6 +177,7 @@ export function PmTimeBoxView({
 
   function handleDurationChange(taskId: string, dateStr: string, scheduledTime: string, duration: number) {
     startTransition(async () => {
+      applyOptimistic({ type: "schedule", taskId, dueDate: dateStr, time: scheduledTime, duration });
       await scheduleTask(taskId, dateStr, scheduledTime, duration);
       router.refresh();
     });
@@ -169,9 +194,23 @@ export function PmTimeBoxView({
     if (!judul) return;
     const { date: d, slotIdx } = addTarget;
     const { hour, minute } = SLOTS[slotIdx];
+    const time = `${pad2(hour)}:${pad2(minute)}:00`;
     setAddValue("");
+    setAddTarget(null);
+    const tempId = `optimistic-${Date.now()}`;
     startTransition(async () => {
-      await createTaskQuick(listId, judul, d, `${pad2(hour)}:${pad2(minute)}:00`, 60);
+      applyOptimistic({
+        type: "add",
+        task: {
+          id: tempId,
+          judul,
+          status: "to_do",
+          due_date: d,
+          scheduled_time: time,
+          scheduled_duration_minutes: 60,
+        },
+      });
+      await createTaskQuick(listId, judul, d, time, 60);
       router.refresh();
     });
   }

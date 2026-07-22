@@ -96,22 +96,29 @@ export default async function PmWorkspaceDashboardPage({
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
 
-  // workspace, pohon Space->Folder/List->Task, dan daftar anggota tidak
-  // saling bergantung - digabung paralel. pm_folders & pm_lists sama-sama
-  // di-nested langsung di bawah pm_spaces (dua relasi independen, tidak
-  // ambigu karena masing-masing FK cuma merujuk 1 tabel) supaya opsi filter
-  // Folder/List bisa dibangun tanpa round-trip tambahan.
-  const [{ data: workspace }, { data: spaceRows }, { data: anggotaRaw }] = await Promise.all([
-    supabase.from("pm_workspaces").select("id, nama").eq("id", workspaceId).single(),
-    supabase
-      .from("pm_spaces")
-      .select(
-        "id, nama, pm_folders(id, nama), pm_lists(id, nama, folder_id, pm_tasks(id, judul, status, priority, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, pm_task_assignees(user_id)))",
-      )
-      .eq("workspace_id", workspaceId)
-      .order("created_at", { ascending: true }),
-    supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
-  ]);
+  // workspace, pohon Space->Folder/List (RINGAN, tanpa nested Task - dulu
+  // versi lama nge-fetch SEMUA Task+assignee se-Workspace tiap render lalu
+  // difilter di JS, jadi berat begitu Task-nya banyak), & daftar anggota
+  // tidak saling bergantung - digabung paralel. Query Task-nya SENGAJA
+  // dipisah (lihat di bawah) krn baru bisa di-scope server-side (list_id
+  // mana aja yg relevan) setelah tau daftar List dari query ini dulu.
+  const [{ data: workspace }, { data: spaceRows }, { data: anggotaRaw }, assigneeTaskIdsResult] =
+    await Promise.all([
+      supabase.from("pm_workspaces").select("id, nama").eq("id", workspaceId).single(),
+      supabase
+        .from("pm_spaces")
+        .select("id, nama, pm_folders(id, nama), pm_lists(id, nama, folder_id)")
+        .eq("workspace_id", workspaceId)
+        .order("created_at", { ascending: true }),
+      supabase.rpc("pm_workspace_member_profiles", { p_workspace_id: workspaceId }),
+      // Sama pola dgn halaman List (`[listId]/page.tsx`): task_id yg match
+      // assignee dicari DULU lewat query terpisah, baru dipakai `.in("id",
+      // ...)` di query Task utama - supaya tidak perlu `!inner` join yg
+      // bikin embed pm_task_assignees ikut ter-filter.
+      assigneeFilter
+        ? supabase.from("pm_task_assignees").select("task_id").eq("user_id", assigneeFilter)
+        : Promise.resolve({ data: null }),
+    ]);
 
   if (!workspace) {
     return (
@@ -127,17 +134,7 @@ export default async function PmWorkspaceDashboardPage({
     id: string;
     nama: string;
     pm_folders: { id: string; nama: string }[];
-    pm_lists: {
-      id: string;
-      nama: string;
-      folder_id: string | null;
-      pm_tasks: (Omit<
-        PmDashboardTask,
-        "assignee_ids" | "href" | "spaceId" | "folderId" | "listId"
-      > & {
-        pm_task_assignees: { user_id: string }[];
-      })[];
-    }[];
+    pm_lists: { id: string; nama: string; folder_id: string | null }[];
   };
   const spaceTree = (spaceRows ?? []) as unknown as SpaceTree[];
 
@@ -149,35 +146,72 @@ export default async function PmWorkspaceDashboardPage({
     s.pm_lists.map((l) => ({ id: l.id, nama: l.nama, spaceId: s.id, folderId: l.folder_id })),
   );
 
-  const allTasks: PmDashboardTask[] = spaceTree.flatMap((space) =>
-    space.pm_lists.flatMap((list) =>
-      list.pm_tasks.map((t) => ({
-        ...t,
-        assignee_ids: t.pm_task_assignees.map((a) => a.user_id),
-        spaceId: space.id,
-        folderId: list.folder_id,
-        listId: list.id,
-        href: `/pm/${workspaceId}/${space.id}/${list.id}/${t.id}`,
-      })),
-    ),
-  );
-
   // Filter berjenjang Space -> Folder -> List: makin spesifik makin
   // menang - pilih List = cuma Task List itu, pilih Folder = seluruh List di
   // Folder itu, pilih Space (tanpa Folder/List) = seluruh Task di Space itu.
   // "folder=none" khusus mewakili List yang langsung di bawah Space (di
   // luar Folder manapun), beda dari folder tidak dipilih sama sekali.
-  const tasks = (
+  // DIterapkan di sini (ke daftar List, bukan ke Task) supaya query Task di
+  // bawah cuma narik List yg relevan lewat `.in("list_id", ...)` - bukan
+  // fetch SEMUA Task se-Workspace lalu dibuang di JS spt sebelumnya.
+  const scopedListIds = (
     listFilter
-      ? allTasks.filter((t) => t.listId === listFilter)
+      ? lists.filter((l) => l.id === listFilter)
       : folderFilter === "none"
-        ? allTasks.filter((t) => t.spaceId === spaceFilter && t.folderId === null)
+        ? lists.filter((l) => l.spaceId === spaceFilter && l.folderId === null)
         : folderFilter
-          ? allTasks.filter((t) => t.folderId === folderFilter)
+          ? lists.filter((l) => l.folderId === folderFilter)
           : spaceFilter
-            ? allTasks.filter((t) => t.spaceId === spaceFilter)
-            : allTasks
-  ).filter((t) => (assigneeFilter ? t.assignee_ids.includes(assigneeFilter) : true));
+            ? lists.filter((l) => l.spaceId === spaceFilter)
+            : lists
+  ).map((l) => l.id);
+
+  const assigneeTaskIds = assigneeFilter
+    ? (assigneeTaskIdsResult.data ?? []).map((r) => r.task_id)
+    : null;
+
+  // Kalau scope List-nya kosong (mis. Space belum punya List sama sekali),
+  // atau filter assignee tidak match Task manapun, tidak perlu query Task
+  // sama sekali - `.in(..., [])` invalid di Postgres jadi dihindari eksplisit.
+  const listMetaById = new Map(lists.map((l) => [l.id, l]));
+  let allTasks: PmDashboardTask[] = [];
+  if (scopedListIds.length > 0 && (!assigneeTaskIds || assigneeTaskIds.length > 0)) {
+    let taskQuery = supabase
+      .from("pm_tasks")
+      .select(
+        "id, judul, status, priority, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, list_id, pm_task_assignees(user_id)",
+      )
+      .in("list_id", scopedListIds);
+    if (assigneeTaskIds) {
+      taskQuery = taskQuery.in("id", assigneeTaskIds);
+    }
+    const { data: taskRows } = await taskQuery;
+    allTasks = (taskRows ?? []).flatMap((t) => {
+      const listMeta = listMetaById.get(t.list_id);
+      if (!listMeta) return [];
+      return [
+        {
+          id: t.id,
+          judul: t.judul,
+          status: t.status,
+          priority: t.priority,
+          due_date: t.due_date,
+          scheduled_time: t.scheduled_time,
+          scheduled_duration_minutes: t.scheduled_duration_minutes,
+          recurrence_type: t.recurrence_type,
+          assignee_ids: t.pm_task_assignees.map((a) => a.user_id),
+          spaceId: listMeta.spaceId,
+          folderId: listMeta.folderId,
+          listId: listMeta.id,
+          href: `/pm/${workspaceId}/${listMeta.spaceId}/${listMeta.id}/${t.id}`,
+        },
+      ];
+    });
+  }
+
+  // Query Task di atas SUDAH di-scope server-side (list_id & assignee), jadi
+  // tidak perlu filter ulang di JS spt sebelumnya.
+  const tasks = allTasks;
 
   // Tab Time Box tanpa filter List spesifik: quick-add tetap aktif (susulan
   // permintaan user - "task bisa ditambahkan tanpa mengalokasikan folder/

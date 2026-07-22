@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useState, useTransition, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
 import { updateTaskStatus } from "@/actions/pm/tasks";
 import { TASK_STATUS_VALUES } from "@/lib/pm/schema";
@@ -38,6 +38,15 @@ export function PmBoardView({
   const [, startTransition] = useTransition();
   const [dragTaskId, setDragTaskId] = useState<string | null>(null);
   const [dragOverStatus, setDragOverStatus] = useState<string | null>(null);
+  // Drag antar kolom butuh kartu Task PINDAH KOLOM seketika (bukan nunggu
+  // router.refresh() selesai round-trip server) supaya berasa responsif -
+  // update status optimis dulu, `router.refresh()` nanti nyamain state asli
+  // (otomatis "dibatalkan" balik ke `tasks` asli kalau action-nya gagal).
+  const [optimisticTasks, setOptimisticStatus] = useOptimistic(
+    tasks,
+    (state, update: { taskId: string; status: string }) =>
+      state.map((t) => (t.id === update.taskId ? { ...t, status: update.status } : t)),
+  );
 
   function handleDrop(status: string) {
     setDragOverStatus(null);
@@ -45,6 +54,7 @@ export function PmBoardView({
     const taskId = dragTaskId;
     setDragTaskId(null);
     startTransition(async () => {
+      setOptimisticStatus({ taskId, status });
       await updateTaskStatus(taskId, status);
       router.refresh();
     });
@@ -53,7 +63,7 @@ export function PmBoardView({
   return (
     <div className="flex gap-4 overflow-x-auto pb-2">
       {TASK_STATUS_VALUES.map((status) => {
-        const tasksInColumn = tasks.filter((t) => t.status === status);
+        const tasksInColumn = optimisticTasks.filter((t) => t.status === status);
         return (
           <div
             key={status}
