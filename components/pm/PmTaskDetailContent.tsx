@@ -32,6 +32,8 @@ type PmTaskDetail = {
   priority: string | null;
   start_date: string | null;
   due_date: string | null;
+  scheduled_time: string | null;
+  scheduled_duration_minutes: number | null;
   parent_task_id: string | null;
   recurrence_type: string | null;
   recurrence_interval: number;
@@ -104,7 +106,7 @@ export async function PmTaskDetailContent({
   const { data: taskRaw } = await supabase
     .from("pm_tasks")
     .select(
-      "id, list_id, judul, deskripsi, status, priority, start_date, due_date, parent_task_id, recurrence_type, recurrence_interval, recurrence_end_date",
+      "id, list_id, judul, deskripsi, status, priority, start_date, due_date, scheduled_time, scheduled_duration_minutes, parent_task_id, recurrence_type, recurrence_interval, recurrence_end_date",
     )
     .eq("id", taskId)
     .single();
@@ -366,6 +368,29 @@ export async function PmTaskDetailContent({
                 type="date"
                 name="dueDate"
                 defaultValue={task.due_date ?? ""}
+                className={compactInputCls}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div>
+              <label className={compactLabelCls}>Jam Mulai (Time Box)</label>
+              <input
+                type="time"
+                name="scheduledTime"
+                defaultValue={task.scheduled_time?.slice(0, 5) ?? ""}
+                className={compactInputCls}
+              />
+            </div>
+            <div>
+              <label className={compactLabelCls}>Durasi (menit)</label>
+              <input
+                type="number"
+                name="scheduledDurationMinutes"
+                min={5}
+                step={5}
+                defaultValue={task.scheduled_duration_minutes ?? ""}
                 className={compactInputCls}
               />
             </div>

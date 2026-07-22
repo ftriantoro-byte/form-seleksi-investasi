@@ -19,6 +19,7 @@ import { PmBoardView } from "@/components/pm/PmBoardView";
 import { PmCalendarView } from "@/components/pm/PmCalendarView";
 import { PmGanttView } from "@/components/pm/PmGanttView";
 import { PmQuickAddTaskForm } from "@/components/pm/PmQuickAddTaskForm";
+import { PmTimeBoxView } from "@/components/pm/PmTimeBoxView";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 import { PmTaskListInline } from "@/components/pm/PmTaskListInline";
 
@@ -48,10 +49,12 @@ type PmTaskRow = {
   assignee_ids: string[];
   start_date: string | null;
   due_date: string | null;
+  scheduled_time: string | null;
+  scheduled_duration_minutes: number | null;
   recurrence_type: string | null;
 };
 
-const VIEW_VALUES = ["list", "board", "calendar", "gantt"] as const;
+const VIEW_VALUES = ["list", "board", "calendar", "gantt", "timebox"] as const;
 type PmView = (typeof VIEW_VALUES)[number];
 
 const SORT_VALUES = ["created_at", "judul", "due_date"] as const;
@@ -74,6 +77,7 @@ export default async function ListDetailPage({
     priority?: string;
     sort?: string;
     month?: string;
+    date?: string;
   }>;
 }) {
   const { workspaceId, spaceId, listId } = await params;
@@ -85,6 +89,7 @@ export default async function ListDetailPage({
     priority: priorityFilter,
     sort: sortParam,
     month: monthParam,
+    date: dateParam,
   } = await searchParams;
   const view: PmView = VIEW_VALUES.includes(viewParam as PmView) ? (viewParam as PmView) : "list";
   const sort = SORT_VALUES.includes(sortParam as (typeof SORT_VALUES)[number])
@@ -95,6 +100,10 @@ export default async function ListDetailPage({
     monthParam && /^\d{4}-\d{2}$/.test(monthParam)
       ? monthParam
       : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const date =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+      ? dateParam
+      : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
@@ -136,7 +145,9 @@ export default async function ListDetailPage({
 
   let taskQuery = supabase
     .from("pm_tasks")
-    .select("id, judul, status, priority, start_date, due_date, recurrence_type, pm_task_assignees(user_id)")
+    .select(
+      "id, judul, status, priority, start_date, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, pm_task_assignees(user_id)",
+    )
     .eq("list_id", listId);
 
   if (statusFilter) taskQuery = taskQuery.eq("status", statusFilter);
@@ -634,12 +645,21 @@ export default async function ListDetailPage({
           >
             Gantt
           </Link>
+          <Link
+            href={{ pathname: listBase, query: { view: "timebox", date } }}
+            className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
+              view === "timebox" ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
+            }`}
+          >
+            Time Box
+          </Link>
         </div>
       </div>
 
       <form className="mt-4 flex flex-wrap items-center gap-3">
         <input type="hidden" name="view" value={view} />
         {view === "calendar" && <input type="hidden" name="month" value={month} />}
+        {view === "timebox" && <input type="hidden" name="date" value={date} />}
         <select
           name="status"
           defaultValue={statusFilter ?? ""}
@@ -696,7 +716,11 @@ export default async function ListDetailPage({
           Terapkan
         </button>
         <Link
-          href={{ pathname: listBase, query: view === "calendar" ? { view, month } : { view } }}
+          href={{
+            pathname: listBase,
+            query:
+              view === "calendar" ? { view, month } : view === "timebox" ? { view, date } : { view },
+          }}
           className="text-[13px] text-zinc-400 transition-colors hover:text-zinc-700"
         >
           Reset filter
@@ -725,6 +749,18 @@ export default async function ListDetailPage({
           />
         ) : view === "gantt" ? (
           <PmGanttView tasks={tasks} listBase={listBase} />
+        ) : view === "timebox" ? (
+          <PmTimeBoxView
+            tasks={tasks}
+            listBase={listBase}
+            date={date}
+            baseQuery={{
+              ...(statusFilter ? { status: statusFilter } : {}),
+              ...(assigneeFilter ? { assignee: assigneeFilter } : {}),
+              ...(priorityFilter ? { priority: priorityFilter } : {}),
+            }}
+            listId={listId}
+          />
         ) : (
           <>
             <PmQuickAddTaskForm listId={listId} />

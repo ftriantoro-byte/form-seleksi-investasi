@@ -32,6 +32,10 @@ export const taskSchema = z.object({
   assigneeIds: z.array(z.string()).optional(),
   startDate: z.string().optional().or(z.literal("")),
   dueDate: z.string().optional().or(z.literal("")),
+  // Time-boxing (susulan permintaan user): jam mulai + durasi dalam hari
+  // `dueDate` yang sudah ada - lihat migration pm_task_timebox.sql.
+  scheduledTime: z.string().optional().or(z.literal("")),
+  scheduledDurationMinutes: z.coerce.number().int().min(5).optional().or(z.literal("")),
   recurrenceType: z.enum(RECURRENCE_TYPE_VALUES).optional().or(z.literal("")),
   recurrenceInterval: z.coerce.number().int().min(1).optional(),
   recurrenceEndDate: z.string().optional().or(z.literal("")),

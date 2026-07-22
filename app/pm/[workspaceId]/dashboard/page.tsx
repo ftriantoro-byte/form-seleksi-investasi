@@ -6,6 +6,7 @@ import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { PmBoardView } from "@/components/pm/PmBoardView";
 import { PmCalendarView } from "@/components/pm/PmCalendarView";
+import { PmTimeBoxView } from "@/components/pm/PmTimeBoxView";
 import { PmTaskListInline } from "@/components/pm/PmTaskListInline";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
@@ -15,6 +16,8 @@ type PmDashboardTask = {
   status: string;
   priority: string | null;
   due_date: string | null;
+  scheduled_time: string | null;
+  scheduled_duration_minutes: number | null;
   recurrence_type: string | null;
   assignee_ids: string[];
   // Dipakai buat filter Space/Folder/List berjenjang, bukan ditampilkan
@@ -33,7 +36,7 @@ type PmDashboardTask = {
 type PmFolderOption = { id: string; nama: string; spaceId: string };
 type PmListOption = { id: string; nama: string; spaceId: string; folderId: string | null };
 
-const TAB_VALUES = ["progress", "workload", "resume", "list", "board", "calendar"] as const;
+const TAB_VALUES = ["progress", "workload", "resume", "list", "board", "calendar", "timebox"] as const;
 type PmDashboardTab = (typeof TAB_VALUES)[number];
 const TAB_LABEL: Record<PmDashboardTab, string> = {
   progress: "Progres Task",
@@ -42,6 +45,7 @@ const TAB_LABEL: Record<PmDashboardTab, string> = {
   list: "List",
   board: "Board",
   calendar: "Calendar",
+  timebox: "Time Box",
 };
 
 // Dashboard di-scope per Workspace (bukan gabungan semua Workspace) - selaras
@@ -58,6 +62,7 @@ export default async function PmWorkspaceDashboardPage({
   searchParams: Promise<{
     tab?: string;
     month?: string;
+    date?: string;
     space?: string;
     folder?: string;
     list?: string;
@@ -67,6 +72,7 @@ export default async function PmWorkspaceDashboardPage({
   const {
     tab: tabParam,
     month: monthParam,
+    date: dateParam,
     space: spaceFilter,
     folder: folderFilter,
     list: listFilter,
@@ -79,6 +85,10 @@ export default async function PmWorkspaceDashboardPage({
     monthParam && /^\d{4}-\d{2}$/.test(monthParam)
       ? monthParam
       : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const date =
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)
+      ? dateParam
+      : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
   // Akses modul PM sudah dicek di app/pm/layout.tsx.
   const supabase = await createClient();
@@ -93,7 +103,7 @@ export default async function PmWorkspaceDashboardPage({
     supabase
       .from("pm_spaces")
       .select(
-        "id, nama, pm_folders(id, nama), pm_lists(id, nama, folder_id, pm_tasks(id, judul, status, priority, due_date, recurrence_type, pm_task_assignees(user_id)))",
+        "id, nama, pm_folders(id, nama), pm_lists(id, nama, folder_id, pm_tasks(id, judul, status, priority, due_date, scheduled_time, scheduled_duration_minutes, recurrence_type, pm_task_assignees(user_id)))",
       )
       .eq("workspace_id", workspaceId)
       .order("created_at", { ascending: true }),
@@ -204,7 +214,12 @@ export default async function PmWorkspaceDashboardPage({
             key={value}
             href={{
               pathname: dashboardBase,
-              query: { ...filterQuery, tab: value, ...(value === "calendar" ? { month } : {}) },
+              query: {
+                ...filterQuery,
+                tab: value,
+                ...(value === "calendar" ? { month } : {}),
+                ...(value === "timebox" ? { date } : {}),
+              },
             }}
             className={`rounded-full px-4 py-1.5 text-[13px] font-medium transition-colors duration-150 ${
               tab === value ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-500"
@@ -218,6 +233,7 @@ export default async function PmWorkspaceDashboardPage({
       <form className="mt-4 flex flex-wrap items-center gap-3">
         <input type="hidden" name="tab" value={tab} />
         {tab === "calendar" && <input type="hidden" name="month" value={month} />}
+        {tab === "timebox" && <input type="hidden" name="date" value={date} />}
         <select
           name="space"
           defaultValue={spaceFilter ?? ""}
@@ -326,6 +342,25 @@ export default async function PmWorkspaceDashboardPage({
               tasks={tasks}
               listBase={dashboardBase}
               month={month}
+              baseQuery={filterQuery}
+              viewParamKey="tab"
+              listId={listFilter}
+            />
+          </>
+        )}
+        {tab === "timebox" && (
+          <>
+            {!listFilter && (
+              <p className="mb-3 text-[12px] text-zinc-400">
+                Pilih List spesifik lewat filter di atas (Terapkan) utk bisa menambahkan Task lewat
+                klik slot jam - Task baru butuh List tujuan yang jelas, jadi tidak aktif selama masih
+                menampilkan gabungan beberapa List.
+              </p>
+            )}
+            <PmTimeBoxView
+              tasks={tasks}
+              listBase={dashboardBase}
+              date={date}
               baseQuery={filterQuery}
               viewParamKey="tab"
               listId={listFilter}

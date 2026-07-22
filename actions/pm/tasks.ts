@@ -82,6 +82,8 @@ export async function updateTask(formData: FormData) {
     assigneeIds: formData.getAll("assigneeIds"),
     startDate: formData.get("startDate") || "",
     dueDate: formData.get("dueDate") || "",
+    scheduledTime: formData.get("scheduledTime") || "",
+    scheduledDurationMinutes: formData.get("scheduledDurationMinutes") || "",
     recurrenceType: formData.get("recurrenceType") || "",
     recurrenceInterval: formData.get("recurrenceInterval") || undefined,
     recurrenceEndDate: formData.get("recurrenceEndDate") || "",
@@ -100,6 +102,8 @@ export async function updateTask(formData: FormData) {
     assigneeIds,
     startDate,
     dueDate,
+    scheduledTime,
+    scheduledDurationMinutes,
     recurrenceType,
     recurrenceInterval,
     recurrenceEndDate,
@@ -125,6 +129,8 @@ export async function updateTask(formData: FormData) {
       priority: priority || null,
       start_date: startDate || null,
       due_date: dueDate || null,
+      scheduled_time: scheduledTime || null,
+      scheduled_duration_minutes: scheduledDurationMinutes || null,
       recurrence_type: recurrenceType || null,
       recurrence_interval: recurrenceInterval || 1,
       recurrence_end_date: recurrenceEndDate || null,
@@ -255,13 +261,51 @@ export async function updateTaskDueDate(taskId: string, dueDate: string) {
   }
 }
 
+// Dipanggil langsung dari PmTimeBoxView (drag Task ke slot jam, atau ganti
+// durasi) - `dueDate` diikutkan sekalian (bukan cuma scheduledTime) krn
+// Task yg digeser dari panel "Belum dijadwalkan hari ini" kadang belum
+// tentu due_date-nya PERSIS hari yang sedang dilihat (mis. drag dari
+// Calendar bulan lain scr tidak sengaja) - pola sama updateTaskDueDate,
+// panggilan langsung bukan <form>.
+export async function scheduleTask(
+  taskId: string,
+  dueDate: string,
+  scheduledTime: string | null,
+  durationMinutes: number | null,
+) {
+  await requirePmAccess();
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("pm_tasks")
+    .update({
+      due_date: dueDate,
+      scheduled_time: scheduledTime,
+      scheduled_duration_minutes: durationMinutes,
+    })
+    .eq("id", taskId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
 // Dipanggil langsung dari PmCalendarView (Client Component) saat quick-add:
 // klik tanggal → ketik judul → Enter, TANPA redirect ke Task Detail (beda
 // dari createTask biasa) - supaya user bisa cepat menambahkan beberapa Task
 // berturut-turut dulu, baru didetailkan belakangan kalau perlu. Sengaja
 // minimal (judul + dueDate saja, status default "to_do") sama seperti
 // createSubtask - field lain diisi lewat Task Detail kalau dibutuhkan.
-export async function createTaskQuick(listId: string, judul: string, dueDate: string) {
+export async function createTaskQuick(
+  listId: string,
+  judul: string,
+  dueDate: string,
+  // Opsional - diisi dari PmTimeBoxView (quick-add lgsg ke slot jam
+  // tertentu), tetap kosong/default kalau dipanggil dari PmCalendarView
+  // (quick-add per tanggal, tanpa jam) spt sebelumnya.
+  scheduledTime?: string | null,
+  durationMinutes?: number | null,
+) {
   await requirePmAccess();
 
   const trimmed = judul.trim();
@@ -280,6 +324,8 @@ export async function createTaskQuick(listId: string, judul: string, dueDate: st
     judul: trimmed,
     status: "to_do",
     due_date: dueDate || null,
+    scheduled_time: scheduledTime || null,
+    scheduled_duration_minutes: scheduledTime ? (durationMinutes ?? 60) : null,
     created_by: user.id,
   });
 
