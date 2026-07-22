@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { renameList, deleteList, updateStatusLabels } from "@/actions/pm/lists";
-import { createTask } from "@/actions/pm/tasks";
 import { createFieldDefinition, deleteFieldDefinition } from "@/actions/pm/customFields";
 import { createAutomation, toggleAutomation, deleteAutomation } from "@/actions/pm/automations";
 import { saveListAsTemplate } from "@/actions/pm/templates";
@@ -18,6 +17,7 @@ import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { PmBoardView } from "@/components/pm/PmBoardView";
 import { PmCalendarView } from "@/components/pm/PmCalendarView";
 import { PmGanttView } from "@/components/pm/PmGanttView";
+import { PmQuickAddTaskForm } from "@/components/pm/PmQuickAddTaskForm";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 import { PmTaskListInline } from "@/components/pm/PmTaskListInline";
 
@@ -685,24 +685,7 @@ export default async function ListDetailPage({
           <PmGanttView tasks={tasks} listBase={listBase} />
         ) : (
           <>
-            <form action={createTask} className="mb-3 flex items-center gap-2">
-              <input type="hidden" name="workspaceId" value={workspaceId} />
-              <input type="hidden" name="spaceId" value={spaceId} />
-              <input type="hidden" name="listId" value={listId} />
-              <input type="hidden" name="status" value="to_do" />
-              <input
-                name="judul"
-                required
-                placeholder="Tambah task baru..."
-                className="flex-1 rounded-xl border border-zinc-200 bg-white px-4 py-2 text-[14px] text-zinc-900 shadow-sm outline-none placeholder:text-zinc-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-              />
-              <button
-                type="submit"
-                className="rounded-full bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
-              >
-                Tambah
-              </button>
-            </form>
+            <PmQuickAddTaskForm listId={listId} />
             <div className="overflow-hidden rounded-2xl border border-black/[0.04] bg-white">
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[560px] text-left text-[13px]">
