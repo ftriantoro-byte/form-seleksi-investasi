@@ -764,6 +764,8 @@ export default async function ListDetailPage({
               ...(priorityFilter ? { priority: priorityFilter } : {}),
             }}
             listId={listId}
+            assigneeFilterIds={assigneeFilter ? [assigneeFilter] : undefined}
+            emailByUserId={emailByUserIdRecord}
           />
         ) : (
           <>

@@ -71,7 +71,7 @@ export default async function PmWorkspaceDashboardPage({
     space?: string;
     folder?: string;
     list?: string;
-    assignee?: string;
+    assignee?: string | string[];
   }>;
 }) {
   const { workspaceId } = await params;
@@ -82,8 +82,17 @@ export default async function PmWorkspaceDashboardPage({
     space: spaceFilter,
     folder: folderFilter,
     list: listFilter,
-    assignee: assigneeFilter,
+    assignee: assigneeParam,
   } = await searchParams;
+  // Susulan permintaan user: filter assignee di Dashboard bisa pilih LEBIH
+  // DARI SATU (sebelumnya cuma 1 lewat <select>) - searchParam bisa berupa
+  // string tunggal (1 dipilih) atau array (>1 dipilih), diseragamkan jadi
+  // array di sini supaya kode di bawah tidak perlu cek dua bentuk berulang.
+  const assigneeFilters: string[] = Array.isArray(assigneeParam)
+    ? assigneeParam
+    : assigneeParam
+      ? [assigneeParam]
+      : [];
   const tab: PmDashboardTab = TAB_VALUES.includes(tabParam as PmDashboardTab)
     ? (tabParam as PmDashboardTab)
     : "progress";
@@ -118,9 +127,13 @@ export default async function PmWorkspaceDashboardPage({
       // Sama pola dgn halaman List (`[listId]/page.tsx`): task_id yg match
       // assignee dicari DULU lewat query terpisah, baru dipakai `.in("id",
       // ...)` di query Task utama - supaya tidak perlu `!inner` join yg
-      // bikin embed pm_task_assignees ikut ter-filter.
-      assigneeFilter
-        ? supabase.from("pm_task_assignees").select("task_id").eq("user_id", assigneeFilter)
+      // bikin embed pm_task_assignees ikut ter-filter. `.in("user_id", ...)`
+      // (bukan `.eq`) krn filter sekarang bisa lebih dari 1 assignee - Task
+      // match kalau SALAH SATU assignee-nya ada di daftar filter (OR, bukan
+      // AND - konsisten dgn cara filter Space/Folder/List bekerja: makin
+      // banyak dipilih makin luas cakupannya, bukan makin sempit).
+      assigneeFilters.length > 0
+        ? supabase.from("pm_task_assignees").select("task_id").in("user_id", assigneeFilters)
         : Promise.resolve({ data: null }),
     ]);
 
@@ -170,9 +183,8 @@ export default async function PmWorkspaceDashboardPage({
             : lists
   ).map((l) => l.id);
 
-  const assigneeTaskIds = assigneeFilter
-    ? (assigneeTaskIdsResult.data ?? []).map((r) => r.task_id)
-    : null;
+  const assigneeTaskIds =
+    assigneeFilters.length > 0 ? (assigneeTaskIdsResult.data ?? []).map((r) => r.task_id) : null;
 
   // Kalau scope List-nya kosong (mis. Space belum punya List sama sekali),
   // atau filter assignee tidak match Task manapun, tidak perlu query Task
@@ -248,12 +260,14 @@ export default async function PmWorkspaceDashboardPage({
 
   const dashboardBase = `/pm/${workspaceId}/dashboard`;
   // Dibawa serta di semua Link (switch tab, nav bulan Calendar) supaya
-  // filter Space/Folder/List yang aktif tidak hilang pas pindah tab.
-  const filterQuery: Record<string, string> = {
+  // filter Space/Folder/List/assignee yang aktif tidak hilang pas pindah
+  // tab - `assignee` bisa array (>1 dipilih), Link `query` Next.js terima
+  // string[] sbg beberapa `?assignee=` berulang di URL.
+  const filterQuery: Record<string, string | string[]> = {
     ...(spaceFilter ? { space: spaceFilter } : {}),
     ...(folderFilter ? { folder: folderFilter } : {}),
     ...(listFilter ? { list: listFilter } : {}),
-    ...(assigneeFilter ? { assignee: assigneeFilter } : {}),
+    ...(assigneeFilters.length > 0 ? { assignee: assigneeFilters } : {}),
   };
 
   return (
@@ -330,25 +344,47 @@ export default async function PmWorkspaceDashboardPage({
             </option>
           ))}
         </select>
-        <select
-          name="assignee"
-          defaultValue={assigneeFilter ?? ""}
-          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
-        >
-          <option value="">Semua assignee</option>
-          {anggota.map((a) => (
-            <option key={a.user_id} value={a.user_id}>
-              {a.email}
-            </option>
-          ))}
-        </select>
+        {/* Susulan permintaan user: bisa pilih LEBIH DARI SATU assignee -
+            checkbox (bukan <select multiple>, yg butuh ctrl/cmd-klik yg
+            tidak intuitif) dibungkus tampilan mirip dropdown supaya tidak
+            makan tempat di baris filter saat opsinya banyak. */}
+        <details className="group relative">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
+            {assigneeFilters.length === 0
+              ? "Semua assignee"
+              : assigneeFilters.length === 1
+                ? (anggota.find((a) => a.user_id === assigneeFilters[0])?.email ?? "1 assignee")
+                : `${assigneeFilters.length} assignee dipilih`}
+            <span className="text-zinc-400">▾</span>
+          </summary>
+          <div className="absolute left-0 top-full z-10 mt-1.5 w-56 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg">
+            {anggota.map((a) => (
+              <label
+                key={a.user_id}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] text-zinc-700 hover:bg-zinc-50"
+              >
+                <input
+                  type="checkbox"
+                  name="assignee"
+                  value={a.user_id}
+                  defaultChecked={assigneeFilters.includes(a.user_id)}
+                  className="h-3.5 w-3.5 rounded border-zinc-300"
+                />
+                <span className="truncate">{a.email}</span>
+              </label>
+            ))}
+            {anggota.length === 0 && (
+              <p className="px-2 py-1.5 text-[12px] text-zinc-400">Belum ada anggota Workspace.</p>
+            )}
+          </div>
+        </details>
         <button
           type="submit"
           className="rounded-full bg-zinc-900 px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
         >
           Terapkan
         </button>
-        {(spaceFilter || folderFilter || listFilter || assigneeFilter) && (
+        {(spaceFilter || folderFilter || listFilter || assigneeFilters.length > 0) && (
           <Link
             href={{
               pathname: dashboardBase,
@@ -433,6 +469,8 @@ export default async function PmWorkspaceDashboardPage({
               baseQuery={filterQuery}
               viewParamKey="tab"
               listId={listFilter ?? inboxListId ?? undefined}
+              assigneeFilterIds={assigneeFilters.length > 0 ? assigneeFilters : undefined}
+              emailByUserId={emailByUserIdRecord}
             />
           </>
         )}

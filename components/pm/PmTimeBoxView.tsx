@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useState, useTransition, useOptimistic } from "react";
 import { useRouter } from "next/navigation";
-import { TASK_STATUS_BADGE_KELAS, TASK_COLOR_ACCENT_KELAS } from "@/lib/pm/labels";
+import {
+  TASK_STATUS_BADGE_KELAS,
+  TASK_COLOR_FILL_KELAS,
+  TASK_STATUS_BORDER_KELAS,
+  avatarKelasForUserId,
+} from "@/lib/pm/labels";
 import { scheduleTask, createTaskQuick } from "@/actions/pm/tasks";
 import { projectRecurringOccurrences, type PmRecurrenceType } from "@/lib/pm/recurrence";
 
@@ -18,6 +23,7 @@ type PmTimeBoxTaskRow = {
   recurrence_interval: number;
   recurrence_end_date: string | null;
   color: string | null;
+  assignee_ids: string[];
   // Dipakai Dashboard Workspace (agregat lintas List), sama seperti
   // PmCalendarView/PmBoardView - fallback ke `${listBase}/${id}` kalau
   // tidak diisi (konteks halaman List, 1 List pasti).
@@ -104,17 +110,26 @@ export function PmTimeBoxView({
   baseQuery,
   viewParamKey = "view",
   listId,
+  assigneeFilterIds,
+  emailByUserId,
 }: {
   tasks: PmTimeBoxTaskRow[];
   listBase: string;
   date: string;
-  baseQuery: Record<string, string>;
+  baseQuery: Record<string, string | string[]>;
   viewParamKey?: string;
   // Sama seperti PmCalendarView - cuma diisi dari halaman List (1 List
   // pasti/tidak ambigu) atau Dashboard Workspace saat filter List/Inbox
   // sudah jelas. Kalau kosong, quick-add (klik slot) tidak aktif - drag
   // reschedule tetap aktif krn itu bukan "bikin baru".
   listId?: string;
+  // Susulan permintaan user: assignee yg sedang difilter (Dashboard) -
+  // Task baru dari quick-add otomatis di-assign ke daftar ini. Kosong di
+  // halaman List (belum ada filter assignee multi-select di sana).
+  assigneeFilterIds?: string[];
+  // Susulan permintaan user: dipakai utk tampilkan avatar per-assignee di
+  // tiap blok Task ("tanda khusus... supaya bisa lihat task siapa").
+  emailByUserId?: Record<string, string>;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -247,9 +262,10 @@ export function PmTimeBoxView({
           recurrence_interval: 1,
           recurrence_end_date: null,
           color: null,
+          assignee_ids: assigneeFilterIds ?? [],
         },
       });
-      await createTaskQuick(listId, judul, d, time, 60);
+      await createTaskQuick(listId, judul, d, time, 60, assigneeFilterIds);
       router.refresh();
     });
   }
@@ -433,8 +449,8 @@ export function PmTimeBoxView({
                       }}
                       style={{ top, height, left: 1, right: 1 }}
                       className={`group absolute cursor-grab overflow-hidden rounded px-1 py-0.5 text-[10px] leading-tight shadow-sm active:cursor-grabbing ${
-                        TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
-                      } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""}`}
+                        t.color ? TASK_COLOR_FILL_KELAS[t.color] : (TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600")
+                      } ${TASK_STATUS_BORDER_KELAS[t.status] ?? ""}`}
                     >
                       <button
                         type="button"
@@ -448,6 +464,27 @@ export function PmTimeBoxView({
                       >
                         ✕
                       </button>
+                      {t.assignee_ids.length > 0 && (
+                        <div className="flex gap-0.5 pr-2.5">
+                          {t.assignee_ids.slice(0, 4).map((userId) => {
+                            const email = emailByUserId?.[userId];
+                            return (
+                              <span
+                                key={userId}
+                                title={email ?? userId}
+                                className={`flex h-2.5 w-2.5 shrink-0 items-center justify-center rounded-full text-[6px] font-bold leading-none text-white ${avatarKelasForUserId(userId)}`}
+                              >
+                                {(email ?? "?").charAt(0).toUpperCase()}
+                              </span>
+                            );
+                          })}
+                          {t.assignee_ids.length > 4 && (
+                            <span className="text-[7px] leading-none text-zinc-500">
+                              +{t.assignee_ids.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
                       <Link
                         href={t.href ?? `${listBase}/${t.id}`}
                         onClick={(e) => e.stopPropagation()}

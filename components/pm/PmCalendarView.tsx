@@ -35,7 +35,7 @@ export function PmCalendarView({
   tasks: PmCalendarTaskRow[];
   listBase: string;
   month: string;
-  baseQuery: Record<string, string>;
+  baseQuery: Record<string, string | string[]>;
   // Nama query param buat switch tab/view - halaman List pakai "view",
   // Dashboard Workspace pakai "tab" utk 3 tab statistik yang sudah ada
   // sebelumnya, jadi dibuat bisa diatur supaya nav bulan tetap konsisten

@@ -316,6 +316,11 @@ export async function createTaskQuick(
   // (quick-add per tanggal, tanpa jam) spt sebelumnya.
   scheduledTime?: string | null,
   durationMinutes?: number | null,
+  // Susulan permintaan user: kalau filter assignee di Dashboard Time Box
+  // sedang aktif, Task baru langsung di-assign ke assignee yg sedang
+  // difilter (tanpa perlu buka Task Detail dulu) - dikirim PmTimeBoxView
+  // dari prop `assigneeFilterIds`, kosong/tidak diisi di pemanggil lain.
+  assigneeIds?: string[],
 ) {
   await requirePmAccess();
 
@@ -330,18 +335,29 @@ export async function createTaskQuick(
   } = await supabase.auth.getUser();
   if (!user) throw new Error("Sesi tidak valid.");
 
-  const { error } = await supabase.from("pm_tasks").insert({
-    list_id: listId,
-    judul: trimmed,
-    status: "to_do",
-    due_date: dueDate || null,
-    scheduled_time: scheduledTime || null,
-    scheduled_duration_minutes: scheduledTime ? (durationMinutes ?? 60) : null,
-    created_by: user.id,
-  });
+  const { data: task, error } = await supabase
+    .from("pm_tasks")
+    .insert({
+      list_id: listId,
+      judul: trimmed,
+      status: "to_do",
+      due_date: dueDate || null,
+      scheduled_time: scheduledTime || null,
+      scheduled_duration_minutes: scheduledTime ? (durationMinutes ?? 60) : null,
+      created_by: user.id,
+    })
+    .select("id")
+    .single();
 
   if (error) {
     throw new Error(error.message);
+  }
+
+  const uniqueAssigneeIds = Array.from(new Set((assigneeIds ?? []).filter(Boolean)));
+  if (task && uniqueAssigneeIds.length > 0) {
+    await supabase
+      .from("pm_task_assignees")
+      .insert(uniqueAssigneeIds.map((userId) => ({ task_id: task.id, user_id: userId })));
   }
 }
 
