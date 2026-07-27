@@ -72,6 +72,7 @@ export default async function PmWorkspaceDashboardPage({
     folder?: string;
     list?: string;
     assignee?: string | string[];
+    tag?: string | string[];
   }>;
 }) {
   const { workspaceId } = await params;
@@ -83,6 +84,7 @@ export default async function PmWorkspaceDashboardPage({
     folder: folderFilter,
     list: listFilter,
     assignee: assigneeParam,
+    tag: tagParam,
   } = await searchParams;
   // Susulan permintaan user: filter assignee di Dashboard bisa pilih LEBIH
   // DARI SATU (sebelumnya cuma 1 lewat <select>) - searchParam bisa berupa
@@ -93,6 +95,7 @@ export default async function PmWorkspaceDashboardPage({
     : assigneeParam
       ? [assigneeParam]
       : [];
+  const tagFilters: string[] = Array.isArray(tagParam) ? tagParam : tagParam ? [tagParam] : [];
   const tab: PmDashboardTab = TAB_VALUES.includes(tabParam as PmDashboardTab)
     ? (tabParam as PmDashboardTab)
     : "progress";
@@ -191,6 +194,7 @@ export default async function PmWorkspaceDashboardPage({
   // sama sekali - `.in(..., [])` invalid di Postgres jadi dihindari eksplisit.
   const listMetaById = new Map(lists.map((l) => [l.id, l]));
   let allTasks: PmDashboardTask[] = [];
+  let allTags: string[] = [];
   if (scopedListIds.length > 0 && (!assigneeTaskIds || assigneeTaskIds.length > 0)) {
     let taskQuery = supabase
       .from("pm_tasks")
@@ -201,7 +205,20 @@ export default async function PmWorkspaceDashboardPage({
     if (assigneeTaskIds) {
       taskQuery = taskQuery.in("id", assigneeTaskIds);
     }
-    const { data: taskRows } = await taskQuery;
+    if (tagFilters.length > 0) {
+      taskQuery = taskQuery.overlaps("tags", tagFilters);
+    }
+    // Diambil terpisah (bukan diturunkan dari `taskRows` yang sudah kena
+    // filter tag) supaya opsi checkbox Tag tetap lengkap walau filter tag
+    // lagi aktif - pola sama dgn kenapa daftar anggota tidak diturunkan dari
+    // Task yg sudah difilter assignee.
+    const [{ data: taskRows }, { data: tagRows }] = await Promise.all([
+      taskQuery,
+      supabase.from("pm_tasks").select("tags").in("list_id", scopedListIds),
+    ]);
+    allTags = Array.from(
+      new Set(((tagRows ?? []) as { tags: string[] | null }[]).flatMap((t) => t.tags ?? [])),
+    ).sort((a, b) => a.localeCompare(b));
     allTasks = (taskRows ?? []).flatMap((t) => {
       const listMeta = listMetaById.get(t.list_id);
       if (!listMeta) return [];
@@ -268,6 +285,7 @@ export default async function PmWorkspaceDashboardPage({
     ...(folderFilter ? { folder: folderFilter } : {}),
     ...(listFilter ? { list: listFilter } : {}),
     ...(assigneeFilters.length > 0 ? { assignee: assigneeFilters } : {}),
+    ...(tagFilters.length > 0 ? { tag: tagFilters } : {}),
   };
 
   return (
@@ -378,13 +396,47 @@ export default async function PmWorkspaceDashboardPage({
             )}
           </div>
         </details>
+        {/* Tag = penanda lintas-List (bukan relasi List sungguhan) - filter
+            ini biarkan user cari Task yg ditandai relevan dgn suatu konteks
+            tanpa Task-nya benar2 pindah List. Pola checkbox sama dgn
+            assignee di atas. */}
+        <details className="group relative">
+          <summary className="flex cursor-pointer list-none items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10">
+            {tagFilters.length === 0
+              ? "Semua tag"
+              : tagFilters.length === 1
+                ? tagFilters[0]
+                : `${tagFilters.length} tag dipilih`}
+            <span className="text-zinc-400">▾</span>
+          </summary>
+          <div className="absolute left-0 top-full z-10 mt-1.5 w-56 rounded-xl border border-zinc-200 bg-white p-2 shadow-lg">
+            {allTags.map((t) => (
+              <label
+                key={t}
+                className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] text-zinc-700 hover:bg-zinc-50"
+              >
+                <input
+                  type="checkbox"
+                  name="tag"
+                  value={t}
+                  defaultChecked={tagFilters.includes(t)}
+                  className="h-3.5 w-3.5 rounded border-zinc-300"
+                />
+                <span className="truncate">{t}</span>
+              </label>
+            ))}
+            {allTags.length === 0 && (
+              <p className="px-2 py-1.5 text-[12px] text-zinc-400">Belum ada Tag di Workspace ini.</p>
+            )}
+          </div>
+        </details>
         <button
           type="submit"
           className="rounded-full bg-zinc-900 px-4 py-1.5 text-[13px] font-medium text-white transition-colors hover:bg-zinc-700"
         >
           Terapkan
         </button>
-        {(spaceFilter || folderFilter || listFilter || assigneeFilters.length > 0) && (
+        {(spaceFilter || folderFilter || listFilter || assigneeFilters.length > 0 || tagFilters.length > 0) && (
           <Link
             href={{
               pathname: dashboardBase,

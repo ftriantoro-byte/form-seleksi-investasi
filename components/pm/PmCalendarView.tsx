@@ -11,6 +11,7 @@ type PmCalendarTaskRow = {
   judul: string;
   status: string;
   due_date: string | null;
+  scheduled_time: string | null;
   color: string | null;
   // Dipakai Dashboard Workspace (agregat lintas List) - tiap Task punya List
   // sendiri jadi tidak bisa pakai 1 `listBase` bersama seperti di halaman
@@ -126,7 +127,14 @@ export function PmCalendarView({
     startTransition(async () => {
       applyOptimistic({
         type: "add",
-        task: { id: tempId, judul, status: "to_do", due_date: dateStr, color: null },
+        task: {
+          id: tempId,
+          judul,
+          status: "to_do",
+          due_date: dateStr,
+          scheduled_time: null,
+          color: null,
+        },
       });
       await createTaskQuick(listId, judul, dateStr);
       router.refresh();
@@ -149,6 +157,9 @@ export function PmCalendarView({
           TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
         } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""}`}
       >
+        {t.scheduled_time && (
+          <span className="font-semibold">{t.scheduled_time.slice(0, 5)} </span>
+        )}
         {t.judul}
       </Link>
     );

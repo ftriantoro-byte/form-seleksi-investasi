@@ -61,11 +61,12 @@ type PmTaskRow = {
 const VIEW_VALUES = ["list", "board", "calendar", "gantt", "timebox"] as const;
 type PmView = (typeof VIEW_VALUES)[number];
 
-const SORT_VALUES = ["created_at", "judul", "due_date"] as const;
+const SORT_VALUES = ["created_at", "judul", "due_date", "tags"] as const;
 const SORT_LABEL: Record<string, string> = {
   created_at: "Terbaru dibuat",
   judul: "Judul (A-Z)",
   due_date: "Due Date terdekat",
+  tags: "Tag (A-Z)",
 };
 
 export default async function ListDetailPage({
@@ -79,6 +80,7 @@ export default async function ListDetailPage({
     status?: string;
     assignee?: string;
     priority?: string;
+    tag?: string;
     sort?: string;
     month?: string;
     date?: string;
@@ -91,6 +93,7 @@ export default async function ListDetailPage({
     status: statusFilter,
     assignee: assigneeFilter,
     priority: priorityFilter,
+    tag: tagFilter,
     sort: sortParam,
     month: monthParam,
     date: dateParam,
@@ -157,6 +160,7 @@ export default async function ListDetailPage({
   if (statusFilter) taskQuery = taskQuery.eq("status", statusFilter);
   if (filteredTaskIds) taskQuery = taskQuery.in("id", filteredTaskIds);
   if (priorityFilter) taskQuery = taskQuery.eq("priority", priorityFilter);
+  if (tagFilter) taskQuery = taskQuery.contains("tags", [tagFilter]);
 
   taskQuery = taskQuery.order(sort, { ascending: true, nullsFirst: false });
 
@@ -165,6 +169,7 @@ export default async function ListDetailPage({
     { data: anggotaRaw },
     { data: fieldDefinitionsRaw },
     { data: automationsRaw },
+    { data: tagsRaw },
     moveTargets,
   ] = await Promise.all([
     taskQuery,
@@ -179,6 +184,10 @@ export default async function ListDetailPage({
       .select("id, nama, trigger_status, condition_priority, action_type, action_value, aktif")
       .eq("list_id", listId)
       .order("created_at", { ascending: true }),
+    // Diambil terpisah (bukan diturunkan dari `tasks` yang sudah ke-filter)
+    // supaya daftar opsi Tag di dropdown tetap lengkap walau filter lain
+    // (status/assignee/priority/tag) lagi aktif.
+    supabase.from("pm_tasks").select("tags").eq("list_id", listId),
     // Daftar Space/Folder di seluruh Workspace (buat dropdown "Pindahkan
     // List ke..." di Pengaturan) - bentuk hasilnya beda dr query di atas
     // (bukan { data }), jadi ditaruh terpisah bukan dalam array yg sama.
@@ -196,6 +205,9 @@ export default async function ListDetailPage({
   const emailByUserIdRecord = Object.fromEntries(emailByUserId);
   const fieldDefinitions = (fieldDefinitionsRaw ?? []) as PmFieldDefinition[];
   const automations = (automationsRaw ?? []) as PmAutomation[];
+  const allTags = Array.from(
+    new Set(((tagsRaw ?? []) as { tags: string[] | null }[]).flatMap((t) => t.tags ?? [])),
+  ).sort((a, b) => a.localeCompare(b));
 
   const listBase = `/pm/${workspaceId}/${spaceId}/${listId}`;
   const parentPath = list.folder_id
@@ -700,6 +712,18 @@ export default async function ListDetailPage({
             </option>
           ))}
         </select>
+        <select
+          name="tag"
+          defaultValue={tagFilter ?? ""}
+          className="rounded-full border border-zinc-200 bg-white px-4 py-1.5 text-[13px] text-zinc-700 shadow-sm outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+        >
+          <option value="">Semua tag</option>
+          {allTags.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
         {view === "list" && (
           <select
             name="sort"
@@ -748,6 +772,7 @@ export default async function ListDetailPage({
               ...(statusFilter ? { status: statusFilter } : {}),
               ...(assigneeFilter ? { assignee: assigneeFilter } : {}),
               ...(priorityFilter ? { priority: priorityFilter } : {}),
+              ...(tagFilter ? { tag: tagFilter } : {}),
             }}
             listId={listId}
           />
@@ -762,6 +787,7 @@ export default async function ListDetailPage({
               ...(statusFilter ? { status: statusFilter } : {}),
               ...(assigneeFilter ? { assignee: assigneeFilter } : {}),
               ...(priorityFilter ? { priority: priorityFilter } : {}),
+              ...(tagFilter ? { tag: tagFilter } : {}),
             }}
             listId={listId}
             assigneeFilterIds={assigneeFilter ? [assigneeFilter] : undefined}
