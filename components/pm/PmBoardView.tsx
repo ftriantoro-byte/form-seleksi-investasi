@@ -96,7 +96,7 @@ export function PmBoardView({
                   onDragEnd={() => setDragTaskId(null)}
                   className={`pm-card cursor-grab rounded-xl border border-black/[0.04] bg-white p-3 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all duration-150 hover:-translate-y-0.5 hover:shadow-[0_6px_16px_rgba(0,0,0,0.08)] active:cursor-grabbing ${
                     task.color ? TASK_COLOR_ACCENT_KELAS[task.color] : ""
-                  }`}
+                  } ${task.status === "done" ? "opacity-50" : ""}`}
                 >
                   <Link
                     href={task.href ?? `${listBase}/${task.id}`}

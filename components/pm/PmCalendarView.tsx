@@ -155,7 +155,7 @@ export function PmCalendarView({
         onClick={(e) => e.stopPropagation()}
         className={`block cursor-grab truncate rounded px-1 py-0.5 text-[10px] active:cursor-grabbing ${
           TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
-        } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""}`}
+        } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""} ${t.status === "done" ? "opacity-50" : ""}`}
       >
         {t.scheduled_time && (
           <span className="font-semibold">{t.scheduled_time.slice(0, 5)} </span>
@@ -220,7 +220,7 @@ export function PmCalendarView({
                 onDragEnd={() => setDragTaskId(null)}
                 className={`cursor-grab rounded-full px-2.5 py-1 text-[11px] active:cursor-grabbing ${
                   TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
-                } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""}`}
+                } ${t.color ? TASK_COLOR_ACCENT_KELAS[t.color] : ""} ${t.status === "done" ? "opacity-50" : ""}`}
               >
                 {t.judul}
               </Link>

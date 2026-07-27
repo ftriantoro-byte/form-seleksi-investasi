@@ -23,7 +23,7 @@ export default async function PmHomePage({
 
   return (
     <FormPageShell maxWidth="max-w-4xl">
-      <FormPageHeader title="Manajemen Proyek" subtitle="Pilih Workspace, atau buat yang baru." />
+      <FormPageHeader title="Task Management" subtitle="Pilih Workspace, atau buat yang baru." />
 
       {error && (
         <p className="mb-5 rounded-xl bg-red-50 px-3.5 py-2.5 text-[13px] text-red-600">

@@ -47,7 +47,9 @@ export function PmTaskListInline({
       {tasks.map((task) => (
         <tr
           key={task.id}
-          className="border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60"
+          className={`border-b border-zinc-50 transition-colors duration-100 last:border-0 hover:bg-zinc-50/60 ${
+            task.status === "done" ? "opacity-50" : ""
+          }`}
         >
           <td className="px-4 py-2 font-medium text-zinc-800">
             <Link href={task.href ?? `${listBase}/${task.id}`} className="inline-flex items-center gap-1.5 hover:underline">

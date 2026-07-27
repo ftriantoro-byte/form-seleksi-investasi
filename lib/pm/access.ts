@@ -29,7 +29,7 @@ export async function requirePmAccess(): Promise<PmRole> {
   const role = await getPmMembership();
 
   if (!role) {
-    throw new Error("Akses ditolak: Anda bukan anggota modul Manajemen Proyek.");
+    throw new Error("Akses ditolak: Anda bukan anggota modul Task Management.");
   }
 
   return role;
@@ -40,7 +40,7 @@ export async function requirePmAdmin(): Promise<PmRole> {
   const role = await requirePmAccess();
 
   if (role !== "admin") {
-    throw new Error("Akses ditolak: aksi ini hanya untuk admin modul Manajemen Proyek.");
+    throw new Error("Akses ditolak: aksi ini hanya untuk admin modul Task Management.");
   }
 
   return role;

@@ -20,6 +20,9 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 // berikutnya (bukan bikin Task baru - lihat catatan cakupan di migration
 // pm_task_recurrence). Kalau recurrence_end_date terlewati, biarkan Task
 // tetap 'done' (recurrence berhenti wajar, tanpa perlu aksi tambahan).
+// Sebelum digeser, siklus yang baru selesai dicatat ke pm_task_completions
+// (permintaan user: siklus yang sudah Done jangan hilang tanpa jejak -
+// riwayatnya ditampilkan di Task Detail, lihat PmTaskDetailContent).
 async function applyRecurrenceIfDone(supabase: SupabaseServerClient, taskId: string) {
   const { data: task } = await supabase
     .from("pm_tasks")
@@ -28,6 +31,8 @@ async function applyRecurrenceIfDone(supabase: SupabaseServerClient, taskId: str
     .single();
 
   if (!task || task.status !== "done" || !task.recurrence_type || !task.due_date) return;
+
+  await supabase.from("pm_task_completions").insert({ task_id: taskId, due_date: task.due_date });
 
   const nextDue = computeNextDueDate(
     task.due_date,

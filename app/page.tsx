@@ -81,7 +81,7 @@ export default async function HomePage() {
                   href="/pm"
                   className="text-[14px] text-zinc-500 transition-colors hover:text-zinc-900"
                 >
-                  Manajemen Proyek
+                  Task Management
                 </Link>
               )}
               <Link

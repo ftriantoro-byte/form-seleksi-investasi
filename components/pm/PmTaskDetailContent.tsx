@@ -80,6 +80,11 @@ type PmAttachmentRow = {
   created_by: string;
 };
 
+type PmTaskCompletionRow = {
+  due_date: string;
+  completed_at: string;
+};
+
 // Dipakai dari dua tempat: halaman penuh [taskId]/page.tsx (navigasi
 // langsung/refresh/link) dan modal @modal/(.)[taskId]/page.tsx (dibuka dari
 // List/Board lewat navigasi klien - lihat catatan intercepting routes di
@@ -147,6 +152,7 @@ export async function PmTaskDetailContent({
       { data: attachmentsRaw },
       { data: existingDocRaw },
       { data: assigneeRowsRaw },
+      { data: completionsRaw },
     ],
   ] = await Promise.all([
     // Daftar List di seluruh Workspace (buat dropdown "Pindahkan Task ke...")
@@ -213,6 +219,17 @@ export async function PmTaskDetailContent({
     // diketahui perlu tidaknya setelah SELECT ini selesai.
     supabase.from("pm_docs").select("id, crdt_state").eq("task_id", taskId).maybeSingle(),
     supabase.from("pm_task_assignees").select("user_id").eq("task_id", taskId),
+    // Riwayat siklus yang sudah Done - cuma relevan utk Task berulang
+    // (baris yg SAMA terus dipakai ulang tiap siklus, lihat
+    // applyRecurrenceIfDone di actions/pm/tasks.ts - tanpa tabel ini,
+    // siklus yang sudah lewat tidak punya jejak sama sekali).
+    task.recurrence_type
+      ? supabase
+          .from("pm_task_completions")
+          .select("due_date, completed_at")
+          .eq("task_id", taskId)
+          .order("due_date", { ascending: false })
+      : Promise.resolve({ data: null }),
     ]),
   ]);
 
@@ -244,6 +261,7 @@ export async function PmTaskDetailContent({
   const totalMenit = timeEntries.reduce((sum, entry) => sum + entry.menit, 0);
   const formatMenit = (menit: number) =>
     menit >= 60 ? `${Math.floor(menit / 60)}j ${menit % 60}m` : `${menit}m`;
+  const completions = (completionsRaw ?? []) as PmTaskCompletionRow[];
   const attachments = (attachmentsRaw ?? []) as PmAttachmentRow[];
   const formatUkuran = (bytes: number) =>
     bytes >= 1024 * 1024
@@ -437,7 +455,8 @@ export async function PmTaskDetailContent({
           {task.recurrence_type && (
             <p className="-mt-1.5 text-[11px] text-zinc-400">
               🔁 Saat ditandai Done, Task ini otomatis kembali ke To Do dengan Due Date digeser
-              maju sesuai pengaturan di atas.
+              maju sesuai pengaturan di atas - siklus yang baru selesai dicatat di &quot;Riwayat
+              Siklus Selesai&quot; di bawah, tidak hilang tanpa jejak.
             </p>
           )}
 
@@ -576,6 +595,33 @@ export async function PmTaskDetailContent({
             Pindah
           </button>
         </form>
+
+        {/* Riwayat Siklus Selesai - cuma utk Task berulang, lihat catatan di
+            applyRecurrenceIfDone (actions/pm/tasks.ts) & migration
+            pm_task_completions. */}
+        {task.recurrence_type && (
+          <div className={sectionCls}>
+            <h3 className={headingCls}>Riwayat Siklus Selesai</h3>
+            <ul className="mt-2 space-y-1">
+              {completions.map((c) => (
+                <li
+                  key={c.completed_at}
+                  className="rounded-lg bg-zinc-50 px-2.5 py-1.5 text-[13px] text-zinc-500"
+                >
+                  Due Date {c.due_date} · selesai{" "}
+                  {new Date(c.completed_at).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </li>
+              ))}
+              {completions.length === 0 && (
+                <li className="text-[13px] text-zinc-400">Belum ada siklus yang ditandai selesai.</li>
+              )}
+            </ul>
+          </div>
+        )}
 
         {/* Docs */}
         <div className={sectionCls}>

@@ -386,7 +386,7 @@ export function PmTimeBoxView({
                 onDragEnd={() => setDragTaskId(null)}
                 className={`cursor-grab rounded-full px-2.5 py-1 text-[11px] active:cursor-grabbing ${
                   TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600"
-                }`}
+                } ${t.status === "done" ? "opacity-50" : ""}`}
               >
                 <Link href={t.href ?? `${listBase}/${t.id}`} className="hover:underline">
                   {t.judul}
@@ -546,7 +546,7 @@ export function PmTimeBoxView({
                       }}
                       className={`group absolute cursor-grab overflow-hidden rounded px-1 py-0.5 text-[10px] leading-tight shadow-sm active:cursor-grabbing ${
                         t.color ? TASK_COLOR_FILL_KELAS[t.color] : (TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600")
-                      } ${TASK_STATUS_BORDER_KELAS[t.status] ?? ""}`}
+                      } ${TASK_STATUS_BORDER_KELAS[t.status] ?? ""} ${t.status === "done" ? "opacity-50" : ""}`}
                     >
                       <button
                         type="button"

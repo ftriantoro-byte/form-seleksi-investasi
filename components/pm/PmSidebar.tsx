@@ -69,7 +69,7 @@ export function PmSidebar({ workspaces }: { workspaces: PmWorkspace[] }) {
           pathname === "/pm" ? "bg-zinc-900 text-white" : "text-zinc-900 hover:bg-zinc-100"
         }`}
       >
-        Manajemen Proyek
+        Task Management
       </Link>
 
       {workspaces.map((ws) => {

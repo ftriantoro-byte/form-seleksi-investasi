@@ -29,7 +29,7 @@ export default async function PmLayout({ children }: { children: React.ReactNode
     return (
       <FormPageShell maxWidth="max-w-xl">
         <p className="text-[15px] text-zinc-500">
-          Anda tidak memiliki akses ke modul Manajemen Proyek.
+          Anda tidak memiliki akses ke modul Task Management.
         </p>
       </FormPageShell>
     );
@@ -48,7 +48,7 @@ export default async function PmLayout({ children }: { children: React.ReactNode
     return (
       <FormPageShell maxWidth="max-w-xl">
         <p className="text-[15px] text-zinc-500">
-          Anda tidak memiliki akses ke modul Manajemen Proyek.
+          Anda tidak memiliki akses ke modul Task Management.
         </p>
       </FormPageShell>
     );
