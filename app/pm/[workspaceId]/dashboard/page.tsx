@@ -9,6 +9,7 @@ import { PmCalendarView } from "@/components/pm/PmCalendarView";
 import { PmTimeBoxView } from "@/components/pm/PmTimeBoxView";
 import { PmTaskListInline } from "@/components/pm/PmTaskListInline";
 import { getOrCreateInboxListId } from "@/lib/pm/inbox";
+import { rolloverOverdueRecurringTasks } from "@/lib/pm/rolloverRecurrence";
 
 type PmWorkspaceMemberProfile = { user_id: string; email: string };
 type PmDashboardTask = {
@@ -196,6 +197,11 @@ export default async function PmWorkspaceDashboardPage({
   let allTasks: PmDashboardTask[] = [];
   let allTags: string[] = [];
   if (scopedListIds.length > 0 && (!assigneeTaskIds || assigneeTaskIds.length > 0)) {
+    // Task berulang yang Done-nya sudah lewat hari ini digeser maju ke
+    // siklus berikutnya di sini (SEBELUM query Task utama) - lihat catatan
+    // lengkap di lib/pm/rolloverRecurrence.ts.
+    await rolloverOverdueRecurringTasks(supabase, scopedListIds);
+
     let taskQuery = supabase
       .from("pm_tasks")
       .select(

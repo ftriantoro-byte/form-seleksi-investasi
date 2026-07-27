@@ -15,6 +15,7 @@ import { TASK_STATUS_VALUES, TASK_PRIORITY_VALUES, TASK_COLOR_VALUES } from "@/l
 import { TASK_PRIORITY_LABEL, TASK_COLOR_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
 import { RECURRENCE_TYPE_VALUES, RECURRENCE_TYPE_LABEL } from "@/lib/pm/recurrence";
+import { rolloverOverdueRecurringTasks } from "@/lib/pm/rolloverRecurrence";
 import { FormField } from "@/components/ui/FormField";
 import { PmRealtimeRefresher } from "@/components/pm/PmRealtimeRefresher";
 import { PmCollaborativeDoc } from "@/components/pm/PmCollaborativeDoc";
@@ -109,6 +110,13 @@ export async function PmTaskDetailContent({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // Task berulang yang Done-nya sudah lewat hari ini digeser maju ke siklus
+  // berikutnya di sini (SEBELUM query Task utama) - lihat catatan lengkap di
+  // lib/pm/rolloverRecurrence.ts. Perlu jg di sini (bukan cuma List/
+  // Dashboard) krn Task Detail bisa dibuka lewat link langsung/bookmark
+  // tanpa lewat halaman List dulu.
+  await rolloverOverdueRecurringTasks(supabase, [listId]);
 
   const { data: taskRaw } = await supabase
     .from("pm_tasks")
@@ -454,9 +462,10 @@ export async function PmTaskDetailContent({
           </div>
           {task.recurrence_type && (
             <p className="-mt-1.5 text-[11px] text-zinc-400">
-              🔁 Saat ditandai Done, Task ini otomatis kembali ke To Do dengan Due Date digeser
-              maju sesuai pengaturan di atas - siklus yang baru selesai dicatat di &quot;Riwayat
-              Siklus Selesai&quot; di bawah, tidak hilang tanpa jejak.
+              🔁 Saat ditandai Done, Task ini TETAP di Due Date sekarang (pudar, tidak hilang) dan
+              siklusnya dicatat di &quot;Riwayat Siklus Selesai&quot; di bawah - baru begitu
+              tanggalnya sungguhan lewat, Task ini otomatis kembali ke To Do dengan Due Date
+              digeser maju sesuai pengaturan di atas.
             </p>
           )}
 

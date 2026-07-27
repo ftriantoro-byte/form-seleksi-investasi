@@ -6,7 +6,6 @@ import { requirePmAccess } from "@/lib/pm/access";
 import { taskSchema } from "@/lib/pm/schema";
 import { notifyTaskAssigned } from "@/lib/pm/notifications";
 import { runAutomations } from "@/lib/pm/automations";
-import { computeNextDueDate, shiftStartDate, type PmRecurrenceType } from "@/lib/pm/recurrence";
 
 function pathBase(workspaceId: string, spaceId: string, listId: string) {
   return `/pm/${workspaceId}/${spaceId}/${listId}`;
@@ -15,39 +14,29 @@ function pathBase(workspaceId: string, spaceId: string, listId: string) {
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
 
 // Dipanggil setelah status Task berhasil diubah jadi 'done' - kalau Task
-// ini diset berulang (recurrence_type terisi), Task yang SAMA di-reset
-// balik ke 'to_do' dengan due_date/start_date digeser maju ke siklus
-// berikutnya (bukan bikin Task baru - lihat catatan cakupan di migration
-// pm_task_recurrence). Kalau recurrence_end_date terlewati, biarkan Task
-// tetap 'done' (recurrence berhenti wajar, tanpa perlu aksi tambahan).
-// Sebelum digeser, siklus yang baru selesai dicatat ke pm_task_completions
-// (permintaan user: siklus yang sudah Done jangan hilang tanpa jejak -
-// riwayatnya ditampilkan di Task Detail, lihat PmTaskDetailContent).
+// ini diset berulang (recurrence_type terisi), siklus yang BARU selesai
+// dicatat ke pm_task_completions (riwayatnya ditampilkan di Task Detail,
+// lihat PmTaskDetailContent).
+//
+// SENGAJA TIDAK langsung menggeser due_date/status maju ke siklus
+// berikutnya di sini (beda dari versi sebelumnya) - itu bikin Task
+// menghilang SEKETIKA dari tanggal yang baru saja ditandai Done (baris yang
+// sama langsung pindah ke tanggal besok begitu diklik, jadi kelihatan
+// "hilang" bukannya pudar - bug report user). Task TETAP 'done' di
+// due_date SEKARANG (pudar, tapi tetap kelihatan) sampai tanggal itu
+// SUNGGUHAN lewat - baru digeser maju lewat rolloverOverdueRecurringTasks
+// (lib/pm/rolloverRecurrence.ts), dipanggil dari List/Dashboard/Task Detail
+// SEBELUM query Task utama tiap kali halaman dibuka.
 async function applyRecurrenceIfDone(supabase: SupabaseServerClient, taskId: string) {
   const { data: task } = await supabase
     .from("pm_tasks")
-    .select("status, due_date, start_date, recurrence_type, recurrence_interval, recurrence_end_date")
+    .select("status, due_date, recurrence_type")
     .eq("id", taskId)
     .single();
 
   if (!task || task.status !== "done" || !task.recurrence_type || !task.due_date) return;
 
   await supabase.from("pm_task_completions").insert({ task_id: taskId, due_date: task.due_date });
-
-  const nextDue = computeNextDueDate(
-    task.due_date,
-    task.recurrence_type as PmRecurrenceType,
-    task.recurrence_interval,
-  );
-
-  if (task.recurrence_end_date && nextDue > task.recurrence_end_date) return;
-
-  const nextStart = task.start_date ? shiftStartDate(task.start_date, task.due_date, nextDue) : null;
-
-  await supabase
-    .from("pm_tasks")
-    .update({ status: "to_do", due_date: nextDue, start_date: nextStart })
-    .eq("id", taskId);
 }
 
 // Full-replace sync (bukan diff insert/delete granular) - jumlah assignee

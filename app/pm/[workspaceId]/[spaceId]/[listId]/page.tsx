@@ -13,6 +13,7 @@ import {
 } from "@/lib/pm/schema";
 import { TASK_PRIORITY_LABEL } from "@/lib/pm/labels";
 import { mergeStatusLabels } from "@/lib/pm/statusLabels";
+import { rolloverOverdueRecurringTasks } from "@/lib/pm/rolloverRecurrence";
 import { FormPageShell } from "@/components/ui/FormPageShell";
 import { FormPageHeader } from "@/components/ui/FormPageHeader";
 import { PmBoardView } from "@/components/pm/PmBoardView";
@@ -132,6 +133,11 @@ export default async function ListDetailPage({
   }
 
   const statusLabels = mergeStatusLabels(list.custom_status_labels);
+
+  // Task berulang yang Done-nya sudah lewat hari ini digeser maju ke siklus
+  // berikutnya di sini (SEBELUM query Task utama) - lihat catatan lengkap di
+  // lib/pm/rolloverRecurrence.ts.
+  await rolloverOverdueRecurringTasks(supabase, [listId]);
 
   // pm_task_assignees di-embed langsung lewat nested select (bukan query
   // terpisah). CATATAN: filter assignee TIDAK dilakukan lewat `!inner` +
