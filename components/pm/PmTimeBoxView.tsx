@@ -103,6 +103,68 @@ function formatWeekLabel(weekDates: string[]) {
   return `${startLabel} — ${endLabel}`;
 }
 
+type OverlapItem = { id: string; start: number; end: number };
+type OverlapLayout = { col: number; cols: number };
+
+// Susulan permintaan user: sebelumnya blok Task yang jam-nya tumpang
+// tindih saling menutupi total (semua full-width, blok yang dirender
+// belakangan nutupin yang duluan) - sekarang tumpang tindih dibagi jadi
+// kolom berdampingan spt Google Calendar, supaya semua tetap kelihatan.
+// Pola standar "event overlap layout": urutkan by jam mulai, gabung jadi
+// "cluster" selama overlap (mulai berikutnya < akhir maksimum cluster yang
+// berjalan), lalu di dalam tiap cluster tempatkan tiap item ke kolom
+// PALING KIRI yang sudah kosong (greedy) - jumlah kolom dalam 1 cluster
+// dipakai sbg pembagi lebar rata utk SEMUA anggota cluster itu (bukan cuma
+// yang benar-benar bertabrakan satu sama lain, spt lazimnya kalender).
+function computeOverlapLayout(items: OverlapItem[]): Map<string, OverlapLayout> {
+  const layout = new Map<string, OverlapLayout>();
+  const sorted = [...items].sort((a, b) => a.start - b.start || a.end - b.end);
+
+  let cluster: OverlapItem[] = [];
+  let clusterEnd = -Infinity;
+
+  function flush() {
+    if (cluster.length === 0) return;
+    const columnEnds: number[] = [];
+    const colOf = new Map<string, number>();
+    for (const it of cluster) {
+      let placed = false;
+      for (let c = 0; c < columnEnds.length; c++) {
+        if (columnEnds[c] <= it.start) {
+          columnEnds[c] = it.end;
+          colOf.set(it.id, c);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        columnEnds.push(it.end);
+        colOf.set(it.id, columnEnds.length - 1);
+      }
+    }
+    const cols = columnEnds.length;
+    for (const it of cluster) {
+      layout.set(it.id, { col: colOf.get(it.id) ?? 0, cols });
+    }
+    cluster = [];
+    clusterEnd = -Infinity;
+  }
+
+  for (const it of sorted) {
+    if (cluster.length > 0 && it.start < clusterEnd) {
+      cluster.push(it);
+      clusterEnd = Math.max(clusterEnd, it.end);
+    } else {
+      flush();
+      cluster.push(it);
+      clusterEnd = it.end;
+    }
+  }
+  flush();
+
+  return layout;
+}
+
 export function PmTimeBoxView({
   tasks,
   listBase,
@@ -369,6 +431,32 @@ export function PmTimeBoxView({
 
           {weekDates.map((d) => {
             const dayTasks = byDate.get(d) ?? [];
+            const dayVirtual = virtualByDate.get(d) ?? [];
+            // Layout tumpang-tindih dihitung TERPISAH utk blok asli vs blok
+            // proyeksi (keduanya sudah beda gaya visual - solid vs dashed -
+            // jadi tidak perlu berbagi kolom yang sama; kalau kebetulan jam
+            // sama, keduanya tetap saling menutupi apa adanya, kasus jarang
+            // yg sengaja tidak ditangani supaya kodenya tidak makin rumit).
+            const dayLayout = computeOverlapLayout(
+              dayTasks.map((t) => {
+                const start = slotIndexFromTime(t.scheduled_time as string);
+                const durationSlots = Math.max(
+                  1,
+                  Math.round((t.scheduled_duration_minutes ?? 60) / SLOT_MINUTES),
+                );
+                return { id: t.id, start, end: start + durationSlots };
+              }),
+            );
+            const virtualLayout = computeOverlapLayout(
+              dayVirtual.map(({ task: t }) => {
+                const start = slotIndexFromTime(t.scheduled_time as string);
+                const durationSlots = Math.max(
+                  1,
+                  Math.round((t.scheduled_duration_minutes ?? 60) / SLOT_MINUTES),
+                );
+                return { id: t.id, start, end: start + durationSlots };
+              }),
+            );
             return (
               <div
                 key={d}
@@ -430,6 +518,9 @@ export function PmTimeBoxView({
                   );
                   const top = startIdx * SLOT_HEIGHT;
                   const height = Math.min(durationSlots * SLOT_HEIGHT, SLOTS.length * SLOT_HEIGHT - top) - 1;
+                  const { col, cols } = dayLayout.get(t.id) ?? { col: 0, cols: 1 };
+                  const widthPct = 100 / cols;
+                  const leftPct = col * widthPct;
                   return (
                     <div
                       key={t.id}
@@ -447,7 +538,12 @@ export function PmTimeBoxView({
                         e.stopPropagation();
                         handleDrop(d, startIdx);
                       }}
-                      style={{ top, height, left: 1, right: 1 }}
+                      style={{
+                        top,
+                        height,
+                        left: `calc(${leftPct}% + 1px)`,
+                        width: `calc(${widthPct}% - 2px)`,
+                      }}
                       className={`group absolute cursor-grab overflow-hidden rounded px-1 py-0.5 text-[10px] leading-tight shadow-sm active:cursor-grabbing ${
                         t.color ? TASK_COLOR_FILL_KELAS[t.color] : (TASK_STATUS_BADGE_KELAS[t.status] ?? "bg-zinc-100 text-zinc-600")
                       } ${TASK_STATUS_BORDER_KELAS[t.status] ?? ""}`}
@@ -518,7 +614,7 @@ export function PmTimeBoxView({
                   );
                 })}
 
-                {(virtualByDate.get(d) ?? []).map(({ task: t }) => {
+                {dayVirtual.map(({ task: t }) => {
                   const startIdx = slotIndexFromTime(t.scheduled_time as string);
                   const durationSlots = Math.max(
                     1,
@@ -526,12 +622,20 @@ export function PmTimeBoxView({
                   );
                   const top = startIdx * SLOT_HEIGHT;
                   const height = Math.min(durationSlots * SLOT_HEIGHT, SLOTS.length * SLOT_HEIGHT - top) - 1;
+                  const { col, cols } = virtualLayout.get(t.id) ?? { col: 0, cols: 1 };
+                  const widthPct = 100 / cols;
+                  const leftPct = col * widthPct;
                   return (
                     <Link
                       key={`${t.id}-proj-${d}`}
                       href={t.href ?? `${listBase}/${t.id}`}
                       title="Proyeksi siklus berulang - tandai Done siklus sebelumnya utk menjadwalkan sungguhan di tanggal ini"
-                      style={{ top, height, left: 1, right: 1 }}
+                      style={{
+                        top,
+                        height,
+                        left: `calc(${leftPct}% + 1px)`,
+                        width: `calc(${widthPct}% - 2px)`,
+                      }}
                       className="absolute overflow-hidden rounded border border-dashed border-zinc-300 bg-zinc-50/80 px-1 py-0.5 text-[10px] leading-tight text-zinc-500 opacity-80 hover:opacity-100 hover:underline"
                     >
                       🔁 {t.judul}
