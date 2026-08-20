@@ -16,12 +16,94 @@ const STATUS_COLOR: Record<KpiStatus, string> = {
   red: "var(--red)",
 };
 
-function statusKPI(k: ExsumKeuanganKPI): KpiStatus {
-  if (k.target === null) return k.kini >= 0 ? "green" : "red";
-  const ok = k.baikJika === "tinggi" ? k.kini >= k.target : k.kini <= k.target;
+function cariNilaiKPI(list: ExsumKeuanganKPI[], nama: string): number | null {
+  const found = list.find((k) => k.nama === nama);
+  return found ? found.kini : null;
+}
+
+// Digeneralisasi dari `statusKPI` lama (yg cuma bisa nilai `k.kini`) supaya
+// bisa jg dipakai menilai nilai HISTORIS (bulan-bulan lalu) terhadap target
+// yang SAMA - dipakai `KpiBullet` di bawah buat mewarnai bar tiap bulan
+// (bukan cuma bulan berjalan) sesuai apakah bulan itu capai target.
+function statusForValue(v: number, target: number | null, baikJika: "tinggi" | "rendah"): KpiStatus {
+  if (target === null) return v >= 0 ? "green" : "red";
+  const ok = baikJika === "tinggi" ? v >= target : v <= target;
   if (ok) return "green";
-  const near = k.baikJika === "tinggi" ? k.kini >= k.target * 0.85 : k.kini <= k.target * 1.15;
+  const near = baikJika === "tinggi" ? v >= target * 0.85 : v <= target * 1.15;
   return near ? "amber" : "red";
+}
+
+function statusKPI(k: ExsumKeuanganKPI): KpiStatus {
+  return statusForValue(k.kini, k.target, k.baikJika);
+}
+
+// Bar "dibandingkan dengan Target" (permintaan user) - pola bullet chart
+// (1 bar nilai + 1 tanda garis Target), konsisten dgn pola yg SUDAH ADA di
+// BAB 3/7 (`.funnel-track`/`.funnel-fill` utk RKAP/RA/RI) - bukan mekanisme
+// baru, cuma diterapkan ke konteks KPI Keuangan. `min`/`max` dilempar dari
+// pemanggil (dihitung 1x per baris KPI, sudah mencakup Target - lihat
+// render BAB 2/7) supaya smua bar SEBARIS (histori + bulan ini) pakai skala
+// yang SAMA, jadi bisa dibandingkan apa adanya antar bulan.
+function KpiBullet({
+  value,
+  target,
+  min,
+  max,
+  status,
+}: {
+  value: number;
+  target: number | null;
+  min: number;
+  max: number;
+  status: KpiStatus;
+}) {
+  const rentang = max - min || 1;
+  const posisi = (v: number) => Math.min(100, Math.max(0, ((v - min) / rentang) * 100));
+  return (
+    <span className="kpi-bullet">
+      <span className="kpi-bullet-fill" style={{ width: `${posisi(value)}%`, background: STATUS_COLOR[status] }} />
+      {target !== null && <span className="kpi-bullet-target" style={{ left: `${posisi(target)}%` }} />}
+    </span>
+  );
+}
+
+// Grafik tren (permintaan user: "tren dibuat grafik tren dari 3 bulan
+// terakhir") - polyline SVG murni (pola sama dgn donut chart Segmen di BAB
+// 3/7: SVG dihitung manual, tanpa library chart baru), TIDAK ikut skala
+// Target (beda dari KpiBullet) krn tujuannya nunjukin BENTUK pergerakan
+// antar bulan, bukan posisi thd Target - dinormalisasi ke rentang nilai
+// titik2-nya sendiri spy pergerakan kecil sekalipun tetap kelihatan jelas.
+function KpiTrendChart({ points, baik }: { points: number[]; baik: boolean }) {
+  const w = 60;
+  const h = 22;
+  const pad = 3;
+  const min = Math.min(...points);
+  const max = Math.max(...points);
+  const rentang = max - min || 1;
+  const x = (i: number) => (points.length > 1 ? pad + (i / (points.length - 1)) * (w - pad * 2) : w / 2);
+  const y = (v: number) => h - pad - ((v - min) / rentang) * (h - pad * 2);
+  const warna = baik ? "var(--green)" : "var(--red)";
+  return (
+    <svg width={w} height={h} className="kpi-trend-svg" aria-hidden>
+      {points.length > 1 && (
+        <polyline
+          points={points.map((v, i) => `${x(i)},${y(v)}`).join(" ")}
+          fill="none"
+          stroke={warna}
+          strokeWidth={1.6}
+        />
+      )}
+      {points.map((v, i) => (
+        <circle
+          key={i}
+          cx={x(i)}
+          cy={y(v)}
+          r={i === points.length - 1 ? 2.4 : 1.5}
+          fill={i === points.length - 1 ? warna : "var(--steel-lt)"}
+        />
+      ))}
+    </svg>
+  );
 }
 
 export function ExsumDocument({
@@ -31,6 +113,7 @@ export function ExsumDocument({
   noDok,
   status,
   data,
+  historisKeuangan = [],
 }: {
   perusahaan: string;
   kode: string;
@@ -38,6 +121,13 @@ export function ExsumDocument({
   noDok: string;
   status: string;
   data: ExsumData;
+  // Laporan kode Perusahaan yang sama, urut KRONOLOGIS (lama -> baru), TIDAK
+  // termasuk laporan yang sedang ditampilkan (`data.keuangan` sendiri) -
+  // dipakai buat tabel "Tren N Bulan Terakhir" di BAB 2/7 (lihat
+  // app/exsum/[reportId]/page.tsx). Opsional (default kosong) supaya
+  // pemanggil lain (mis. halaman cetak/preview lampiran lain, kalau ada di
+  // masa depan) tidak wajib nyediakan ini.
+  historisKeuangan?: { periode: string; keuangan: ExsumKeuanganKPI[] }[];
 }) {
   const K = data.kompetitif;
   const P = data.portofolio;
@@ -165,27 +255,116 @@ export function ExsumDocument({
             {grupUnik.map((g) => (
               <div key={g}>
                 <div className="kpi-group-title">{g}</div>
-                <div className="kpi-grid">
-                  {data.keuangan
-                    .filter((k) => k.grup === g)
-                    .map((k, i) => {
-                      const st = statusKPI(k);
-                      const mom = k.kini - k.lalu;
-                      const momBaik = k.baikJika === "tinggi" ? mom >= 0 : mom <= 0;
-                      return (
-                        <div key={i} className="kpi" style={{ ["--status" as string]: STATUS_COLOR[st] }}>
-                          <div className="name">{k.nama}</div>
-                          <div className={`val ${k.kini < 0 ? "neg" : ""}`}>{pctFmt(k.kini)}</div>
-                          <div className="tgt">Target: {k.target === null ? "—" : pctFmt(k.target)}</div>
-                          <div className={`mom ${momBaik ? "pos" : "neg"}`}>
-                            {mom >= 0 ? "▲" : "▼"} {pctFmt(Math.abs(mom))} vs {data.keuanganLabelLalu}
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
+                <table className="kpi-table">
+                  <thead>
+                    <tr>
+                      <th>{g}</th>
+                      {historisKeuangan.map((h) => (
+                        <th key={h.periode}>{h.periode}</th>
+                      ))}
+                      <th className="current">{periode}</th>
+                      <th>Target</th>
+                      <th>Tren</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.keuangan
+                      .filter((k) => k.grup === g)
+                      .map((k) => {
+                        const nilaiLalu = historisKeuangan.map((h) => ({
+                          periode: h.periode,
+                          nilai: cariNilaiKPI(h.keuangan, k.nama),
+                        }));
+                        const referensi = nilaiLalu.find((n) => n.nilai !== null);
+                        const acuanNilai = referensi ? (referensi.nilai as number) : k.lalu;
+                        const acuanLabel = referensi ? referensi.periode : data.keuanganLabelLalu;
+                        const tren = k.kini - acuanNilai;
+                        const trenBaik = k.baikJika === "tinggi" ? tren >= 0 : tren <= 0;
+
+                        // Skala bar (KpiBullet) MENCAKUP Target - permintaan
+                        // user "chart dibuat dibandingkan dengan target" -
+                        // supaya tanda Target selalu jatuh di dalam track,
+                        // bukan di luar/terpotong. 0 SENGAJA ikut dimasukkan
+                        // jg (bukan cuma min/max nilai) - tanpa ini, bulan
+                        // dgn nilai TERKECIL di baris itu selalu jadi bar
+                        // ~0% lebar (persis di titik minimumnya sendiri),
+                        // biar kelihatan spt data kosong/rusak padahal cuma
+                        // kebetulan dia paling kecil - dgn 0 ikut jadi acuan,
+                        // lebar bar merepresentasikan MAGNITUDE sungguhan
+                        // relatif ke titik nol, bukan cuma posisi relatif
+                        // antar bulan yang ditampilkan.
+                        const semuaNilai = [
+                          ...nilaiLalu.map((n) => n.nilai).filter((v): v is number => v !== null),
+                          k.kini,
+                          ...(k.target !== null ? [k.target] : []),
+                          0,
+                        ];
+                        const minBar = Math.min(...semuaNilai);
+                        const maxBar = Math.max(...semuaNilai);
+
+                        // Titik grafik tren TIDAK ikut skala Target (fokus ke
+                        // BENTUK pergerakan, bukan posisi thd Target) -
+                        // fallback ke k.lalu kalau histori nyata < 2 titik
+                        // (mis. laporan bulan pertama, belum ada riwayat).
+                        const titikTren = [
+                          ...nilaiLalu.map((n) => n.nilai).filter((v): v is number => v !== null),
+                          k.kini,
+                        ];
+                        if (titikTren.length < 2) titikTren.unshift(k.lalu);
+
+                        return (
+                          <tr key={k.nama}>
+                            <td>
+                              <span className="kpi-name-cell">{k.nama}</span>
+                            </td>
+                            {nilaiLalu.map((n, i) => (
+                              <td key={i}>
+                                {n.nilai === null ? (
+                                  "—"
+                                ) : (
+                                  <span className="kpi-cell">
+                                    <KpiBullet
+                                      value={n.nilai}
+                                      target={k.target}
+                                      min={minBar}
+                                      max={maxBar}
+                                      status={statusForValue(n.nilai, k.target, k.baikJika)}
+                                    />
+                                    {pctFmt(n.nilai)}
+                                  </span>
+                                )}
+                              </td>
+                            ))}
+                            <td className="current">
+                              <span className="kpi-cell">
+                                <KpiBullet
+                                  value={k.kini}
+                                  target={k.target}
+                                  min={minBar}
+                                  max={maxBar}
+                                  status={statusKPI(k)}
+                                />
+                                <b>{pctFmt(k.kini)}</b>
+                              </span>
+                            </td>
+                            <td className="kpi-target">{k.target === null ? "—" : pctFmt(k.target)}</td>
+                            <td className="kpi-tren">
+                              <div className="kpi-tren-chart">
+                                <KpiTrendChart points={titikTren} baik={trenBaik} />
+                                <div className={trenBaik ? "pos" : "neg"}>
+                                  {tren >= 0 ? "▲" : "▼"} {pctFmt(Math.abs(tren))}
+                                </div>
+                              </div>
+                              <div className="kpi-tren-label">vs {acuanLabel}</div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
               </div>
             ))}
+
             <p className="note">{data.keuanganNarasi}</p>
           </div>
         </section>

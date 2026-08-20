@@ -303,46 +303,115 @@
 .exsum-doc .kpi-group-title:first-child {
   margin-top: 0;
 }
-.exsum-doc .kpi-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
-  gap: 12px;
+/* Tabel terintegrasi "kinerja bulan ini + tren N bulan terakhir" (susulan
+   permintaan user - sebelumnya 2 elemen terpisah: grid kartu KPI + tabel
+   tren di bawahnya, digabung jadi SATU tabel per grup supaya kinerja bulan
+   berjalan & trennya langsung terlihat berdampingan di 1 baris per KPI,
+   bukan harus scroll/bandingkan 2 tempat). 2 elemen grafis per baris
+   (susulan permintaan user berikutnya, "chart dibuat dibandingkan dengan
+   target" + "tren dibuat grafik tren"): `.kpi-bullet` (bullet chart -
+   pola SAMA PERSIS `.funnel-track`/`.funnel-fill` di BAB 3/7, cuma
+   diterapkan ke konteks KPI Keuangan) di tiap kolom bulan (histori maupun
+   bulan ini) nunjukin posisi nilai RELATIF thd Target (garis tegak); dan
+   `.kpi-trend-svg` (polyline SVG, pola sama donut chart Segmen di BAB 3/7)
+   di kolom Tren nunjukin BENTUK pergerakan 2-4 titik terakhir. Keduanya
+   murni CSS/SVG manual, tanpa library chart baru.                         */
+.exsum-doc .kpi-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+  font-size: 12.5px;
 }
-.exsum-doc .kpi {
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 12px 14px;
+.exsum-doc .kpi-table th {
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: right;
+  padding: 8px 10px;
+  border-bottom: 2px solid var(--navy);
+}
+.exsum-doc .kpi-table th:first-child {
+  text-align: left;
+}
+.exsum-doc .kpi-table th.current {
+  color: var(--navy);
+  font-weight: 700;
+}
+.exsum-doc .kpi-table td {
+  padding: 7px 10px;
+  border-bottom: 1px solid #edf1f5;
+  text-align: right;
+  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
+  font-size: 13px;
+  vertical-align: middle;
+}
+.exsum-doc .kpi-table td:first-child {
+  text-align: left;
+  font-family: var(--font-body), "IBM Plex Sans", Segoe UI, sans-serif;
+  font-size: 12.5px;
+}
+.exsum-doc .kpi-table td.current {
+  background: #eef4fa;
+  font-weight: 700;
+}
+.exsum-doc .kpi-name-cell {
+  display: inline-flex;
+  align-items: center;
+}
+.exsum-doc .kpi-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.exsum-doc .kpi-bullet {
   position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 8px;
+  background: #eef1f4;
+  border-radius: 2px;
+  flex-shrink: 0;
 }
-.exsum-doc .kpi::before {
-  content: "";
+.exsum-doc .kpi-bullet-fill {
   position: absolute;
   left: 0;
   top: 0;
   bottom: 0;
-  width: 4px;
-  border-radius: 4px 0 0 4px;
-  background: var(--status, var(--line));
+  border-radius: 2px;
 }
-.exsum-doc .kpi .name {
-  font-size: 12px;
+.exsum-doc .kpi-bullet-target {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--navy);
+  transform: translateX(-1px);
+}
+.exsum-doc .kpi-table td.kpi-target {
   color: var(--muted);
-}
-.exsum-doc .kpi .val {
-  font-family: var(--font-disp), "Barlow Condensed", Arial Narrow, sans-serif;
-  font-size: 30px;
-  font-weight: 700;
-  line-height: 1.05;
-  margin-top: 2px;
-}
-.exsum-doc .kpi .tgt {
-  font-family: var(--font-mono), "IBM Plex Mono", Consolas, monospace;
-  font-size: 11px;
-  color: var(--muted);
-  margin-top: 4px;
-}
-.exsum-doc .kpi .mom {
   font-size: 11.5px;
+}
+.exsum-doc .kpi-table td.kpi-tren {
+  font-weight: 600;
+}
+.exsum-doc .kpi-tren-chart {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.exsum-doc .kpi-trend-svg {
+  flex-shrink: 0;
+  overflow: visible;
+}
+.exsum-doc .kpi-tren-label {
+  font-family: var(--font-body), "IBM Plex Sans", Segoe UI, sans-serif;
+  font-size: 9.5px;
+  font-weight: 400;
+  color: var(--muted);
   margin-top: 2px;
 }
 
@@ -844,54 +913,52 @@
     margin-left: auto;
   }
 
-  /* ── 2. Keuangan: kartu KPI jadi baris teks 1 baris/KPI (nama · nilai ·
-     target · vs bulan lalu), bukan grid kartu berbingkai. ────────────── */
+  /* ── 2. Keuangan: tabel terintegrasi (kinerja bulan ini + tren) dipadatkan
+     jadi 1 baris/KPI ringkas - lebih ringkas dari versi kartu 2-baris
+     sebelumnya, jadi TIDAK memperbesar total tinggi cetak yg sudah
+     dikalibrasi pas 2 halaman (lihat catatan kalibrasi RONDE 1-4 di
+     PROGRESS.md; belum diukur ulang scr presisi pixel-by-pixel stlh
+     perubahan struktural ini - kalau ternyata meleset dari 2 halaman,
+     kalibrasi ulang tinggal pangkas nilai di sini). ────────────────────── */
   .exsum-doc .kpi-group-title {
     font-size: 10.5px;
     margin: 7px 0 4px;
     padding-bottom: 3px;
   }
-  /* Grid 2 kolom, tiap KPI jadi blok RINGKAS 2 baris (bukan 1 baris lebar
-     penuh spt versi pertama - di kolom sempit 1 baris bikin 4 potongan
-     teks (nama/nilai/target/delta) wrap tak beraturan). Trik flex-wrap:
-     .name(70%)+.val(30%) pas 100% lebar row 1, otomatis mendorong
-     .tgt(60%)+.mom(40%) ke row 2 tanpa perlu ubah urutan markup. */
-  .exsum-doc .kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    column-gap: 22px;
+  .exsum-doc .kpi-table {
+    font-size: 10px;
+    margin-top: 3px;
   }
-  .exsum-doc .kpi {
-    border: none;
-    border-radius: 0;
-    padding: 1px 0;
-    display: flex;
-    flex-wrap: wrap;
-    border-bottom: 1px solid var(--line);
+  .exsum-doc .kpi-table th {
+    font-size: 7.5px;
+    padding: 3px 6px;
   }
-  .exsum-doc .kpi::before {
-    display: none;
+  .exsum-doc .kpi-table td {
+    padding: 3px 6px;
+    font-size: 10px;
   }
-  .exsum-doc .kpi .name {
-    flex: 1 1 68%;
-    font-size: 10.5px;
+  .exsum-doc .kpi-table td:first-child {
+    font-size: 9.5px;
   }
-  .exsum-doc .kpi .val {
-    flex: 0 0 32%;
-    text-align: right;
-    font-size: 13px;
-    margin-top: 0;
+  .exsum-doc .kpi-cell {
+    gap: 4px;
   }
-  .exsum-doc .kpi .tgt {
-    flex: 0 0 58%;
+  .exsum-doc .kpi-bullet {
+    width: 22px;
+    height: 6px;
+  }
+  .exsum-doc .kpi-table td.kpi-target {
     font-size: 9px;
-    margin-top: 0;
   }
-  .exsum-doc .kpi .mom {
-    flex: 0 0 42%;
-    text-align: right;
-    font-size: 9px;
-    margin-top: 0;
+  .exsum-doc .kpi-tren-chart {
+    gap: 4px;
+  }
+  .exsum-doc .kpi-trend-svg {
+    width: 40px;
+    height: 16px;
+  }
+  .exsum-doc .kpi-tren-label {
+    font-size: 8px;
   }
 
   /* ── 3. Portofolio: bar funnel & donut SVG DIPERTAHANKAN (permintaan
